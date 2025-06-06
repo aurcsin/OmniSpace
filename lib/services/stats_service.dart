@@ -1,6 +1,6 @@
 // lib/services/stats_service.dart
 
-import 'package:flutter/foundation.dart'; // for debugPrint
+import 'package:flutter/foundation.dart';  // <-- for debugPrint
 import '../models/omni_note.dart';
 
 class StatsService {
