@@ -1,24 +1,27 @@
-# Flutter/Dart
+# Flutter/Dart Specific
 .dart_tool/
 .packages
+.pub-cache/
 .flutter-plugins
 .flutter-plugins-dependencies
-.metadata
+
+# Build Artifacts
+build/
+ios/Flutter/Flutter.podspec
+ios/Pods/
+android/.gradle/
+android/app/build/
+
+# IDE / Editor Settings
 .idea/
 .vscode/
-build/
-**/*.lock
 
-# Android/iOS
-android/local.properties
-ios/Flutter/Generated.xcconfig
+# Dependency Lock Files (optional — keep for apps, ignore for packages)
+pubspec.lock
+
+# Logs & Misc
 *.iml
-*.keystore
+*.log
 
-# VS Code workspace
-*.code-workspace
-
-# macOS/Windows/Linux specific
-macos/Flutter/ephemeral/
-windows/Flutter/ephemeral/
-linux/Flutter/ephemeral/
+# Test Coverage
+coverage/
