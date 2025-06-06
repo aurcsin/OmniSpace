@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
-import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/pages/note_detail_page.dart';
+import '../models/omni_note.dart';
+import 'note_detail_page.dart';
 
 class JournalPage extends StatefulWidget {
   const JournalPage({Key? key}) : super(key: key);
@@ -12,19 +12,31 @@ class JournalPage extends StatefulWidget {
 }
 
 class _JournalPageState extends State<JournalPage> {
-  // Note: box name must match what main.dart opened ("omni_notes")
   final Box<OmniNote> notesBox = Hive.box<OmniNote>('omni_notes');
 
   String selectedView = 'Daily'; // 'Daily', 'Weekly', 'Monthly', 'Yearly'
   String tagFilter = '';
+  String searchTerm = '';
+  final TextEditingController _searchController = TextEditingController();
 
   List<OmniNote> getFilteredNotes() {
     var notes = notesBox.values.toList();
 
-    // Filter by tag (case‐insensitive)
+    // First apply tag filter
     if (tagFilter.isNotEmpty) {
       notes = notes.where((note) {
         return note.tags.toLowerCase().contains(tagFilter.toLowerCase());
+      }).toList();
+    }
+
+    // Then apply search filter
+    if (searchTerm.isNotEmpty) {
+      final lowerSearch = searchTerm.toLowerCase();
+      notes = notes.where((note) {
+        return note.title.toLowerCase().contains(lowerSearch) ||
+            note.subtitle.toLowerCase().contains(lowerSearch) ||
+            note.content.toLowerCase().contains(lowerSearch) ||
+            note.tags.toLowerCase().contains(lowerSearch);
       }).toList();
     }
 
@@ -83,6 +95,12 @@ class _JournalPageState extends State<JournalPage> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final notes = getFilteredNotes();
 
@@ -90,6 +108,7 @@ class _JournalPageState extends State<JournalPage> {
       appBar: AppBar(
         title: const Text('Journal'),
         actions: [
+          // View selection dropdown
           PopupMenuButton<String>(
             onSelected: _changeView,
             itemBuilder: (context) => ['Daily', 'Weekly', 'Monthly', 'Yearly']
@@ -99,14 +118,49 @@ class _JournalPageState extends State<JournalPage> {
                     ))
                 .toList(),
           ),
+
+          // Tag filter button
           IconButton(
             icon: const Icon(Icons.filter_alt),
             onPressed: _showTagFilterDialog,
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search notes...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchTerm.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            searchTerm = '';
+                          });
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.9),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (val) {
+                setState(() => searchTerm = val.trim());
+              },
+            ),
+          ),
+        ),
       ),
       body: notes.isEmpty
-          ? const Center(child: Text('No notes yet.'))
+          ? const Center(child: Text('No notes match your criteria.'))
           : ListView.builder(
               itemCount: notes.length,
               itemBuilder: (context, index) {
@@ -117,13 +171,17 @@ class _JournalPageState extends State<JournalPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (note.subtitle.isNotEmpty)
-                        Text(note.subtitle,
-                            style: const TextStyle(fontStyle: FontStyle.italic)),
+                        Text(
+                          note.subtitle,
+                          style: const TextStyle(fontStyle: FontStyle.italic),
+                        ),
                       if (note.tags.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text('Tags: ${note.tags}',
-                              style: const TextStyle(fontSize: 12)),
+                          child: Text(
+                            'Tags: ${note.tags}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
