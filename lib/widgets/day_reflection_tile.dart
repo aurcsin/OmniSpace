@@ -1,5 +1,7 @@
+// lib/pages/day_reflection_tile.dart
+
 import 'package:flutter/material.dart';
-import 'package:omnispace/models/day_reflection.dart';
+import '../models/day_reflection.dart'; // use relative import
 
 class DayReflectionTile extends StatelessWidget {
   final DayReflection reflection;
@@ -13,6 +15,7 @@ class DayReflectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use the existing `dateKey` (e.g. "2025-06-07") directly:
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
@@ -20,9 +23,11 @@ class DayReflectionTile extends StatelessWidget {
           'Reflection for ${reflection.dateKey}',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(reflection.summary.isNotEmpty
-            ? reflection.summary
-            : 'No reflection added.'),
+        subtitle: Text(
+          reflection.summary.isNotEmpty
+              ? reflection.summary
+              : 'No reflection added.',
+        ),
         trailing: IconButton(
           icon: const Icon(Icons.edit),
           onPressed: onEdit,

@@ -24,13 +24,25 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       recommendedTag: fields[4] as String?,
       tags: fields[5] as String,
       createdAt: fields[6] as DateTime?,
+      attachments: (fields[7] as List?)?.cast<Attachment>(),
+      tasks: (fields[8] as List?)?.cast<Task>(),
+      goals: (fields[9] as List?)?.cast<Goal>(),
+      events: (fields[10] as List?)?.cast<Event>(),
+      mood: fields[11] as String?,
+      direction: fields[12] as String?,
+      projectId: fields[13] as String?,
+      colorValue: fields[14] as int?,
+      starred: fields[15] as bool?,
+      pinned: fields[16] as bool?,
+      archived: fields[17] as bool?,
+      isPrivate: fields[18] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -44,7 +56,31 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(5)
       ..write(obj.tags)
       ..writeByte(6)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(7)
+      ..write(obj.attachments)
+      ..writeByte(8)
+      ..write(obj.tasks)
+      ..writeByte(9)
+      ..write(obj.goals)
+      ..writeByte(10)
+      ..write(obj.events)
+      ..writeByte(11)
+      ..write(obj.mood)
+      ..writeByte(12)
+      ..write(obj.direction)
+      ..writeByte(13)
+      ..write(obj.projectId)
+      ..writeByte(14)
+      ..write(obj.colorValue)
+      ..writeByte(15)
+      ..write(obj.starred)
+      ..writeByte(16)
+      ..write(obj.pinned)
+      ..writeByte(17)
+      ..write(obj.archived)
+      ..writeByte(18)
+      ..write(obj.isPrivate);
   }
 
   @override

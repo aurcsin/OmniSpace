@@ -1,5 +1,3 @@
-// lib/models/attachment.dart
-
 import 'package:hive/hive.dart';
 
 part 'attachment.g.dart';
@@ -21,19 +19,15 @@ class Attachment extends HiveObject {
   @HiveField(0)
   AttachmentType type;
 
-  /// Full local path to the file
   @HiveField(1)
   String localPath;
 
-  /// When this attachment was created
   @HiveField(2)
   DateTime createdAt;
 
-  /// For audio/video: optional transcription or notes
   @HiveField(3)
   String? transcription;
 
-  /// For video: optional thumbnail path (can be generated later)
   @HiveField(4)
   String? thumbnailPath;
 

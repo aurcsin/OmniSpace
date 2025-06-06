@@ -1,41 +1,63 @@
 // lib/pages/calendar_overview_page.dart
 
-import 'dart:io'; // for File
+import 'dart:io'; // ← Add this line
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../models/attachment.dart';          // for AttachmentType
 import '../models/omni_note.dart';
+import '../models/attachment.dart';
 import '../services/omni_note_service.dart';
 import 'note_detail_page.dart';
 
+/// Four tabs: Day / Week / Month / Year.
+/// Each tab provides its own toggles (Detailed vs. Snapshot, List vs. Grid, etc.).
 enum CalendarView { day, week, month, year }
 
 class CalendarOverviewPage extends StatefulWidget {
   @override
-  _CalendarOverviewPageState createState() =>
-      _CalendarOverviewPageState();
+  _CalendarOverviewPageState createState() => _CalendarOverviewPageState();
 }
 
 class _CalendarOverviewPageState extends State<CalendarOverviewPage>
     with SingleTickerProviderStateMixin {
-  bool _listView = true; // toggle between List and Grid
   late TabController _tabController;
+  CalendarView _selectedView = CalendarView.day;
+
+  // --- Day view state ---
+  bool _dayDetailed = true;
+
+  // --- Week view state ---
+  bool _weekListView = true;
+  bool _weekCentered = true;
+  DateTime _selectedWeekDate = DateTime.now();
+
+  // --- Month view state ---
+  bool _monthGridView = true;
+  final int birthYear = 1900;
+  late int _yearForMonth;
+  late int _selectedMonth;
+
+  // --- Year view state ---
+  late int _selectedYear;
 
   @override
   void initState() {
     super.initState();
-    // We only need the controller to switch tabs; no need to store the selected tab in a separate field.
-    _tabController = TabController(
-      length: CalendarView.values.length,
-      vsync: this,
-    );
-    // Load notes initially
+    final today = DateTime.now();
+    _yearForMonth = today.year;
+    _selectedMonth = today.month;
+    _selectedYear = today.year;
+
+    _tabController = TabController(length: CalendarView.values.length, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _selectedView = CalendarView.values[_tabController.index];
+      });
+    });
+
     OmniNoteService.instance.loadAllNotes();
   }
-
-  List<OmniNote> _notes = [];
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +65,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
       value: OmniNoteService.instance,
       child: Consumer<OmniNoteService>(
         builder: (context, noteService, _) {
-          _notes = noteService.notes;
+          final allNotes = noteService.notes;
+
           return Scaffold(
             appBar: AppBar(
               title: Text('Calendar Overview'),
@@ -51,22 +74,42 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
                 controller: _tabController,
                 isScrollable: true,
                 tabs: CalendarView.values.map((view) {
-                  final label = _labelForView(view);
-                  return Tab(text: label);
+                  return Tab(text: _labelForView(view));
                 }).toList(),
               ),
               actions: [
-                IconButton(
-                  icon: Icon(
-                    _listView ? Icons.grid_view : Icons.list,
+                if (_selectedView == CalendarView.day)
+                  IconButton(
+                    icon: Icon(_dayDetailed ? Icons.view_agenda : Icons.view_module),
+                    tooltip: _dayDetailed ? 'Snapshot' : 'Detailed',
+                    onPressed: () {
+                      setState(() => _dayDetailed = !_dayDetailed);
+                    },
                   ),
-                  tooltip: _listView ? 'Switch to Grid' : 'Switch to List',
-                  onPressed: () {
-                    setState(() {
-                      _listView = !_listView;
-                    });
-                  },
-                ),
+                if (_selectedView == CalendarView.week) ...[
+                  IconButton(
+                    icon: Icon(_weekListView ? Icons.grid_view : Icons.list),
+                    tooltip: _weekListView ? 'Grid View' : 'List View',
+                    onPressed: () {
+                      setState(() => _weekListView = !_weekListView);
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(_weekCentered ? Icons.center_focus_strong : Icons.calendar_view_day),
+                    tooltip: _weekCentered ? 'Centered' : 'Past/Future',
+                    onPressed: () {
+                      setState(() => _weekCentered = !_weekCentered);
+                    },
+                  ),
+                ],
+                if (_selectedView == CalendarView.month)
+                  IconButton(
+                    icon: Icon(_monthGridView ? Icons.view_agenda : Icons.view_comfy_alt),
+                    tooltip: _monthGridView ? 'Summary' : 'Grid',
+                    onPressed: () {
+                      setState(() => _monthGridView = !_monthGridView);
+                    },
+                  ),
               ],
             ),
             body: TabBarView(
@@ -74,13 +117,13 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
               children: CalendarView.values.map((view) {
                 switch (view) {
                   case CalendarView.day:
-                    return _buildDayView();
+                    return _buildDayView(allNotes);
                   case CalendarView.week:
-                    return _buildWeekView();
+                    return _buildWeekView(allNotes);
                   case CalendarView.month:
-                    return _buildMonthView();
+                    return _buildMonthView(allNotes);
                   case CalendarView.year:
-                    return _buildYearView();
+                    return _buildYearView(allNotes);
                 }
               }).toList(),
             ),
@@ -103,346 +146,466 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
     }
   }
 
-  /// --------------------- DAY VIEW ---------------------
-  /// Shows a chronological list of notes from *today*.
-  Widget _buildDayView() {
+  /// ──────────────────────────────────────────────────────────────────────────
+  /// DAY VIEW:
+  ///   • Show all notes from *today*.
+  ///   • Toggle Detailed vs. Snapshot via AppBar action.
+  Widget _buildDayView(List<OmniNote> allNotes) {
     final today = DateTime.now();
     final dayStart = DateTime(today.year, today.month, today.day);
-    final dayEnd = dayStart.add(Duration(days: 1));
+    final nextDay = dayStart.add(const Duration(days: 1));
 
-    final todayNotes = _notes.where((note) {
-      return note.createdAt.isAfter(dayStart) &&
-          note.createdAt.isBefore(dayEnd);
+    final todayNotes = allNotes.where((note) {
+      return note.createdAt.isAfter(dayStart) && note.createdAt.isBefore(nextDay);
     }).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    return _listView
-        ? ListView.builder(
-            itemCount: todayNotes.length,
-            itemBuilder: (context, index) {
-              final note = todayNotes[index];
-              return ListTile(
-                leading: Icon(
-                  note.attachments.isEmpty
-                      ? Icons.description
-                      : _iconForAttachment(
-                          note.attachments.first.type),
-                ),
-                title:
-                    Text(note.title.isNotEmpty ? note.title : 'Untitled'),
-                subtitle: Text(
-                  DateFormat.Hm().format(note.createdAt),
-                ),
-                trailing: _dailyBriefStats(note),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          NoteDetailPage(omniNote: note),
-                    ),
-                  );
-                },
-              );
-            },
-          )
-        : _buildGridOfNotes(todayNotes);
-  }
-
-  /// --------------------- WEEK VIEW ---------------------
-  /// Shows notes for the current week (Sunday–Saturday).
-  Widget _buildWeekView() {
-    final today = DateTime.now();
-    // Find Sunday of this week (weekday % 7 == 0 → Sunday)
-    final int weekday = today.weekday; // Monday=1 … Sunday=7
-    final sunday = today.subtract(Duration(days: weekday % 7));
-    final saturday = sunday.add(Duration(days: 6));
-
-    final weekNotes = _notes.where((note) {
-      return note.createdAt.isAfter(sunday) &&
-          note.createdAt
-              .isBefore(saturday.add(Duration(days: 1)));
-    }).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    if (_listView) {
-      // Group by date (e.g. Sunday, Monday, …)
-      final grouped = <DateTime, List<OmniNote>>{};
-      for (var n in weekNotes) {
-        final dt = DateTime(n.createdAt.year,
-            n.createdAt.month, n.createdAt.day);
-        grouped.putIfAbsent(dt, () => []).add(n);
-      }
-
-      final sortedDates = grouped.keys.toList()
-        ..sort((a, b) => b.compareTo(a));
-      return ListView.builder(
-        itemCount: sortedDates.length,
-        itemBuilder: (context, idx) {
-          final date = sortedDates[idx];
-          final notesForDate = grouped[date]!;
-          final dayLabel =
-              DateFormat.EEEE().format(date); // e.g. “Sunday”
-          return ExpansionTile(
-            title:
-                Text('$dayLabel (${DateFormat.MMMd().format(date)})'),
-            trailing: Text('${notesForDate.length}'),
-            children: notesForDate.map((note) {
-              return ListTile(
-                leading: Icon(
-                  note.attachments.isEmpty
-                      ? Icons.description
-                      : _iconForAttachment(
-                          note.attachments.first.type),
-                ),
-                title: Text(
-                    note.title.isNotEmpty ? note.title : 'Untitled'),
-                subtitle: Text(
-                    DateFormat.Hm().format(note.createdAt)),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          NoteDetailPage(omniNote: note),
-                    ),
-                  );
-                },
-              );
-            }).toList(),
-          );
-        },
-      );
-    } else {
-      return _buildGridOfNotes(weekNotes);
-    }
-  }
-
-  /// --------------------- MONTH VIEW ---------------------
-  /// Displays a grid of week‐rows and day‐cells. Each cell shows a dot or thumbnail.
-  Widget _buildMonthView() {
-    final today = DateTime.now();
-    final year = today.year;
-    final month = today.month;
-    final firstOfMonth = DateTime(year, month, 1);
-    final lastOfMonth =
-        DateTime(year, month + 1, 1).subtract(Duration(days: 1));
-
-    // Build a calendar grid with 6 rows × 7 columns
-    final firstWeekday = firstOfMonth.weekday; // Monday=1…Sunday=7
-    final dayOffset = (firstWeekday % 7); // blanks before day 1
-    final totalDays = lastOfMonth.day;
-
-    // Build a 6×7 matrix: each cell is DateTime? (null if blank)
-    final matrix =
-        List.generate(6, (r) => List<DateTime?>.filled(7, null));
-    int dayCounter = 1;
-    for (int r = 0; r < 6; r++) {
-      for (int c = 0; c < 7; c++) {
-        final globalIndex = r * 7 + c;
-        if (globalIndex >= dayOffset && dayCounter <= totalDays) {
-          matrix[r][c] = DateTime(year, month, dayCounter);
-          dayCounter++;
-        }
-      }
-    }
-
-    // Group notes by date
-    final Map<DateTime, List<OmniNote>> notesByDate = {};
-    for (var n in _notes) {
-      final dt = DateTime(n.createdAt.year,
-          n.createdAt.month, n.createdAt.day);
-      if (dt.year == year && dt.month == month) {
-        notesByDate.putIfAbsent(dt, () => []).add(n);
-      }
-    }
-
-    // Build calendar UI
     return Column(
       children: [
-        // Weekday headers
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Row(
-            children: List.generate(7, (i) {
-              final wd =
-                  DateFormat.E().format(DateTime(2021, 1, i + 3));
-              return Expanded(
-                child: Center(
-                  child: Text(
-                    wd,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              );
-            }),
-          ),
+        const SizedBox(height: 8),
+        Text(
+          DateFormat.yMMMd().format(today),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        // 6 rows
         Expanded(
-          child: Column(
-            children: List.generate(6, (r) {
-              return Expanded(
-                child: Row(
-                  children: List.generate(7, (c) {
-                    final date = matrix[r][c];
-                    if (date == null) {
-                      return Expanded(child: Container());
-                    }
-
-                    final dayNotes = notesByDate[date] ?? [];
-                    if (dayNotes.isEmpty) {
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            // Optional: tap blank day to create a new note
-                          },
-                          child: Container(
-                            margin: EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              color: Colors.grey.shade100,
-                            ),
-                            child: Center(
-                              child: Text('${date.day}'),
-                            ),
-                          ),
+          child: _dayDetailed
+              ? ListView.builder(
+                  itemCount: todayNotes.length,
+                  itemBuilder: (context, index) {
+                    final note = todayNotes[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: ListTile(
+                        leading: Icon(
+                          note.attachments.isEmpty
+                              ? Icons.text_snippet
+                              : _iconForAttachment(note.attachments.first.type),
                         ),
-                      );
-                    } else {
-                      // Show thumbnail if first attachment is image
-                      final first = dayNotes.first;
-                      Widget cellContent;
-                      if (first.attachments.isNotEmpty &&
-                          first.attachments.first.type ==
-                              AttachmentType.image) {
-                        cellContent = ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Image.file(
-                            File(first.attachments.first.localPath),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                        );
-                      } else {
-                        // Fallback: a colored dot
-                        cellContent = Center(
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.blueAccent,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        );
-                      }
-
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            _showNotesForDate(date, dayNotes);
-                          },
-                          child: Container(
-                            margin: EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              color: Colors.grey.shade50,
-                            ),
-                            child: Stack(
+                        title: Text(
+                          note.title.isNotEmpty ? note.title : '(No Title)',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (note.subtitle.isNotEmpty) Text(note.subtitle),
+                            if (note.content.isNotEmpty)
+                              Text(
+                                note.content.length > 60
+                                    ? note.content.substring(0, 60) + '…'
+                                    : note.content,
+                              ),
+                            const SizedBox(height: 4),
+                            Row(
                               children: [
-                                Positioned.fill(child: cellContent),
-                                Positioned(
-                                  top: 4,
-                                  left: 4,
-                                  child: Text(
-                                    '${date.day}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
+                                if ((note.tasks ?? []).isNotEmpty)
+                                  const Icon(Icons.checklist, size: 14),
+                                if ((note.goals ?? []).isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.flag, size: 14)
+                                ],
+                                if ((note.events ?? []).isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.event, size: 14)
+                                ],
+                                if (note.mood != null) ...[
+                                  const SizedBox(width: 4),
+                                  Chip(label: Text(note.mood!))
+                                ],
                               ],
                             ),
-                          ),
+                          ],
                         ),
-                      );
-                    }
-                  }),
+                        trailing: Text(
+                          TimeOfDay.fromDateTime(note.createdAt).format(context),
+                        ),
+                        onTap: () {
+                          Navigator.of(context)
+                              .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                              .then((_) => OmniNoteService.instance.loadAllNotes());
+                        },
+                      ),
+                    );
+                  },
+                )
+              : ListView.builder(
+                  itemCount: todayNotes.length,
+                  itemBuilder: (context, index) {
+                    final note = todayNotes[index];
+                    return ListTile(
+                      leading: Icon(
+                        note.attachments.isEmpty
+                            ? Icons.text_snippet
+                            : _iconForAttachment(note.attachments.first.type),
+                      ),
+                      title: Text(
+                        note.recommendedTag ??
+                            (note.content.isNotEmpty
+                                ? (note.content.length > 20
+                                    ? note.content.substring(0, 20) + '…'
+                                    : note.content)
+                                : '(No Content)'),
+                      ),
+                      trailing: Text(TimeOfDay.fromDateTime(note.createdAt).format(context)),
+                      onTap: () {
+                        Navigator.of(context)
+                            .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                            .then((_) => OmniNoteService.instance.loadAllNotes());
+                      },
+                    );
+                  },
                 ),
-              );
-            }),
-          ),
         ),
       ],
     );
   }
 
-  /// --------------------- YEAR VIEW ---------------------
-  /// Displays a grid of 12 months with note/attachment counts.
-  Widget _buildYearView() {
+  /// ──────────────────────────────────────────────────────────────────────────
+  /// WEEK VIEW:
+  ///   • Past/Future/Centered toggle.  • List vs. Grid toggle.
+  ///   • Left/Right chevrons shift by 7 days.
+  Widget _buildWeekView(List<OmniNote> allNotes) {
     final today = DateTime.now();
-    final year = today.year;
+    DateTime start, end;
 
-    // Group notes by month
-    final Map<int, List<OmniNote>> notesByMonth = {};
-    for (var n in _notes) {
-      if (n.createdAt.year == year) {
-        final m = n.createdAt.month;
-        notesByMonth.putIfAbsent(m, () => []).add(n);
-      }
+    if (_weekCentered) {
+      start = _selectedWeekDate.subtract(const Duration(days: 3));
+      end = _selectedWeekDate.add(const Duration(days: 3));
+    } else if (_selectedWeekDate.isBefore(today)) {
+      end = _selectedWeekDate;
+      start = end.subtract(const Duration(days: 6));
+    } else {
+      start = _selectedWeekDate;
+      end = start.add(const Duration(days: 6));
     }
 
-    return GridView.builder(
-      padding: EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: 12,
-      itemBuilder: (context, idx) {
-        final monthIndex = idx + 1; // 1 = Jan, … 12 = Dec
-        final monthNotes = notesByMonth[monthIndex] ?? [];
-        final totalAttachments = monthNotes.fold<int>(
-          0,
-          (sum, n) => sum + n.attachments.length,
-        );
-        return GestureDetector(
-          onTap: () {
-            // Optional: navigate to Month view for this month
-          },
-          child: Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.grey.shade100,
+    final weekNotes = allNotes.where((note) {
+      final dt = note.createdAt;
+      return dt.isAfter(DateTime(start.year, start.month, start.day).subtract(const Duration(seconds: 1))) &&
+          dt.isBefore(DateTime(end.year, end.month, end.day).add(const Duration(days: 1)));
+    }).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final daysList = List.generate(7, (i) => start.add(Duration(days: i)));
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () {
+                setState(() {
+                  _selectedWeekDate = _selectedWeekDate.subtract(const Duration(days: 7));
+                });
+              },
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  DateFormat.MMM().format(DateTime(year, monthIndex, 1)),
-                  style: TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              _weekCentered
+                  ? 'Centered: ${DateFormat.yMMMd().format(start)} – ${DateFormat.yMMMd().format(end)}'
+                  : '${DateFormat.yMMMd().format(start)} – ${DateFormat.yMMMd().format(end)}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () {
+                setState(() {
+                  _selectedWeekDate = _selectedWeekDate.add(const Duration(days: 7));
+                });
+              },
+            ),
+          ],
+        ),
+        Expanded(
+          child: _weekListView
+              ? ListView.builder(
+                  itemCount: 7,
+                  itemBuilder: (context, idx) {
+                    final day = daysList[idx];
+                    final dayStart = DateTime(day.year, day.month, day.day);
+                    final dayEnd = dayStart.add(const Duration(days: 1));
+                    final notesForDay = weekNotes.where((note) {
+                      return note.createdAt.isAfter(dayStart.subtract(const Duration(seconds: 1))) &&
+                          note.createdAt.isBefore(dayEnd);
+                    }).toList();
+
+                    return ExpansionTile(
+                      title: Text('${DateFormat.EEEE().format(day)} (${DateFormat.MMMd().format(day)})'),
+                      trailing: Text('${notesForDay.length}'),
+                      children: notesForDay.map((note) {
+                        return ListTile(
+                          leading: Icon(
+                            note.attachments.isEmpty
+                                ? Icons.text_snippet
+                                : _iconForAttachment(note.attachments.first.type),
+                          ),
+                          title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                          subtitle: Text(TimeOfDay.fromDateTime(note.createdAt).format(context)),
+                          onTap: () {
+                            Navigator.of(context)
+                                .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                                .then((_) => OmniNoteService.instance.loadAllNotes());
+                          },
+                        );
+                      }).toList(),
+                    );
+                  },
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.all(8),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                  itemCount: weekNotes.length,
+                  itemBuilder: (context, idx) {
+                    final note = weekNotes[idx];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.of(context)
+                            .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                            .then((_) => OmniNoteService.instance.loadAllNotes());
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey.shade100,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            note.attachments.isEmpty
+                                ? Icons.text_snippet
+                                : _iconForAttachment(note.attachments.first.type),
+                            size: 36,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                SizedBox(height: 8),
-                Text('${monthNotes.length} Notes'),
-                Text('$totalAttachments Attachments'),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ],
     );
   }
 
-  /// Display a bottom sheet listing all notes for a given date
+  /// ──────────────────────────────────────────────────────────────────────────
+  /// MONTH VIEW:
+  ///   • Year dropdown (birthYear…thisYear)
+  ///   • Month dropdown (Jan…Dec)
+  ///   • Toggle: Grid vs. Summary
+  Widget _buildMonthView(List<OmniNote> allNotes) {
+    final today = DateTime.now();
+    final currentYear = today.year;
+    final yearOptions = List.generate(currentYear - birthYear + 1, (i) => birthYear + i);
+
+    final firstOfMonth = DateTime(_yearForMonth, _selectedMonth, 1);
+    final lastOfMonth = DateTime(_yearForMonth, _selectedMonth + 1, 1).subtract(const Duration(days: 1));
+
+    final firstWeekday = firstOfMonth.weekday % 7; // how many blank cells before the 1st
+    final totalDays = lastOfMonth.day;
+
+    // Build a 6×7 grid of DateTime? cells
+    final matrix = List.generate(6, (r) => List<DateTime?>.filled(7, null));
+    int dayCounter = 1;
+    for (int r = 0; r < 6; r++) {
+      for (int c = 0; c < 7; c++) {
+        final idx = r * 7 + c;
+        if (idx >= firstWeekday && dayCounter <= totalDays) {
+          matrix[r][c] = DateTime(_yearForMonth, _selectedMonth, dayCounter);
+          dayCounter++;
+        }
+      }
+    }
+
+    // Group notes by date in that month
+    final Map<DateTime, List<OmniNote>> notesByDate = {};
+    for (var note in allNotes) {
+      final dt = DateTime(note.createdAt.year, note.createdAt.month, note.createdAt.day);
+      if (dt.year == _yearForMonth && dt.month == _selectedMonth) {
+        notesByDate.putIfAbsent(dt, () => []).add(note);
+      }
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const SizedBox(width: 12),
+            DropdownButton<int>(
+              value: _yearForMonth,
+              items: yearOptions.map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _yearForMonth = val;
+                    if (_yearForMonth == today.year && _selectedMonth > today.month) {
+                      _selectedMonth = today.month;
+                    }
+                  });
+                }
+              },
+            ),
+            const SizedBox(width: 16),
+            DropdownButton<int>(
+              value: _selectedMonth,
+              items: List.generate(12, (i) => i + 1)
+                  .map((m) => DropdownMenuItem(
+                        value: m,
+                        child: Text(DateFormat.MMM().format(DateTime(_yearForMonth, m, 1))),
+                      ))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _selectedMonth = val);
+                }
+              },
+            ),
+            const Spacer(),
+          ],
+        ),
+        if (_monthGridView)
+          Expanded(
+            child: Column(
+              children: [
+                // Weekday headers (Sun…Sat)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    children: List.generate(7, (i) {
+                      final wd = DateFormat.E().format(DateTime(2021, 1, i + 3)); // Sun-Sat
+                      return Expanded(
+                        child: Center(
+                            child:
+                                Text(wd, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      );
+                    }),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    children: List.generate(6, (r) {
+                      return Expanded(
+                        child: Row(
+                          children: List.generate(7, (c) {
+                            final date = matrix[r][c];
+                            if (date == null) {
+                              return const Expanded(
+                                child: SizedBox(),
+                              );
+                            }
+                            final dayNotes = notesByDate[date] ?? [];
+                            if (dayNotes.isEmpty) {
+                              return Expanded(
+                                child: Container(
+                                  margin: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Center(child: Text('${date.day}')),
+                                ),
+                              );
+                            } else {
+                              final firstNote = dayNotes.first;
+                              Widget contentWidget;
+                              if (firstNote.attachments.isNotEmpty &&
+                                  firstNote.attachments.first.type == AttachmentType.image) {
+                                contentWidget = ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.file(
+                                    File(firstNote.attachments.first.localPath),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                  ),
+                                );
+                              } else {
+                                contentWidget = Center(
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.blueAccent,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              return Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    _showNotesForDate(date, dayNotes);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        Positioned.fill(child: contentWidget),
+                                        Positioned(
+                                          top: 4,
+                                          left: 4,
+                                          child: Text(
+                                            '${date.day}',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          }),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${DateFormat.MMMM().format(DateTime(_yearForMonth, _selectedMonth, 1))} $_yearForMonth',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Total Notes: ${notesByDate.values.fold<int>(0, (sum, list) => sum + list.length)}',
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Top Moods:'),
+                  ..._top3Moods(notesByDate).map((m) => Text('• $m')),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Show a bottom sheet listing all notes for a given date
   void _showNotesForDate(DateTime date, List<OmniNote> dayNotes) {
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
-        return Container(
+        return SizedBox(
           height: 400,
           child: Column(
             children: [
@@ -450,13 +613,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
                 padding: const EdgeInsets.all(12.0),
                 child: Text(
                   'Notes for ${DateFormat.yMMMd().format(date)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              Divider(),
+              const Divider(),
               Expanded(
                 child: ListView.builder(
                   itemCount: dayNotes.length,
@@ -465,28 +625,16 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
                     return ListTile(
                       leading: Icon(
                         note.attachments.isEmpty
-                            ? Icons.description
-                            : _iconForAttachment(
-                                note.attachments.first.type),
+                            ? Icons.text_snippet
+                            : _iconForAttachment(note.attachments.first.type),
                       ),
-                      title: Text(
-                        note.title.isNotEmpty ? note.title : 'Untitled',
-                      ),
-                      subtitle: Text(
-                        DateFormat.Hm().format(note.createdAt),
-                      ),
+                      title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                      subtitle: Text(DateFormat.Hm().format(note.createdAt)),
                       onTap: () {
                         Navigator.of(ctx).pop();
                         Navigator.of(context)
-                            .push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                NoteDetailPage(omniNote: note),
-                          ),
-                        )
-                            .then(
-                          (_) => OmniNoteService.instance.loadAllNotes(),
-                        );
+                            .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                            .then((_) => OmniNoteService.instance.loadAllNotes());
                       },
                     );
                   },
@@ -499,47 +647,89 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
     );
   }
 
-  /// Build a grid of note cards (used in various views)
-  Widget _buildGridOfNotes(List<OmniNote> notesList) {
-    return GridView.builder(
-      padding: EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: notesList.length,
-      itemBuilder: (context, idx) {
-        final note = notesList[idx];
-        return _CalendarNoteCard(
-          note: note,
-          onTap: () {
-            Navigator.of(context)
-                .push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    NoteDetailPage(omniNote: note),
-              ),
-            )
-                .then(
-              (_) => OmniNoteService.instance.loadAllNotes(),
-            );
-          },
-        );
-      },
-    );
-  }
+  /// ──────────────────────────────────────────────────────────────────────────
+  /// YEAR VIEW:
+  ///   • Show a year dropdown (birthYear…thisYear).
+  ///   • Underneath, list 12 ExpansionTiles (Jan…Dec) for that year.
+  ///   • Each month tile shows “MonthName (n notes)”.  Expanding lists notes for that month.
+  Widget _buildYearView(List<OmniNote> allNotes) {
+    final today = DateTime.now();
+    final currentYear = today.year;
+    final yearOptions = List.generate(currentYear - birthYear + 1, (i) => birthYear + i);
 
-  /// Small stats widget for a single note (e.g. #attachments)
-  Widget _dailyBriefStats(OmniNote note) {
-    final attachCount = note.attachments.length;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // Group notes by year → month
+    final Map<int, Map<int, List<OmniNote>>> notesByYearMonth = {};
+    for (var note in allNotes) {
+      final y = note.createdAt.year;
+      final m = note.createdAt.month;
+      notesByYearMonth.putIfAbsent(y, () => {});
+      notesByYearMonth[y]!.putIfAbsent(m, () => []);
+      notesByYearMonth[y]![m]!.add(note);
+    }
+
+    final notesThisYear = notesByYearMonth[_selectedYear] ?? {};
+
+    return Column(
       children: [
-        if (attachCount > 0)
-          Icon(Icons.attach_file, size: 16, color: Colors.grey),
-        SizedBox(width: 4),
-        Text('$attachCount'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const SizedBox(width: 12),
+            DropdownButton<int>(
+              value: _selectedYear,
+              items: yearOptions.map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedYear = val);
+              },
+            ),
+          ],
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: 12,
+            itemBuilder: (context, idx) {
+              final monthIdx = idx + 1;
+              final monthName = DateFormat.MMMM().format(DateTime(_selectedYear, monthIdx, 1));
+              final monthNotes = notesThisYear[monthIdx] ?? [];
+
+              return ExpansionTile(
+                title: Text('$monthName (${monthNotes.length} notes)'),
+                children: [
+                  if (monthNotes.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+                      child: Text('(No notes this month)'),
+                    )
+                  else
+                    Column(
+                      children: monthNotes.map((note) {
+                        return ListTile(
+                          leading: Icon(
+                            note.attachments.isEmpty
+                                ? Icons.text_snippet
+                                : _iconForAttachment(note.attachments.first.type),
+                          ),
+                          title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                          subtitle: Text(DateFormat.MMMd().format(note.createdAt)),
+                          onTap: () {
+                            // Jump back to Month tab, focusing on this month/year:
+                            setState(() {
+                              _tabController.animateTo(CalendarView.month.index);
+                              _yearForMonth = _selectedYear;
+                              _selectedMonth = monthIdx;
+                            });
+                            Navigator.of(context)
+                                .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                                .then((_) => OmniNoteService.instance.loadAllNotes());
+                          },
+                        );
+                      }).toList(),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -554,57 +744,18 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage>
         return Icons.videocam;
     }
   }
-}
 
-/// A small “card” widget used in Month View and Year View grids
-class _CalendarNoteCard extends StatelessWidget {
-  final OmniNote note;
-  final VoidCallback onTap;
-  const _CalendarNoteCard({
-    required this.note,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final first = note.attachments.isNotEmpty
-        ? note.attachments.first
-        : null;
-    Widget content;
-    if (first != null && first.type == AttachmentType.image) {
-      content = ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          File(first.localPath),
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-        ),
-      );
-    } else {
-      content = Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.grey.shade200,
-        ),
-        child: Center(
-          child: Icon(
-            first == null
-                ? Icons.description
-                : (first.type == AttachmentType.audio
-                    ? Icons.mic
-                    : Icons.videocam),
-            color: Colors.grey.shade600,
-            size: 32,
-          ),
-        ),
-      );
+  /// Collates moods in `notesByDate` and returns the top 3 as strings “Mood (count)”.
+  List<String> _top3Moods(Map<DateTime, List<OmniNote>> notesByDate) {
+    final counter = <String, int>{};
+    for (var notes in notesByDate.values) {
+      for (var note in notes) {
+        if (note.mood != null && note.mood!.isNotEmpty) {
+          counter[note.mood!] = (counter[note.mood!] ?? 0) + 1;
+        }
+      }
     }
-
-    return GestureDetector(
-      onTap: onTap,
-      child:
-          ClipRRect(borderRadius: BorderRadius.circular(8), child: content),
-    );
+    final sorted = counter.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.take(3).map((e) => '${e.key} (${e.value})').toList();
   }
 }
