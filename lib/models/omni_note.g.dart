@@ -24,13 +24,14 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       createdAt: fields[4] as DateTime,
       zoneTheme: fields[5] as String,
       lastUpdated: fields[6] as DateTime,
+      isPinned: fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(5)
       ..write(obj.zoneTheme)
       ..writeByte(6)
-      ..write(obj.lastUpdated);
+      ..write(obj.lastUpdated)
+      ..writeByte(7)
+      ..write(obj.isPinned);
   }
 
   @override

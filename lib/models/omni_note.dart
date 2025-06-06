@@ -25,6 +25,9 @@ class OmniNote extends HiveObject {
   @HiveField(6)
   DateTime lastUpdated;
 
+  @HiveField(7)
+  bool isPinned;
+
   OmniNote({
     required this.title,
     required this.subtitle,
@@ -33,5 +36,6 @@ class OmniNote extends HiveObject {
     required this.createdAt,
     required this.zoneTheme,
     required this.lastUpdated,
+    this.isPinned = false,
   });
 }

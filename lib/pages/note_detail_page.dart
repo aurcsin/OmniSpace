@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/services/database_helper.dart';
-import 'package:provider/provider.dart';
 
 class NoteDetailPage extends StatefulWidget {
   final OmniNote? note;
@@ -20,19 +19,33 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   late String _content;
   late String _tags;
   late String _zoneTheme;
-  late DatabaseHelper dbHelper;
 
   final List<String> _recommendedTags = [
-    'dream', 'reflection', 'goal', 'idea', 'emotion', 'memory'
+    'dream',
+    'reflection',
+    'goal',
+    'idea',
+    'emotion',
+    'memory'
   ];
   final List<String> _zoneThemes = [
-    'Sky', 'Garden', 'Workshop', 'Studio', 'Root Cave', 'Journal'
+    'Sky',
+    'Garden',
+    'Workshop',
+    'Studio',
+    'Root Cave',
+    'Journal'
   ];
+
+  // We will open the same box that main.dart did:
+  late Box<OmniNote> _noteBox;
 
   @override
   void initState() {
     super.initState();
-    dbHelper = Provider.of<DatabaseHelper>(context, listen: false);
+    _noteBox = Hive.box<OmniNote>('omni_notes');
+
+    // Initialize fields from widget.note if editing, or default to empty for new
     _title = widget.note?.title ?? '';
     _subtitle = widget.note?.subtitle ?? '';
     _content = widget.note?.content ?? '';
@@ -41,37 +54,42 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   }
 
   void _saveNote() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      final now = DateTime.now();
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
-      if (widget.note == null) {
-        final newNote = OmniNote(
-          title: _title,
-          subtitle: _subtitle,
-          content: _content,
-          tags: _tags,
-          createdAt: now,
-          lastUpdated: now,
-          zoneTheme: _zoneTheme,
-        );
-        await dbHelper.insertNote(newNote);
-      } else {
-        final existing = widget.note!;
-        existing.title = _title;
-        existing.subtitle = _subtitle;
-        existing.content = _content;
-        existing.tags = _tags;
-        existing.zoneTheme = _zoneTheme;
-        existing.lastUpdated = now;
-        await dbHelper.updateNote(existing);
-      }
+    final now = DateTime.now();
 
-      Navigator.of(context).pop();
+    if (widget.note == null) {
+      // Create new
+      final newNote = OmniNote(
+        title: _title,
+        subtitle: _subtitle,
+        content: _content,
+        tags: _tags,
+        createdAt: now,
+        zoneTheme: _zoneTheme,
+        lastUpdated: now,
+        isPinned: false,
+      );
+      await _noteBox.add(newNote);
+    } else {
+      // Update existing
+      final existing = widget.note!;
+      existing.title = _title;
+      existing.subtitle = _subtitle;
+      existing.content = _content;
+      existing.tags = _tags;
+      existing.zoneTheme = _zoneTheme;
+      existing.lastUpdated = now;
+      await existing.save();
     }
+
+    Navigator.of(context).pop();
   }
 
-  void _clearTags() => setState(() => _tags = '');
+  void _clearTags() {
+    setState(() => _tags = '');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,9 +133,10 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
               TextFormField(
                 initialValue: _title,
                 decoration: const InputDecoration(labelText: 'Title'),
-                validator: (value) => (value == null || value.trim().isEmpty)
-                    ? 'Please enter a title'
-                    : null,
+                validator: (value) =>
+                    (value == null || value.trim().isEmpty)
+                        ? 'Please enter a title'
+                        : null,
                 onSaved: (value) => _title = value!.trim(),
               ),
               const SizedBox(height: 12),
@@ -133,9 +152,10 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 decoration: const InputDecoration(labelText: 'Content'),
                 maxLines: null,
                 minLines: 10,
-                validator: (value) => (value == null || value.trim().isEmpty)
-                    ? 'Please enter content'
-                    : null,
+                validator: (value) =>
+                    (value == null || value.trim().isEmpty)
+                        ? 'Please enter content'
+                        : null,
                 onSaved: (value) => _content = value!.trim(),
               ),
               const SizedBox(height: 12),
