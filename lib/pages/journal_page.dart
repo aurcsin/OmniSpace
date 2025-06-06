@@ -1,221 +1,230 @@
+// lib/pages/journal_page.dart
+
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../services/omni_note_service.dart';
 import '../models/omni_note.dart';
 import 'note_detail_page.dart';
 
 class JournalPage extends StatefulWidget {
-  const JournalPage({Key? key}) : super(key: key);
-
   @override
-  State<JournalPage> createState() => _JournalPageState();
+  _JournalPageState createState() => _JournalPageState();
 }
 
 class _JournalPageState extends State<JournalPage> {
-  final Box<OmniNote> notesBox = Hive.box<OmniNote>('omni_notes');
+  String _searchQuery = '';
+  bool _isLoading = true;
 
-  String selectedView = 'Daily'; // 'Daily', 'Weekly', 'Monthly', 'Yearly'
-  String tagFilter = '';
-  String searchTerm = '';
-  final TextEditingController _searchController = TextEditingController();
-
-  List<OmniNote> getFilteredNotes() {
-    var notes = notesBox.values.toList();
-
-    // First apply tag filter
-    if (tagFilter.isNotEmpty) {
-      notes = notes.where((note) {
-        return note.tags.toLowerCase().contains(tagFilter.toLowerCase());
-      }).toList();
-    }
-
-    // Then apply search filter
-    if (searchTerm.isNotEmpty) {
-      final lowerSearch = searchTerm.toLowerCase();
-      notes = notes.where((note) {
-        return note.title.toLowerCase().contains(lowerSearch) ||
-            note.subtitle.toLowerCase().contains(lowerSearch) ||
-            note.content.toLowerCase().contains(lowerSearch) ||
-            note.tags.toLowerCase().contains(lowerSearch);
-      }).toList();
-    }
-
-    // Sort by lastUpdated descending (most recently edited first)
-    notes.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
-    return notes;
-  }
-
-  String formatDate(DateTime date) {
-    switch (selectedView) {
-      case 'Weekly':
-        final start = date.subtract(Duration(days: date.weekday - 1));
-        final end = start.add(const Duration(days: 6));
-        return '${DateFormat.MMMd().format(start)} – ${DateFormat.MMMd().format(end)}';
-      case 'Monthly':
-        return DateFormat.yMMM().format(date);
-      case 'Yearly':
-        return DateFormat.y().format(date);
-      default:
-        return DateFormat.yMMMd().format(date);
-    }
-  }
-
-  void _showTagFilterDialog() {
-    final controller = TextEditingController(text: tagFilter);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter by Tag'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Enter tag'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() => tagFilter = controller.text.trim());
-              Navigator.of(context).pop();
-            },
-            child: const Text('Apply'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() => tagFilter = '');
-              Navigator.of(context).pop();
-            },
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _changeView(String newView) {
-    setState(() => selectedView = newView);
-  }
+  /// This local list holds exactly what we display (all notes or filtered results).
+  List<OmniNote> _displayedNotes = [];
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _initializeNotes();
+  }
+
+  Future<void> _initializeNotes() async {
+    // 1) Ensure Hive is initialized and notes are loaded into the service
+    await OmniNoteService.instance.loadAllNotes();
+
+    // 2) Copy all notes from the service into our local displayed list
+    setState(() {
+      _displayedNotes = OmniNoteService.instance.notes;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() {
+      _searchQuery = query;
+      _isLoading = true;
+    });
+
+    // 1) Get filtered results from the service
+    final results = await OmniNoteService.instance.searchNotes(query);
+
+    // 2) Update our local displayed list (no touching of private _notes)
+    setState(() {
+      _displayedNotes = results;
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final notes = getFilteredNotes();
+    return ChangeNotifierProvider<OmniNoteService>.value(
+      value: OmniNoteService.instance,
+      child: Consumer<OmniNoteService>(
+        builder: (context, noteService, _) {
+          // We use _displayedNotes (not noteService.notes) so that search results stay persistent
+          final notes = _displayedNotes;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Journal'),
-        actions: [
-          // View selection dropdown
-          PopupMenuButton<String>(
-            onSelected: _changeView,
-            itemBuilder: (context) => ['Daily', 'Weekly', 'Monthly', 'Yearly']
-                .map((view) => PopupMenuItem<String>(
-                      value: view,
-                      child: Text(view),
-                    ))
-                .toList(),
-          ),
-
-          // Tag filter button
-          IconButton(
-            icon: const Icon(Icons.filter_alt),
-            onPressed: _showTagFilterDialog,
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search notes...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchTerm.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                            searchTerm = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.9),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (val) {
-                setState(() => searchTerm = val.trim());
-              },
-            ),
-          ),
-        ),
-      ),
-      body: notes.isEmpty
-          ? const Center(child: Text('No notes match your criteria.'))
-          : ListView.builder(
-              itemCount: notes.length,
-              itemBuilder: (context, index) {
-                final note = notes[index];
-                return ListTile(
-                  title: Text(note.title),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (note.subtitle.isNotEmpty)
-                        Text(
-                          note.subtitle,
-                          style: const TextStyle(fontStyle: FontStyle.italic),
-                        ),
-                      if (note.tags.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Tags: ${note.tags}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Created: ${formatDate(note.createdAt)}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
-                      Text(
-                        'Updated: ${DateFormat.yMMMd().add_Hm().format(note.lastUpdated)}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NoteDetailPage(note: note),
-                      ),
-                    ).then((_) => setState(() {}));
+          return Scaffold(
+            appBar: AppBar(
+              title: Text('Journal'),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.filter_list),
+                  onPressed: () {
+                    // TODO: Show filter dialog (e.g. filter by zone or date)
                   },
-                );
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (val) {
+                    if (val == 'Clear') {
+                      setState(() {
+                        _searchQuery = '';
+                        _isLoading = true;
+                      });
+                      _performSearch('');
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'Clear',
+                      child: Text('Clear Search'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            body: Column(
+              children: [
+                // 1) Search bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Search notes…',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: (val) {
+                      _searchQuery = val;
+                    },
+                    onSubmitted: (val) {
+                      _performSearch(val);
+                    },
+                  ),
+                ),
+
+                // 2) Loading / No-notes / List
+                if (_isLoading)
+                  Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (notes.isEmpty)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        _searchQuery.isEmpty
+                            ? 'No notes yet.\nTap the + button to add one.'
+                            : 'No notes match your criteria.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: notes.length,
+                      separatorBuilder: (_, __) => Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final note = notes[index];
+                        return ListTile(
+                          title: Text(note.title),
+                          subtitle: Text(
+                            note.subtitle.isNotEmpty
+                                ? note.subtitle
+                                : (note.content.length > 50
+                                    ? note.content.substring(0, 50) + '…'
+                                    : note.content),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (note.recommendedTag != null)
+                                Text(
+                                  note.recommendedTag!,
+                                  style: TextStyle(
+                                    color: Colors.blueAccent,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              SizedBox(height: 4),
+                              Text(
+                                _formatZone(note.zone),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    NoteDetailPage(omniNote: note),
+                              ),
+                            ).then((_) {
+                              // When returning from the detail page, refresh the list
+                              _initializeNotes();
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton(
+              child: Icon(Icons.add),
+              tooltip: 'New Note',
+              onPressed: () {
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(builder: (_) => NoteDetailPage()),
+                    )
+                    .then((_) {
+                      // After coming back from “New Note”, reload all notes
+                      _initializeNotes();
+                    });
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NoteDetailPage()),
-          ).then((_) => setState(() {}));
+          );
         },
-        child: const Icon(Icons.add),
       ),
     );
+  }
+
+  String _formatZone(ZoneTheme zone) {
+    switch (zone) {
+      case ZoneTheme.Air:
+        return 'Air';
+      case ZoneTheme.Earth:
+        return 'Earth';
+      case ZoneTheme.Fire:
+        return 'Fire';
+      case ZoneTheme.Water:
+        return 'Water';
+      case ZoneTheme.Void:
+        return 'Void';
+      case ZoneTheme.Fusion:
+        return 'Fusion';
+    }
   }
 }

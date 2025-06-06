@@ -1,8 +1,26 @@
+// lib/models/omni_note.dart
+
 import 'package:hive/hive.dart';
 
 part 'omni_note.g.dart';
 
 @HiveType(typeId: 0)
+enum ZoneTheme {
+  @HiveField(0)
+  Air,   // “Sky”
+  @HiveField(1)
+  Earth, // “Garden”
+  @HiveField(2)
+  Fire,  // “Workshop”
+  @HiveField(3)
+  Water, // “Studio”
+  @HiveField(4)
+  Void,  // “Root Cave”
+  @HiveField(5)
+  Fusion // “Journal”
+}
+
+@HiveType(typeId: 1)
 class OmniNote extends HiveObject {
   @HiveField(0)
   String title;
@@ -14,28 +32,24 @@ class OmniNote extends HiveObject {
   String content;
 
   @HiveField(3)
-  String tags;
+  ZoneTheme zone;
 
   @HiveField(4)
-  DateTime createdAt;
+  String? recommendedTag;
 
   @HiveField(5)
-  String zoneTheme;
+  String tags; // comma-separated
 
   @HiveField(6)
-  DateTime lastUpdated;
-
-  @HiveField(7)
-  bool isPinned;
+  DateTime createdAt;
 
   OmniNote({
     required this.title,
     required this.subtitle,
     required this.content,
+    required this.zone,
+    this.recommendedTag,
     required this.tags,
-    required this.createdAt,
-    required this.zoneTheme,
-    required this.lastUpdated,
-    this.isPinned = false,
-  });
+    DateTime? createdAt,
+  }) : this.createdAt = createdAt ?? DateTime.now();
 }
