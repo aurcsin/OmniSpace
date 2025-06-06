@@ -8,7 +8,7 @@ part of 'omni_note.dart';
 
 class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
   OmniNote read(BinaryReader reader) {
@@ -17,40 +17,34 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return OmniNote(
-      id: fields[0] as int?,
-      title: fields[1] as String,
-      subtitle: fields[2] as String,
-      content: fields[3] as String,
-      tags: fields[4] as String?,
-      createdAt: fields[5] as DateTime,
-      zoneTheme: fields[6] as String,
-      isPinned: fields[7] as bool,
-      mediaPaths: (fields[8] as List).cast<String>(),
+      title: fields[0] as String,
+      subtitle: fields[1] as String,
+      content: fields[2] as String,
+      tags: fields[3] as String,
+      createdAt: fields[4] as DateTime,
+      zoneTheme: fields[5] as String,
+      lastUpdated: fields[6] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(9)
-      ..writeByte(0)
-      ..write(obj.id)
-      ..writeByte(1)
-      ..write(obj.title)
-      ..writeByte(2)
-      ..write(obj.subtitle)
-      ..writeByte(3)
-      ..write(obj.content)
-      ..writeByte(4)
-      ..write(obj.tags)
-      ..writeByte(5)
-      ..write(obj.createdAt)
-      ..writeByte(6)
-      ..write(obj.zoneTheme)
       ..writeByte(7)
-      ..write(obj.isPinned)
-      ..writeByte(8)
-      ..write(obj.mediaPaths);
+      ..writeByte(0)
+      ..write(obj.title)
+      ..writeByte(1)
+      ..write(obj.subtitle)
+      ..writeByte(2)
+      ..write(obj.content)
+      ..writeByte(3)
+      ..write(obj.tags)
+      ..writeByte(4)
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.zoneTheme)
+      ..writeByte(6)
+      ..write(obj.lastUpdated);
   }
 
   @override
