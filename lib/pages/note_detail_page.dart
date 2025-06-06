@@ -11,7 +11,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:intl/intl.dart';
 
 import '../models/omni_note.dart';         // OmniNote, ZoneTheme
-import '../models/attachment.dart';        // AttachmentType
+//import '../models/attachment.dart';        // AttachmentType
 import '../models/task.dart';              // Task
 import '../models/goal.dart';              // Goal
 import '../models/event.dart';             // Event
