@@ -8,7 +8,7 @@ class SpiritBuddyService {
   static final instance = SpiritBuddyService._();
 
   void reflectOnEntry(OmniNote note) {
-    // TODO: Replace with real AI/Spirit‐buddy reflection logic
+    // TODO: Replace with real AI/Spirit‑buddy reflection logic
     debugPrint(
       '[SpiritBuddyService] 💬 Reflecting on note key=${note.key}, '
       'zone=${note.zone}, recommendedTag=${note.recommendedTag}',

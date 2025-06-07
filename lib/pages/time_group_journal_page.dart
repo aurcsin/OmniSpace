@@ -1,45 +1,42 @@
 // lib/pages/time_group_journal_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-import '../services/omni_note_service.dart';
 import '../models/omni_note.dart';
+import '../services/omni_note_service.dart';
 import 'note_detail_page.dart';
 
-class TimeGroupJournalPage extends StatelessWidget {
+class TimeGroupJournalPage extends StatefulWidget {
   const TimeGroupJournalPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // directly grab your singleton service
-    final noteService = OmniNoteService.instance;
-    final List<OmniNote> notes = noteService.notes;
+  _TimeGroupJournalPageState createState() => _TimeGroupJournalPageState();
+}
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Time-Grouped Journal')),
-      body: ListView.builder(
-        itemCount: notes.length,
-        itemBuilder: (context, index) {
-          final note = notes[index];
-          final createdAt = note.createdAt;
-          final formattedDate =
-              '${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.day.toString().padLeft(2, '0')}';
+class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
+  bool _isLoading = true;
+  Map<String, List<OmniNote>> _grouped = {};
 
-          return ListTile(
-            title: Text(note.title),
-            subtitle: Text(formattedDate),
-            trailing: Text(_formatZone(note.zone)),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => NoteDetailPage(omniNote: note),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    await OmniNoteService.instance.loadAllNotes();
+    final notes = OmniNoteService.instance.notes;
+    notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final Map<String, List<OmniNote>> grouped = {};
+    for (var n in notes) {
+      final key = DateFormat('yyyy-MM-dd').format(n.createdAt);
+      grouped.putIfAbsent(key, () => []).add(n);
+    }
+    setState(() {
+      _grouped = grouped;
+      _isLoading = false;
+    });
   }
 
   String _formatZone(ZoneTheme zone) {
@@ -57,5 +54,60 @@ class TimeGroupJournalPage extends StatelessWidget {
       case ZoneTheme.Fusion:
         return 'Fusion';
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Time-Grouped Journal')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _grouped.isEmpty
+              ? const Center(child: Text('No notes yet.'))
+              : ListView(
+                  children: _grouped.entries.map((entry) {
+                    final displayDate = DateFormat('MMM d, yyyy')
+                        .format(DateTime.parse(entry.key));
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Text(
+                            displayDate,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        ...entry.value.map(
+                          (note) => ListTile(
+                            title: Text(note.title),
+                            subtitle: Text(note.subtitle),
+                            trailing: Text(_formatZone(note.zone)),
+                            onTap: () => Navigator.of(context)
+                                .push(
+                                  MaterialPageRoute(
+                                    builder: (_) => NoteDetailPage(
+                                      omniNote: note,
+                                    ),
+                                  ),
+                                )
+                                .then((_) => _loadNotes()),
+                          ),
+                        )
+                      ],
+                    );
+                  }).toList(),
+                ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (_) => const NoteDetailPage(),
+              ),
+            )
+            .then((_) => _loadNotes()),
+        child: const Icon(Icons.add),
+      ),
+    );
   }
 }

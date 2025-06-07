@@ -246,9 +246,9 @@ class _JournalPageState extends State<JournalPage> {
   }
 }
 
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 /// A small “card” for the grid view.
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 class _NoteCard extends StatelessWidget {
   final OmniNote note;
   final VoidCallback onTap;
@@ -326,9 +326,9 @@ class _NoteCard extends StatelessWidget {
   }
 }
 
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 /// A simple ListTile for the list view.
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 class _NoteListTile extends StatelessWidget {
   final OmniNote note;
   final VoidCallback onTap;
@@ -374,9 +374,9 @@ class _NoteListTile extends StatelessWidget {
   }
 }
 
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 /// A SearchDelegate that calls `onSearch(query)`.
-/// ─────────────────────────────────────────────────────────────────────────────
+/// ────────────────────────────────────────────────────────────────────────────
 class _NoteSearchDelegate extends SearchDelegate<void> {
   final Future<void> Function(String) onSearch;
   final String initial;

@@ -36,16 +36,19 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         final start = _focus.subtract(const Duration(days: 3));
         final end = _focus.add(const Duration(days: 3));
         filtered = all.where((n) =>
-            n.createdAt.isAfter(start.subtract(const Duration(seconds:1))) &&
-            n.createdAt.isBefore(end.add(const Duration(seconds:1)))).toList();
+            n.createdAt.isAfter(start.subtract(const Duration(seconds: 1))) &&
+            n.createdAt.isBefore(end.add(const Duration(seconds: 1)))).toList();
         break;
       case CalView.month:
-        filtered = all.where((n) =>
-            n.createdAt.year == _focus.year &&
-            n.createdAt.month == _focus.month).toList();
+        filtered = all
+            .where((n) =>
+                n.createdAt.year == _focus.year &&
+                n.createdAt.month == _focus.month)
+            .toList();
         break;
       case CalView.year:
-        filtered = all.where((n) => n.createdAt.year == _focus.year).toList();
+        filtered =
+            all.where((n) => n.createdAt.year == _focus.year).toList();
         break;
     }
     setState(() => _notes = filtered);
@@ -69,10 +72,18 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focus = _focus.add(Duration(days: 7 * delta));
           break;
         case CalView.month:
-          _focus = DateTime(_focus.year, _focus.month + delta, _focus.day);
+          final newMonth = _focus.month + delta;
+          final newYear = _focus.year + ((newMonth - 1) ~/ 12);
+          final monthNormalized = (newMonth - 1) % 12 + 1;
+          final lastDay = DateTime(newYear, monthNormalized + 1, 0).day;
+          final day = _focus.day.clamp(1, lastDay);
+          _focus = DateTime(newYear, monthNormalized, day);
           break;
         case CalView.year:
-          _focus = DateTime(_focus.year + delta, _focus.month, _focus.day);
+          final newYear = _focus.year + delta;
+          final lastDay = DateTime(newYear, _focus.month + 1, 0).day;
+          final day = _focus.day.clamp(1, lastDay);
+          _focus = DateTime(newYear, _focus.month, day);
           break;
       }
       _loadNotes();
@@ -83,9 +94,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   Widget build(BuildContext c) {
     final label = {
       CalView.day: '${_focus.year}-${_focus.month}-${_focus.day}',
-      CalView.week:
-          'Week of ${_focus.year}-${_focus.month}-${_focus.day}',
-      CalView.month: '${_focus.year}-${_focus.month.toString().padLeft(2,'0')}',
+      CalView.week: 'Week of ${_focus.year}-${_focus.month}-${_focus.day}',
+      CalView.month: '${_focus.year}-${_focus.month.toString().padLeft(2, '0')}',
       CalView.year: '${_focus.year}',
     }[_view]!;
 
@@ -110,9 +120,11 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _moveFocus(-1)),
+            IconButton(icon: const Icon(Icons.chevron_left),
+                       onPressed: () => _moveFocus(-1)),
             Text(label, style: Theme.of(c).textTheme.titleMedium),
-            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _moveFocus(1)),
+            IconButton(icon: const Icon(Icons.chevron_right),
+                       onPressed: () => _moveFocus(1)),
           ],
         ),
 
@@ -127,11 +139,13 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
                   itemBuilder: (_, i) {
                     final n = _notes[i];
                     return ListTile(
-                      title: Text(n.title.isNotEmpty ? n.title : '(No Title)'),
+                      title:
+                          Text(n.title.isNotEmpty ? n.title : '(No Title)'),
                       subtitle:
                           Text(TimeOfDay.fromDateTime(n.createdAt).format(c)),
                       onTap: () => Navigator.of(c)
-                          .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: n)))
+                          .push(
+                              MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: n)))
                           .then((_) => _loadNotes()),
                     );
                   },

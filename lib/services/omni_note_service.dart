@@ -35,7 +35,7 @@ class OmniNoteService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Simple full‐text search on title or content.
+  /// Simple full‑text search on title or content.
   Future<List<OmniNote>> searchNotes(String query) async {
     await _ensureInit();
     final q = query.toLowerCase();
