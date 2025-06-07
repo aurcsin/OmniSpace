@@ -1,4 +1,4 @@
-package com.example.temp_omnispace
+package com.example.omnispace
 
 import io.flutter.embedding.android.FlutterActivity
 
