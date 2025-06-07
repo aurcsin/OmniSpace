@@ -13,6 +13,7 @@ import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 import '../models/omni_note.dart';
+import '../models/attachment.dart';
 import '../services/omni_note_service.dart';
 import '../services/ai_service.dart';
 
@@ -80,6 +81,32 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _mood = n.mood;
     _direction = n.direction;
     _projectId = n.projectId;
+    // Load attachments for viewing/playback
+    final img = n.attachments
+        .where((a) => a.type == AttachmentType.image)
+        .map((a) => File(a.localPath))
+        .firstWhere(
+          (_) => true,
+          orElse: () => File(''),
+        );
+    if (img.path.isNotEmpty) _imageFile = img;
+
+    final vid = n.attachments
+        .where((a) => a.type == AttachmentType.video)
+        .map((a) => File(a.localPath))
+        .firstWhere(
+          (_) => true,
+          orElse: () => File(''),
+        );
+    if (vid.path.isNotEmpty) _videoFile = vid;
+
+    final aud = n.attachments
+        .firstWhere(
+          (a) => a.type == AttachmentType.audio,
+          orElse: () => Attachment(localPath: '', type: AttachmentType.audio),
+        )
+        .localPath;
+    if (aud.isNotEmpty) _audioPath = aud;
   }
 
   void _autoTag() async {

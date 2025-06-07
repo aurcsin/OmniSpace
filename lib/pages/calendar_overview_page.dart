@@ -148,6 +148,18 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.today),
+            tooltip: 'Today',
+            onPressed: () {
+              setState(() {
+                _focusDate = DateTime.now();
+                _filterNotes();
+              });
+            },
+          )
+        ],
       ),
       body: Column(
         children: [
