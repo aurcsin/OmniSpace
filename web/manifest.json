@@ -1,6 +1,6 @@
 {
-    "name": "temp_omnispace",
-    "short_name": "temp_omnispace",
+    "name": "omnispace",
+    "short_name": "omnispace",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
