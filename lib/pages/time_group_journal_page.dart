@@ -1,20 +1,22 @@
 // lib/pages/time_group_journal_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../services/omni_note_service.dart';
 import '../models/omni_note.dart';
 import 'note_detail_page.dart';
 
 class TimeGroupJournalPage extends StatelessWidget {
+  const TimeGroupJournalPage({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    final noteService = Provider.of<OmniNoteService>(context);
-    final notes = noteService.notes;
+    // directly grab your singleton service
+    final noteService = OmniNoteService.instance;
+    final List<OmniNote> notes = noteService.notes;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Time‐Grouped Journal')),
+      appBar: AppBar(title: const Text('Time-Grouped Journal')),
       body: ListView.builder(
         itemCount: notes.length,
         itemBuilder: (context, index) {

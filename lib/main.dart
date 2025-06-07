@@ -1,15 +1,35 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'pages/journal_page.dart'; // relative import
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() async {
+import 'models/omni_note.dart';
+import 'models/attachment.dart';
+import 'services/omni_note_service.dart';
+import 'pages/journal_page.dart';
+
+Future<void> main() async {
+  // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const OmniSpaceApp());
+
+  // Initialize Hive and HiveFlutter
+  await Hive.initFlutter();
+
+  // Register all generated adapters
+  Hive.registerAdapter(ZoneThemeAdapter());
+  Hive.registerAdapter(OmniNoteAdapter());
+  Hive.registerAdapter(AttachmentTypeAdapter());
+  Hive.registerAdapter(AttachmentAdapter());
+
+  // Open your notes box (or perform any other startup work)
+  await OmniNoteService.instance.init();
+
+  // Run the app
+  runApp(const MyApp());
 }
 
-class OmniSpaceApp extends StatelessWidget {
-  const OmniSpaceApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +39,7 @@ class OmniSpaceApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      // Remove `const` here because JournalPage() is not a const constructor
-      home: JournalPage(),
+      home: const JournalPage(),
     );
   }
 }

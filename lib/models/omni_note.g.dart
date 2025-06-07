@@ -8,7 +8,7 @@ part of 'omni_note.dart';
 
 class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
   OmniNote read(BinaryReader reader) {
@@ -21,28 +21,21 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       subtitle: fields[1] as String,
       content: fields[2] as String,
       zone: fields[3] as ZoneTheme,
-      recommendedTag: fields[4] as String?,
-      tags: fields[5] as String,
-      createdAt: fields[6] as DateTime?,
-      attachments: (fields[7] as List?)?.cast<Attachment>(),
-      tasks: (fields[8] as List?)?.cast<Task>(),
-      goals: (fields[9] as List?)?.cast<Goal>(),
-      events: (fields[10] as List?)?.cast<Event>(),
-      mood: fields[11] as String?,
-      direction: fields[12] as String?,
-      projectId: fields[13] as String?,
-      colorValue: fields[14] as int?,
-      starred: fields[15] as bool?,
-      pinned: fields[16] as bool?,
-      archived: fields[17] as bool?,
-      isPrivate: fields[18] as bool?,
+      tags: fields[4] as String,
+      colorValue: fields[5] as int,
+      mood: fields[6] as String?,
+      direction: fields[7] as String?,
+      projectId: fields[8] as String?,
+      createdAt: fields[9] as DateTime?,
+      attachments: (fields[10] as List?)?.cast<Attachment>(),
+      recommendedTag: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(19)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -52,35 +45,21 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(3)
       ..write(obj.zone)
       ..writeByte(4)
-      ..write(obj.recommendedTag)
-      ..writeByte(5)
       ..write(obj.tags)
-      ..writeByte(6)
-      ..write(obj.createdAt)
-      ..writeByte(7)
-      ..write(obj.attachments)
-      ..writeByte(8)
-      ..write(obj.tasks)
-      ..writeByte(9)
-      ..write(obj.goals)
-      ..writeByte(10)
-      ..write(obj.events)
-      ..writeByte(11)
-      ..write(obj.mood)
-      ..writeByte(12)
-      ..write(obj.direction)
-      ..writeByte(13)
-      ..write(obj.projectId)
-      ..writeByte(14)
+      ..writeByte(5)
       ..write(obj.colorValue)
-      ..writeByte(15)
-      ..write(obj.starred)
-      ..writeByte(16)
-      ..write(obj.pinned)
-      ..writeByte(17)
-      ..write(obj.archived)
-      ..writeByte(18)
-      ..write(obj.isPrivate);
+      ..writeByte(6)
+      ..write(obj.mood)
+      ..writeByte(7)
+      ..write(obj.direction)
+      ..writeByte(8)
+      ..write(obj.projectId)
+      ..writeByte(9)
+      ..write(obj.createdAt)
+      ..writeByte(10)
+      ..write(obj.attachments)
+      ..writeByte(11)
+      ..write(obj.recommendedTag);
   }
 
   @override
@@ -96,7 +75,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
 
 class ZoneThemeAdapter extends TypeAdapter<ZoneTheme> {
   @override
-  final int typeId = 0;
+  final int typeId = 3;
 
   @override
   ZoneTheme read(BinaryReader reader) {

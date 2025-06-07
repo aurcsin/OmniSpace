@@ -1,73 +1,48 @@
-name: temp_omnispace
-description: A new Flutter project for OmniSpace
-publish_to: 'none' # Remove this line if you want to publish to pub.dev
-
-# The following defines the version and build number for your application.
+name: omnispace
+description: Your OmniSpace journaling & reflection app
 version: 1.0.0+1
+publish_to: 'none' # Remove this if you intend to publish to pub.dev
 
 environment:
-  sdk: ">=2.18.0 <3.0.0"
+  sdk: ">=2.17.0 <3.0.0"
 
-#──────────────────────────────────────────────────────────────────────────────
-# Dependencies
-#──────────────────────────────────────────────────────────────────────────────
 dependencies:
   flutter:
     sdk: flutter
-  
-  # Hive (for local storage)
+
+  # iOS-style icons
+  cupertino_icons: ^1.0.2
+
+  # Permissions & media
+  permission_handler: ^10.2.0
+  image_picker: ^0.8.6
+  path_provider: ^2.0.11
+
+  # UI helpers
+  flutter_colorpicker: ^1.0.3
+  intl: ^0.17.0
+
+  # Voice recording & playback
+  record: ^4.4.0
+  audioplayers: ^6.4.0
+
+  # Hive for local storage
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
-  # Platform help
-  path_provider: ^2.0.11
-  permission_handler: ^10.2.0
-
-  # Image / Video picker
-  image_picker: ^0.8.6
-
-  # State management
-  provider: ^6.0.5
-
-  # Staggered grid (journal page)
-  flutter_staggered_grid_view: ^0.6.2
-
-  # Date formatting
-  intl: ^0.18.0
-
-  # Color picker (note_detail_page)
-  flutter_colorpicker: ^1.0.3
-
-  # (Optional) If you have any other dependencies, add them here.
-
-#──────────────────────────────────────────────────────────────────────────────
-# Dev Dependencies (for code generation, testing, etc.)
-#──────────────────────────────────────────────────────────────────────────────
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # Required for Hive code generation (Task, Goal, Event, OmniNote, Attachment, etc.)
-  build_runner: ^2.4.0
-  hive_generator: ^2.0.0
+  # Lints
+  flutter_lints: ^2.0.0
 
-  # (Optional) If you have other code‐gen tools, list them here as well.
+  # Hive code generation
+  hive_generator: ^1.1.0
+  build_runner: ^2.3.3
 
-#──────────────────────────────────────────────────────────────────────────────
-# Flutter-specific configuration
-#──────────────────────────────────────────────────────────────────────────────
 flutter:
-
-  # These lines ensure that the Material Icons font is included with your application,
-  # so that you can use the icons from the material Icons class.
   uses-material-design: true
 
-  # If you have assets (images, fonts, etc.), list them here:
-  # assets:
-  #   - assets/images/
-
-  # If you have any custom fonts, you can declare them here:
-  # fonts:
-  #   - family: MyCustomFont
-  #     fonts:
-  #       - asset: fonts/MyCustomFont-Regular.ttf
+  assets:
+    - assets/images/journal_bg.png

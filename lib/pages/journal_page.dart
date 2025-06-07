@@ -3,8 +3,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
@@ -12,10 +10,10 @@ import '../services/omni_note_service.dart';
 import 'note_detail_page.dart';
 import 'calendar_overview_page.dart';
 
-/// JournalPage shows **all** notes, either as a ListTile or as a Masonry grid.
-/// Each tile visually indicates which media/tasks/goals/events it contains,
-/// plus color/mood/direction.
+/// JournalPage shows **all** notes, either as a ListTile or in a 2-column grid.
 class JournalPage extends StatefulWidget {
+  const JournalPage({Key? key}) : super(key: key);
+
   @override
   _JournalPageState createState() => _JournalPageState();
 }
@@ -54,211 +52,169 @@ class _JournalPageState extends State<JournalPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<OmniNoteService>.value(
-      value: OmniNoteService.instance,
-      child: Consumer<OmniNoteService>(
-        builder: (context, noteService, _) {
-          final notes = _displayedNotes;
+    final notes = _displayedNotes;
 
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Journal'),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.calendar_today),
-                  tooltip: 'Calendar',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => CalendarOverviewPage()),
-                    );
-                  },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Journal'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            tooltip: 'Calendar',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CalendarOverviewPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
+            tooltip: _gridMode ? 'List View' : 'Grid View',
+            onPressed: () => setState(() => _gridMode = !_gridMode),
+          ),
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: _NoteSearchDelegate(
+                  onSearch: _performSearch,
+                  initial: _searchQuery,
                 ),
-                IconButton(
-                  icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
-                  tooltip: _gridMode ? 'List View' : 'Grid View',
-                  onPressed: () {
-                    setState(() => _gridMode = !_gridMode);
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.search),
-                  tooltip: 'Search',
-                  onPressed: () {
-                    showSearch(
-                      context: context,
-                      delegate: _NoteSearchDelegate(
-                        onSearch: (val) => _performSearch(val),
-                        initial: _searchQuery,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            body: Column(
-              children: [
-                if (_isLoading)
-                  Expanded(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (notes.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        _searchQuery.isEmpty
-                            ? 'No notes yet.\nTap + to create one.'
-                            : 'No notes match your search.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: _gridMode
-                          ? MasonryGridView.count(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 8,
-                              crossAxisSpacing: 8,
-                              itemCount: notes.length,
-                              itemBuilder: (context, index) {
-                                final note = notes[index];
-                                return _NoteCard(
-                                  note: note,
-                                  onTap: () {
-                                    Navigator.of(context)
-                                        .push(
-                                          MaterialPageRoute(
-                                            builder: (_) => NoteDetailPage(
-                                              omniNote: note,
-                                            ),
-                                          ),
-                                        )
-                                        .then((_) => _initializeNotes());
-                                  },
-                                );
-                              },
-                            )
-                          : ListView.separated(
-                              itemCount: notes.length,
-                              separatorBuilder: (_, __) => Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final note = notes[index];
-                                return _NoteListTile(
-                                  note: note,
-                                  onTap: () {
-                                    Navigator.of(context)
-                                        .push(
-                                          MaterialPageRoute(
-                                            builder: (_) => NoteDetailPage(
-                                              omniNote: note,
-                                            ),
-                                          ),
-                                        )
-                                        .then((_) => _initializeNotes());
-                                  },
-                                );
-                              },
-                            ),
-                    ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : notes.isEmpty
+              ? Center(
+                  child: Text(
+                    _searchQuery.isEmpty
+                        ? 'No notes yet.\nTap + to create one.'
+                        : 'No notes match your search.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[600]),
                   ),
-              ],
-            ),
-            floatingActionButton: FloatingActionButton(
-              child: Icon(Icons.add),
-              tooltip: 'Create New Note',
-              onPressed: () {
-                _showCreateNoteOptions(context);
-              },
-            ),
-          );
-        },
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: _gridMode
+                      ? GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.75,
+                          ),
+                          itemCount: notes.length,
+                          itemBuilder: (context, index) {
+                            final note = notes[index];
+                            return _NoteCard(
+                              note: note,
+                              onTap: () => Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          NoteDetailPage(omniNote: note),
+                                    ),
+                                  )
+                                  .then((_) => _initializeNotes()),
+                            );
+                          },
+                        )
+                      : ListView.separated(
+                          itemCount: notes.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final note = notes[index];
+                            return _NoteListTile(
+                              note: note,
+                              onTap: () => Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          NoteDetailPage(omniNote: note),
+                                    ),
+                                  )
+                                  .then((_) => _initializeNotes()),
+                            );
+                          },
+                        ),
+                ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Create New Note',
+        onPressed: () => _showCreateNoteOptions(context),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  /// Show the bottom‐sheet with four options: Text, Audio, Image, Video.
   void _showCreateNoteOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            children: [
-              _buildOptionIcon(
-                icon: Icons.text_fields,
-                label: 'Text Note',
-                color: Colors.deepOrange,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              NoteDetailPage(initialMode: NoteMode.text),
-                        ),
-                      )
-                      .then((_) => _initializeNotes());
-                },
-              ),
-              _buildOptionIcon(
-                icon: Icons.mic,
-                label: 'Audio Note',
-                color: Colors.redAccent,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              NoteDetailPage(initialMode: NoteMode.voice),
-                        ),
-                      )
-                      .then((_) => _initializeNotes());
-                },
-              ),
-              _buildOptionIcon(
-                icon: Icons.camera_alt,
-                label: 'Image Note',
-                color: Colors.teal,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              NoteDetailPage(initialMode: NoteMode.image),
-                        ),
-                      )
-                      .then((_) => _initializeNotes());
-                },
-              ),
-              _buildOptionIcon(
-                icon: Icons.videocam,
-                label: 'Video Note',
-                color: Colors.blueAccent,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              NoteDetailPage(initialMode: NoteMode.video),
-                        ),
-                      )
-                      .then((_) => _initializeNotes());
-                },
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            _buildOptionIcon(
+              icon: Icons.text_fields,
+              label: 'Text Note',
+              color: Colors.deepOrange,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const NoteDetailPage(initialMode: NoteMode.text),
+                      ),
+                    )
+                    .then((_) => _initializeNotes());
+              },
+            ),
+            _buildOptionIcon(
+              icon: Icons.camera_alt,
+              label: 'Image Note',
+              color: Colors.teal,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const NoteDetailPage(initialMode: NoteMode.image),
+                      ),
+                    )
+                    .then((_) => _initializeNotes());
+              },
+            ),
+            _buildOptionIcon(
+              icon: Icons.videocam,
+              label: 'Video Note',
+              color: Colors.blueAccent,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const NoteDetailPage(initialMode: NoteMode.video),
+                      ),
+                    )
+                    .then((_) => _initializeNotes());
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -269,7 +225,7 @@ class _JournalPageState extends State<JournalPage> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -281,7 +237,7 @@ class _JournalPageState extends State<JournalPage> {
               backgroundColor: color.withOpacity(0.1),
               child: Icon(icon, size: 32, color: color),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(label),
           ],
         ),
@@ -291,9 +247,7 @@ class _JournalPageState extends State<JournalPage> {
 }
 
 /// ─────────────────────────────────────────────────────────────────────────────
-/// A small “card” for the masonry grid. Shows either the first image thumbnail
-/// or, if no image, a white card with colored left border + icons for any media
-/// or metadata (text, audio, image, video, mood, direction, tasks, goals, events)
+/// A small “card” for the grid view.
 /// ─────────────────────────────────────────────────────────────────────────────
 class _NoteCard extends StatelessWidget {
   final OmniNote note;
@@ -302,15 +256,15 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = note.attachments.any((a) => a.type == AttachmentType.image);
-    final hasAudio = note.attachments.any((a) => a.type == AttachmentType.audio);
-    final hasVideo = note.attachments.any((a) => a.type == AttachmentType.video);
+    final hasImage =
+        note.attachments.any((a) => a.type == AttachmentType.image);
+    final hasAudio =
+        note.attachments.any((a) => a.type == AttachmentType.audio);
+    final hasVideo =
+        note.attachments.any((a) => a.type == AttachmentType.video);
     final hasText = note.title.isNotEmpty || note.content.isNotEmpty;
-    final hasTasks = note.tasks?.isNotEmpty == true;
-    final hasGoals = note.goals?.isNotEmpty == true;
-    final hasEvents = note.events?.isNotEmpty == true;
-    final hasMood = (note.mood != null && note.mood!.isNotEmpty);
-    final hasDirection = (note.direction != null && note.direction!.isNotEmpty);
+    final hasMood =
+        (note.mood != null && note.mood!.isNotEmpty);
     final color = Color(note.colorValue);
 
     return GestureDetector(
@@ -324,59 +278,43 @@ class _NoteCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // If the note has any image attachments, show the first image as a preview:
             if (hasImage)
               ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(5)),
                 child: Image.file(
-                  File(
-                    note.attachments.firstWhere((a) => a.type == AttachmentType.image).localPath,
-                  ),
+                  File(note.attachments
+                      .firstWhere((a) => a.type == AttachmentType.image)
+                      .localPath),
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  height: 150,
+                  height: 120,
                 ),
               ),
-
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (hasText)
                     Text(
                       note.title.isNotEmpty ? note.title : '(No Title)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  if (note.subtitle.isNotEmpty)
-                    Text(
-                      note.subtitle,
-                      style: TextStyle(color: Colors.grey[700]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  SizedBox(height: 4),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 4,
-                    children: [
-                      if (hasText) Icon(Icons.text_snippet, size: 16),
-                      if (hasAudio) Icon(Icons.mic, size: 16),
-                      if (hasImage) Icon(Icons.image, size: 16),
-                      if (hasVideo) Icon(Icons.videocam, size: 16),
-                      if (hasMood) Chip(label: Text(note.mood!)),
-                      if (hasDirection) Icon(Icons.explore, size: 16),
-                      if (hasTasks) Icon(Icons.checklist, size: 16),
-                      if (hasGoals) Icon(Icons.flag, size: 16),
-                      if (hasEvents) Icon(Icons.event, size: 16),
-                    ],
-                  ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                  Wrap(spacing: 4, children: [
+                    if (hasText) const Icon(Icons.text_snippet, size: 16),
+                    if (hasAudio) const Icon(Icons.mic, size: 16),
+                    if (hasVideo) const Icon(Icons.videocam, size: 16),
+                    if (hasMood) Chip(label: Text(note.mood!)),
+                  ]),
+                  const SizedBox(height: 4),
                   Text(
                     TimeOfDay.fromDateTime(note.createdAt).format(context),
-                    style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                    style:
+                        TextStyle(fontSize: 10, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -389,7 +327,7 @@ class _NoteCard extends StatelessWidget {
 }
 
 /// ─────────────────────────────────────────────────────────────────────────────
-/// A simple ListTile version of a note. Similar icons + color dot.
+/// A simple ListTile for the list view.
 /// ─────────────────────────────────────────────────────────────────────────────
 class _NoteListTile extends StatelessWidget {
   final OmniNote note;
@@ -398,15 +336,15 @@ class _NoteListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = note.attachments.any((a) => a.type == AttachmentType.image);
-    final hasAudio = note.attachments.any((a) => a.type == AttachmentType.audio);
-    final hasVideo = note.attachments.any((a) => a.type == AttachmentType.video);
+    final hasImage =
+        note.attachments.any((a) => a.type == AttachmentType.image);
+    final hasAudio =
+        note.attachments.any((a) => a.type == AttachmentType.audio);
+    final hasVideo =
+        note.attachments.any((a) => a.type == AttachmentType.video);
     final hasText = note.title.isNotEmpty || note.content.isNotEmpty;
-    final hasTasks = note.tasks?.isNotEmpty == true;
-    final hasGoals = note.goals?.isNotEmpty == true;
-    final hasEvents = note.events?.isNotEmpty == true;
-    final hasMood = (note.mood != null && note.mood!.isNotEmpty);
-    final hasDirection = (note.direction != null && note.direction!.isNotEmpty);
+    final hasMood =
+        (note.mood != null && note.mood!.isNotEmpty);
     final color = Color(note.colorValue);
 
     return ListTile(
@@ -414,41 +352,20 @@ class _NoteListTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: color,
         child: hasImage
-            ? Icon(Icons.image)
+            ? const Icon(Icons.image)
             : hasAudio
-                ? Icon(Icons.mic)
+                ? const Icon(Icons.mic)
                 : hasVideo
-                    ? Icon(Icons.videocam)
-                    : Icon(Icons.text_snippet),
+                    ? const Icon(Icons.videocam)
+                    : const Icon(Icons.text_snippet),
       ),
       title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (note.subtitle.isNotEmpty)
-            Text(
-              note.subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          SizedBox(height: 4),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4,
-            children: [
-              if (hasText) Icon(Icons.text_snippet, size: 14),
-              if (hasAudio) Icon(Icons.mic, size: 14),
-              if (hasImage) Icon(Icons.image, size: 14),
-              if (hasVideo) Icon(Icons.videocam, size: 14),
-              if (hasMood) Chip(label: Text(note.mood!)),
-              if (hasDirection) Icon(Icons.explore, size: 14),
-              if (hasTasks) Icon(Icons.checklist, size: 14),
-              if (hasGoals) Icon(Icons.flag, size: 14),
-              if (hasEvents) Icon(Icons.event, size: 14),
-            ],
-          ),
-        ],
-      ),
+      subtitle: Wrap(spacing: 4, children: [
+        if (hasText) const Icon(Icons.text_snippet, size: 14),
+        if (hasAudio) const Icon(Icons.mic, size: 14),
+        if (hasVideo) const Icon(Icons.videocam, size: 14),
+        if (hasMood) Chip(label: Text(note.mood!)),
+      ]),
       trailing: Text(
         TimeOfDay.fromDateTime(note.createdAt).format(context),
         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -458,48 +375,37 @@ class _NoteListTile extends StatelessWidget {
 }
 
 /// ─────────────────────────────────────────────────────────────────────────────
-/// A SearchDelegate that calls `onSearch(query)` on every submit.
+/// A SearchDelegate that calls `onSearch(query)`.
 /// ─────────────────────────────────────────────────────────────────────────────
-class _NoteSearchDelegate extends SearchDelegate {
-  final void Function(String) onSearch;
+class _NoteSearchDelegate extends SearchDelegate<void> {
+  final Future<void> Function(String) onSearch;
   final String initial;
 
   _NoteSearchDelegate({required this.onSearch, required this.initial})
-      : super(
-          searchFieldLabel: initial.isNotEmpty ? initial : 'Search notes…',
-          textInputAction: TextInputAction.search,
-        );
+      : super(searchFieldLabel: initial.isNotEmpty ? initial : 'Search…');
 
   @override
-  List<Widget>? buildActions(BuildContext context) {
-    return [
-      if (query.isNotEmpty)
-        IconButton(
-          icon: Icon(Icons.clear),
-          onPressed: () {
-            query = '';
-          },
-        )
-    ];
-  }
+  List<Widget>? buildActions(BuildContext context) => [
+        if (query.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () => query = '',
+          )
+      ];
 
   @override
-  Widget? buildLeading(BuildContext context) {
-    return IconButton(
-      icon: Icon(Icons.arrow_back),
-      onPressed: () => close(context, null),
-    );
-  }
+  Widget? buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => close(context, null),
+      );
 
   @override
   Widget buildResults(BuildContext context) {
     onSearch(query);
     close(context, null);
-    return Container();
+    return const SizedBox.shrink();
   }
 
   @override
-  Widget buildSuggestions(BuildContext context) {
-    return Container();
-  }
+  Widget buildSuggestions(BuildContext context) => const SizedBox.shrink();
 }

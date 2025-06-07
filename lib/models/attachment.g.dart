@@ -8,7 +8,7 @@ part of 'attachment.dart';
 
 class AttachmentAdapter extends TypeAdapter<Attachment> {
   @override
-  final int typeId = 3;
+  final int typeId = 2;
 
   @override
   Attachment read(BinaryReader reader) {
@@ -19,26 +19,17 @@ class AttachmentAdapter extends TypeAdapter<Attachment> {
     return Attachment(
       type: fields[0] as AttachmentType,
       localPath: fields[1] as String,
-      createdAt: fields[2] as DateTime?,
-      transcription: fields[3] as String?,
-      thumbnailPath: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Attachment obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(2)
       ..writeByte(0)
       ..write(obj.type)
       ..writeByte(1)
-      ..write(obj.localPath)
-      ..writeByte(2)
-      ..write(obj.createdAt)
-      ..writeByte(3)
-      ..write(obj.transcription)
-      ..writeByte(4)
-      ..write(obj.thumbnailPath);
+      ..write(obj.localPath);
   }
 
   @override
@@ -54,7 +45,7 @@ class AttachmentAdapter extends TypeAdapter<Attachment> {
 
 class AttachmentTypeAdapter extends TypeAdapter<AttachmentType> {
   @override
-  final int typeId = 2;
+  final int typeId = 1;
 
   @override
   AttachmentType read(BinaryReader reader) {

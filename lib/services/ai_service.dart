@@ -8,7 +8,7 @@ class AIService {
 
   /// Generates a dummy “recommended tag” from the content.
   Future<String?> generateRecommendedTag(String content) async {
-    await Future.delayed(Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 300));
     final words = content
         .replaceAll(RegExp(r'[^A-Za-z0-9 ]'), '')
         .split(' ')

@@ -1,12 +1,27 @@
+// lib/models/omni_note.dart
+
 import 'package:hive/hive.dart';
 import 'attachment.dart';
-import 'task.dart';
-import 'goal.dart';
-import 'event.dart';
 
 part 'omni_note.g.dart';
 
-@HiveType(typeId: 1)
+@HiveType(typeId: 3)
+enum ZoneTheme {
+  @HiveField(0)
+  Air,
+  @HiveField(1)
+  Earth,
+  @HiveField(2)
+  Fire,
+  @HiveField(3)
+  Water,
+  @HiveField(4)
+  Void,
+  @HiveField(5)
+  Fusion,
+}
+
+@HiveType(typeId: 0)
 class OmniNote extends HiveObject {
   @HiveField(0)
   String title;
@@ -21,94 +36,42 @@ class OmniNote extends HiveObject {
   ZoneTheme zone;
 
   @HiveField(4)
-  String? recommendedTag;
+  String tags; // comma-separated
 
   @HiveField(5)
-  String tags;
-
-  @HiveField(6)
-  DateTime createdAt;
-
-  @HiveField(7)
-  List<Attachment> attachments;
-
-  /// Tasks attached to this note (or null if none)
-  @HiveField(8)
-  List<Task>? tasks;
-
-  /// Goals attached to this note (or null)
-  @HiveField(9)
-  List<Goal>? goals;
-
-  /// Events attached to this note (or null)
-  @HiveField(10)
-  List<Event>? events;
-
-  @HiveField(11)
-  String? mood;
-
-  @HiveField(12)
-  String? direction;
-
-  @HiveField(13)
-  String? projectId;
-
-  @HiveField(14)
   int colorValue;
 
-  @HiveField(15)
-  bool starred;
+  @HiveField(6)
+  String? mood;
 
-  @HiveField(16)
-  bool pinned;
+  @HiveField(7)
+  String? direction;
 
-  @HiveField(17)
-  bool archived;
+  @HiveField(8)
+  String? projectId;
 
-  @HiveField(18)
-  bool isPrivate;
+  @HiveField(9)
+  DateTime createdAt;
+
+  @HiveField(10)
+  List<Attachment> attachments;
+
+  @HiveField(11)
+  String? recommendedTag;
 
   OmniNote({
     required this.title,
-    required this.subtitle,
-    required this.content,
-    required this.zone,
-    this.recommendedTag,
-    required this.tags,
-    DateTime? createdAt,
-    List<Attachment>? attachments,
-    this.tasks,
-    this.goals,
-    this.events,
+    this.subtitle = '',
+    this.content = '',
+    this.zone = ZoneTheme.Fusion,
+    this.tags = '',
+    this.colorValue = 0xFFFFFFFF,
     this.mood,
     this.direction,
     this.projectId,
-    int? colorValue,
-    bool? starred,
-    bool? pinned,
-    bool? archived,
-    bool? isPrivate,
-  })  : this.createdAt = createdAt ?? DateTime.now(),
-        this.attachments = attachments ?? [],
-        this.colorValue = colorValue ?? 0xFFFFFFFF,
-        this.starred = starred ?? false,
-        this.pinned = pinned ?? false,
-        this.archived = archived ?? false,
-        this.isPrivate = isPrivate ?? false;
-}
-
-@HiveType(typeId: 0)
-enum ZoneTheme {
-  @HiveField(0)
-  Air,
-  @HiveField(1)
-  Earth,
-  @HiveField(2)
-  Fire,
-  @HiveField(3)
-  Water,
-  @HiveField(4)
-  Void,
-  @HiveField(5)
-  Fusion,
+    DateTime? createdAt,
+    List<Attachment>? attachments,
+    this.recommendedTag,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        attachments = attachments ?? <Attachment>[];
 }

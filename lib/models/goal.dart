@@ -18,5 +18,5 @@ class Goal extends HiveObject {
     required this.title,
     this.description,
     List<String>? progressNotes,
-  }) : this.progressNotes = progressNotes ?? [];
+  }) : progressNotes = progressNotes ?? [];
 }
