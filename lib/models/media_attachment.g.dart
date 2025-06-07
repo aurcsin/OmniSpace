@@ -1,41 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'task.dart';
+part of 'media_attachment.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TaskAdapter extends TypeAdapter<Task> {
+class MediaAttachmentAdapter extends TypeAdapter<MediaAttachment> {
   @override
-  final int typeId = 4;
+  final int typeId = 7;
 
   @override
-  Task read(BinaryReader reader) {
+  MediaAttachment read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Task(
-      description: fields[0] as String,
-      isCompleted: fields[1] as bool,
-      recurringRule: fields[2] as String?,
-      linkedNoteIds: (fields[3] as List?)?.cast<String>(),
+    return MediaAttachment(
+      path: fields[0] as String,
+      type: fields[1] as AttachmentType,
+      addedAt: fields[2] as DateTime?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Task obj) {
+  void write(BinaryWriter writer, MediaAttachment obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.description)
-      ..writeByte(1)
-      ..write(obj.isCompleted)
-      ..writeByte(2)
-      ..write(obj.recurringRule)
       ..writeByte(3)
-      ..write(obj.linkedNoteIds);
+      ..writeByte(0)
+      ..write(obj.path)
+      ..writeByte(1)
+      ..write(obj.type)
+      ..writeByte(2)
+      ..write(obj.addedAt);
   }
 
   @override
@@ -44,7 +41,7 @@ class TaskAdapter extends TypeAdapter<Task> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TaskAdapter &&
+      other is MediaAttachmentAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

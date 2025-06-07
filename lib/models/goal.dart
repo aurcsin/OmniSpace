@@ -14,9 +14,14 @@ class Goal extends HiveObject {
   @HiveField(2)
   List<String> progressNotes;
 
+  @HiveField(3)
+  List<String> linkedNoteIds;
+
   Goal({
     required this.title,
     this.description,
     List<String>? progressNotes,
-  }) : progressNotes = progressNotes ?? [];
+    List<String>? linkedNoteIds,
+  })  : progressNotes = progressNotes ?? [],
+        linkedNoteIds = linkedNoteIds ?? [];
 }
