@@ -1,44 +1,49 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/omni_note.dart';
 import 'models/attachment.dart';
+import 'models/day_reflection.dart';
+import 'models/task.dart';
+import 'models/goal.dart';
+import 'models/event.dart';
+
 import 'services/omni_note_service.dart';
+import 'services/day_reflection_service.dart';
+
 import 'pages/journal_page.dart';
 
-Future<void> main() async {
-  // Ensure Flutter binding is initialized
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive and HiveFlutter
+  // Initialize Hive
   await Hive.initFlutter();
 
-  // Register all generated adapters
-  Hive.registerAdapter(ZoneThemeAdapter());
+  // Register adapters in ascending order of typeId
+  Hive.registerAdapter(ZoneThemeAdapter());         // if you have a ZoneTheme enum
   Hive.registerAdapter(OmniNoteAdapter());
   Hive.registerAdapter(AttachmentTypeAdapter());
   Hive.registerAdapter(AttachmentAdapter());
+  Hive.registerAdapter(DayReflectionAdapter());
+  Hive.registerAdapter(TaskAdapter());
+  Hive.registerAdapter(GoalAdapter());
+  Hive.registerAdapter(EventAdapter());
 
-  // Open your notes box (or perform any other startup work)
+  // Initialize your services (open boxes, etc.)
   await OmniNoteService.instance.init();
+  await DayReflectionService.instance.init();
 
-  // Run the app
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'OmniSpace',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
       home: const JournalPage(),
     );
   }

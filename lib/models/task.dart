@@ -10,7 +10,7 @@ class Task extends HiveObject {
   @HiveField(1)
   bool isCompleted;
 
-  /// e.g. "DAILY", "WEEKLY", "MONTHLY" or null for a one‑off
+  /// e.g. "DAILY", "WEEKLY", "MONTHLY" or null for a one-off
   @HiveField(2)
   String? recurringRule;
 

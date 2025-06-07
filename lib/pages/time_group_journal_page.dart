@@ -6,9 +6,10 @@ import 'package:intl/intl.dart';
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import 'note_detail_page.dart';
+import '../widgets/main_menu_drawer.dart';
 
 class TimeGroupJournalPage extends StatefulWidget {
-  const TimeGroupJournalPage({Key? key}) : super(key: key);
+  const TimeGroupJournalPage({super.key});
 
   @override
   _TimeGroupJournalPageState createState() => _TimeGroupJournalPageState();
@@ -59,6 +60,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(title: const Text('Time-Grouped Journal')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

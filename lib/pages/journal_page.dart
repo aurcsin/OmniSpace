@@ -3,16 +3,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
 import '../services/omni_note_service.dart';
 import 'note_detail_page.dart';
 import 'calendar_overview_page.dart';
+import '../widgets/main_menu_drawer.dart';
 
-/// JournalPage shows **all** notes, either as a ListTile or in a 2-column grid.
+/// JournalPage shows all notes either in a grid or list.
 class JournalPage extends StatefulWidget {
-  const JournalPage({Key? key}) : super(key: key);
+  const JournalPage({super.key});
 
   @override
   _JournalPageState createState() => _JournalPageState();
@@ -52,104 +55,101 @@ class _JournalPageState extends State<JournalPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notes = _displayedNotes;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Journal'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            tooltip: 'Calendar',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CalendarOverviewPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
-            tooltip: _gridMode ? 'List View' : 'Grid View',
-            onPressed: () => setState(() => _gridMode = !_gridMode),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Search',
-            onPressed: () {
-              showSearch(
-                context: context,
-                delegate: _NoteSearchDelegate(
-                  onSearch: _performSearch,
-                  initial: _searchQuery,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : notes.isEmpty
-              ? Center(
-                  child: Text(
-                    _searchQuery.isEmpty
-                        ? 'No notes yet.\nTap + to create one.'
-                        : 'No notes match your search.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey[600]),
+    return ChangeNotifierProvider<OmniNoteService>.value(
+      value: OmniNoteService.instance,
+      child: Consumer<OmniNoteService>(
+        builder: (_, __, ___) {
+          final notes = _displayedNotes;
+          return Scaffold(
+            drawer: const MainMenuDrawer(),
+            appBar: AppBar(
+              title: const Text('Journal'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CalendarOverviewPage(),
+                    ),
                   ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: _gridMode
-                      ? GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 0.75,
-                          ),
-                          itemCount: notes.length,
-                          itemBuilder: (context, index) {
-                            final note = notes[index];
-                            return _NoteCard(
-                              note: note,
-                              onTap: () => Navigator.of(context)
-                                  .push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          NoteDetailPage(omniNote: note),
-                                    ),
-                                  )
-                                  .then((_) => _initializeNotes()),
-                            );
-                          },
-                        )
-                      : ListView.separated(
-                          itemCount: notes.length,
-                          separatorBuilder: (_, __) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final note = notes[index];
-                            return _NoteListTile(
-                              note: note,
-                              onTap: () => Navigator.of(context)
-                                  .push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          NoteDetailPage(omniNote: note),
-                                    ),
-                                  )
-                                  .then((_) => _initializeNotes()),
-                            );
-                          },
-                        ),
                 ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Create New Note',
-        onPressed: () => _showCreateNoteOptions(context),
-        child: const Icon(Icons.add),
+                IconButton(
+                  icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
+                  onPressed: () => setState(() => _gridMode = !_gridMode),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => showSearch(
+                    context: context,
+                    delegate: _NoteSearchDelegate(
+                      initial: _searchQuery,
+                      onSearch: _performSearch,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            body: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : notes.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchQuery.isEmpty
+                              ? 'No notes yet.\nTap + to create one.'
+                              : 'No notes match your search.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: _gridMode
+                            ? MasonryGridView.count(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                itemCount: notes.length,
+                                itemBuilder: (_, i) {
+                                  final note = notes[i];
+                                  return _NoteCard(
+                                    note: note,
+                                    onTap: () => Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                NoteDetailPage(omniNote: note),
+                                          ),
+                                        )
+                                        .then((_) => _initializeNotes()),
+                                  );
+                                },
+                              )
+                            : ListView.separated(
+                                itemCount: notes.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (_, i) {
+                                  final note = notes[i];
+                                  return _NoteListTile(
+                                    note: note,
+                                    onTap: () => Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                NoteDetailPage(omniNote: note),
+                                          ),
+                                        )
+                                        .then((_) => _initializeNotes()),
+                                  );
+                                },
+                              ),
+                      ),
+            floatingActionButton: FloatingActionButton(
+              child: const Icon(Icons.add),
+              onPressed: () => _showCreateNoteOptions(context),
+            ),
+          );
+        },
       ),
     );
   }
@@ -171,12 +171,22 @@ class _JournalPageState extends State<JournalPage> {
               onTap: () {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
+                    .push(MaterialPageRoute(
                         builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.text),
-                      ),
-                    )
+                            const NoteDetailPage(initialMode: NoteMode.text)))
+                    .then((_) => _initializeNotes());
+              },
+            ),
+            _buildOptionIcon(
+              icon: Icons.mic,
+              label: 'Voice Note',
+              color: Colors.redAccent,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context)
+                    .push(MaterialPageRoute(
+                        builder: (_) =>
+                            const NoteDetailPage(initialMode: NoteMode.voice)))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -187,12 +197,9 @@ class _JournalPageState extends State<JournalPage> {
               onTap: () {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
+                    .push(MaterialPageRoute(
                         builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.image),
-                      ),
-                    )
+                            const NoteDetailPage(initialMode: NoteMode.image)))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -203,12 +210,9 @@ class _JournalPageState extends State<JournalPage> {
               onTap: () {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
+                    .push(MaterialPageRoute(
                         builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.video),
-                      ),
-                    )
+                            const NoteDetailPage(initialMode: NoteMode.video)))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -223,32 +227,29 @@ class _JournalPageState extends State<JournalPage> {
     required String label,
     required Color color,
     required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: color.withOpacity(0.1),
-              child: Icon(icon, size: 32, color: color),
-            ),
-            const SizedBox(height: 8),
-            Text(label),
-          ],
+  }) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: color.withOpacity(0.1),
+                child: Icon(icon, size: 32, color: color),
+              ),
+              const SizedBox(height: 8),
+              Text(label),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
 
-/// ────────────────────────────────────────────────────────────────────────────
-/// A small “card” for the grid view.
-/// ────────────────────────────────────────────────────────────────────────────
+/// A small “card” for grid view.
 class _NoteCard extends StatelessWidget {
   final OmniNote note;
   final VoidCallback onTap;
@@ -263,8 +264,6 @@ class _NoteCard extends StatelessWidget {
     final hasVideo =
         note.attachments.any((a) => a.type == AttachmentType.video);
     final hasText = note.title.isNotEmpty || note.content.isNotEmpty;
-    final hasMood =
-        (note.mood != null && note.mood!.isNotEmpty);
     final color = Color(note.colorValue);
 
     return GestureDetector(
@@ -283,39 +282,26 @@ class _NoteCard extends StatelessWidget {
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(5)),
                 child: Image.file(
-                  File(note.attachments
-                      .firstWhere((a) => a.type == AttachmentType.image)
-                      .localPath),
+                  File(
+                    note.attachments
+                        .firstWhere((a) => a.type == AttachmentType.image)
+                        .localPath, // use localPath
+                  ),
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  height: 120,
+                  height: 150,
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(8.0),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
                 children: [
-                  if (hasText)
-                    Text(
-                      note.title.isNotEmpty ? note.title : '(No Title)',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const SizedBox(height: 4),
-                  Wrap(spacing: 4, children: [
-                    if (hasText) const Icon(Icons.text_snippet, size: 16),
-                    if (hasAudio) const Icon(Icons.mic, size: 16),
-                    if (hasVideo) const Icon(Icons.videocam, size: 16),
-                    if (hasMood) Chip(label: Text(note.mood!)),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text(
-                    TimeOfDay.fromDateTime(note.createdAt).format(context),
-                    style:
-                        TextStyle(fontSize: 10, color: Colors.grey[600]),
-                  ),
+                  if (hasText) const Icon(Icons.text_snippet, size: 16),
+                  if (hasAudio) const Icon(Icons.mic, size: 16),
+                  if (hasImage) const Icon(Icons.image, size: 16),
+                  if (hasVideo) const Icon(Icons.videocam, size: 16),
                 ],
               ),
             ),
@@ -326,9 +312,7 @@ class _NoteCard extends StatelessWidget {
   }
 }
 
-/// ────────────────────────────────────────────────────────────────────────────
-/// A simple ListTile for the list view.
-/// ────────────────────────────────────────────────────────────────────────────
+/// Simple ListTile for list view.
 class _NoteListTile extends StatelessWidget {
   final OmniNote note;
   final VoidCallback onTap;
@@ -343,12 +327,9 @@ class _NoteListTile extends StatelessWidget {
     final hasVideo =
         note.attachments.any((a) => a.type == AttachmentType.video);
     final hasText = note.title.isNotEmpty || note.content.isNotEmpty;
-    final hasMood =
-        (note.mood != null && note.mood!.isNotEmpty);
     final color = Color(note.colorValue);
 
     return ListTile(
-      onTap: onTap,
       leading: CircleAvatar(
         backgroundColor: color,
         child: hasImage
@@ -360,29 +341,35 @@ class _NoteListTile extends StatelessWidget {
                     : const Icon(Icons.text_snippet),
       ),
       title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
-      subtitle: Wrap(spacing: 4, children: [
-        if (hasText) const Icon(Icons.text_snippet, size: 14),
-        if (hasAudio) const Icon(Icons.mic, size: 14),
-        if (hasVideo) const Icon(Icons.videocam, size: 14),
-        if (hasMood) Chip(label: Text(note.mood!)),
-      ]),
+      subtitle: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: [
+          if (hasText) const Icon(Icons.text_snippet, size: 14),
+          if (hasAudio) const Icon(Icons.mic, size: 14),
+          if (hasImage) const Icon(Icons.image, size: 14),
+          if (hasVideo) const Icon(Icons.videocam, size: 14),
+        ],
+      ),
       trailing: Text(
         TimeOfDay.fromDateTime(note.createdAt).format(context),
         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
       ),
+      onTap: onTap,
     );
   }
 }
 
-/// ────────────────────────────────────────────────────────────────────────────
-/// A SearchDelegate that calls `onSearch(query)`.
-/// ────────────────────────────────────────────────────────────────────────────
+/// SearchDelegate for searching notes.
 class _NoteSearchDelegate extends SearchDelegate<void> {
-  final Future<void> Function(String) onSearch;
   final String initial;
+  final Future<void> Function(String) onSearch;
 
-  _NoteSearchDelegate({required this.onSearch, required this.initial})
-      : super(searchFieldLabel: initial.isNotEmpty ? initial : 'Search…');
+  _NoteSearchDelegate({required this.initial, required this.onSearch})
+      : super(
+          searchFieldLabel: initial.isNotEmpty ? initial : 'Search notes…',
+          textInputAction: TextInputAction.search,
+        );
 
   @override
   List<Widget>? buildActions(BuildContext context) => [

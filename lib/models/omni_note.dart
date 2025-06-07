@@ -2,10 +2,14 @@
 
 import 'package:hive/hive.dart';
 import 'attachment.dart';
+import 'task.dart';
+import 'goal.dart';
+import 'event.dart';
 
 part 'omni_note.g.dart';
 
-@HiveType(typeId: 3)
+/// The six “zones” of your OmniSpace world.
+@HiveType(typeId: 10)
 enum ZoneTheme {
   @HiveField(0)
   Air,
@@ -21,6 +25,7 @@ enum ZoneTheme {
   Fusion,
 }
 
+/// Your core note model.
 @HiveType(typeId: 0)
 class OmniNote extends HiveObject {
   @HiveField(0)
@@ -36,7 +41,7 @@ class OmniNote extends HiveObject {
   ZoneTheme zone;
 
   @HiveField(4)
-  String tags; // comma-separated
+  String tags;
 
   @HiveField(5)
   int colorValue;
@@ -51,27 +56,39 @@ class OmniNote extends HiveObject {
   String? projectId;
 
   @HiveField(9)
-  DateTime createdAt;
+  String? recommendedTag;
 
   @HiveField(10)
   List<Attachment> attachments;
 
   @HiveField(11)
-  String? recommendedTag;
+  List<Task>? tasks;
+
+  @HiveField(12)
+  List<Goal>? goals;
+
+  @HiveField(13)
+  List<Event>? events;
+
+  @HiveField(14)
+  DateTime createdAt;
 
   OmniNote({
     required this.title,
-    this.subtitle = '',
-    this.content = '',
+    required this.subtitle,
+    required this.content,
     this.zone = ZoneTheme.Fusion,
     this.tags = '',
     this.colorValue = 0xFFFFFFFF,
     this.mood,
     this.direction,
     this.projectId,
-    DateTime? createdAt,
-    List<Attachment>? attachments,
     this.recommendedTag,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        attachments = attachments ?? <Attachment>[];
+    List<Attachment>? attachments,
+    this.tasks,
+    this.goals,
+    this.events,
+    DateTime? createdAt,
+  })  : attachments = attachments ?? [],
+        createdAt = createdAt ?? DateTime.now();
 }

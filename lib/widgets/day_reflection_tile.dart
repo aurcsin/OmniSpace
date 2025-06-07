@@ -1,8 +1,11 @@
-// lib/pages/day_reflection_tile.dart
+// lib/widgets/day_reflection_tile.dart
 
 import 'package:flutter/material.dart';
-import '../models/day_reflection.dart'; // use relative import
+import 'package:intl/intl.dart';
 
+import '../models/day_reflection.dart';
+
+/// A simple tile showing a single DayReflection.
 class DayReflectionTile extends StatelessWidget {
   final DayReflection reflection;
   final VoidCallback onEdit;
@@ -15,23 +18,21 @@ class DayReflectionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the existing `dateKey` (e.g. "2025-06-07") directly:
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        title: Text(
-          'Reflection for ${reflection.dateKey}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(
-          reflection.summary.isNotEmpty
-              ? reflection.summary
-              : 'No reflection added.',
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit),
-          onPressed: onEdit,
-        ),
+    final date = DateTime.parse(reflection.dateKey);
+    final formattedDate = DateFormat.yMMMMd().format(date);
+
+    return ListTile(
+      title: Text(formattedDate),
+      subtitle: Text(
+        reflection.summary != null && reflection.summary!.isNotEmpty
+            ? reflection.summary!
+            : '(No reflection)',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.edit),
+        onPressed: onEdit,
       ),
     );
   }

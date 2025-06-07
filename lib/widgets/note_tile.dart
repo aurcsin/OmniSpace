@@ -6,7 +6,7 @@ import '../models/omni_note.dart'; // Use a relative import instead of package:o
 class NoteTile extends StatelessWidget {
   final OmniNote note;
 
-  const NoteTile({Key? key, required this.note}) : super(key: key);
+  const NoteTile({super.key, required this.note});
 
   @override
   Widget build(BuildContext context) {

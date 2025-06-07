@@ -8,7 +8,7 @@ part of 'day_reflection.dart';
 
 class DayReflectionAdapter extends TypeAdapter<DayReflection> {
   @override
-  final int typeId = 2;
+  final int typeId = 3;
 
   @override
   DayReflection read(BinaryReader reader) {
@@ -18,21 +18,18 @@ class DayReflectionAdapter extends TypeAdapter<DayReflection> {
     };
     return DayReflection(
       dateKey: fields[0] as String,
-      summary: fields[1] as String,
-      noteIds: (fields[2] as List?)?.cast<int>(),
+      summary: fields[1] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, DayReflection obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(2)
       ..writeByte(0)
       ..write(obj.dateKey)
       ..writeByte(1)
-      ..write(obj.summary)
-      ..writeByte(2)
-      ..write(obj.noteIds);
+      ..write(obj.summary);
   }
 
   @override

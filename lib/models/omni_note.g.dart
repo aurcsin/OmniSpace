@@ -26,16 +26,19 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       mood: fields[6] as String?,
       direction: fields[7] as String?,
       projectId: fields[8] as String?,
-      createdAt: fields[9] as DateTime?,
+      recommendedTag: fields[9] as String?,
       attachments: (fields[10] as List?)?.cast<Attachment>(),
-      recommendedTag: fields[11] as String?,
+      tasks: (fields[11] as List?)?.cast<Task>(),
+      goals: (fields[12] as List?)?.cast<Goal>(),
+      events: (fields[13] as List?)?.cast<Event>(),
+      createdAt: fields[14] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -55,11 +58,17 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(8)
       ..write(obj.projectId)
       ..writeByte(9)
-      ..write(obj.createdAt)
+      ..write(obj.recommendedTag)
       ..writeByte(10)
       ..write(obj.attachments)
       ..writeByte(11)
-      ..write(obj.recommendedTag);
+      ..write(obj.tasks)
+      ..writeByte(12)
+      ..write(obj.goals)
+      ..writeByte(13)
+      ..write(obj.events)
+      ..writeByte(14)
+      ..write(obj.createdAt);
   }
 
   @override
@@ -75,7 +84,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
 
 class ZoneThemeAdapter extends TypeAdapter<ZoneTheme> {
   @override
-  final int typeId = 3;
+  final int typeId = 10;
 
   @override
   ZoneTheme read(BinaryReader reader) {
