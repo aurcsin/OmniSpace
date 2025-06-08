@@ -61,4 +61,9 @@
 
 ---
 
-## 📦 Project Structure (Simplified)root@0c8a5a147595:/workspace/OmniSpace#
+## 📦 Project Structure (Simplified)
+
+- `lib/` – Main Flutter source code
+- `assets/` – Shared images and data
+- `android/`, `ios/`, `linux/`, `macos/`, `windows/`, `web/` – Platform-specific projects
+- `test/` – Unit and widget tests

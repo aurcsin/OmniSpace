@@ -19,7 +19,9 @@ class _TrackersPageState extends State<TrackersPage> {
   @override
   void initState() {
     super.initState();
-    TrackersService.instance.init();
+    if (!TrackersService.instance.isInitialized) {
+      TrackersService.instance.init();
+    }
   }
 
   Future<void> _addTask() async {

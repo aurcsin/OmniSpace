@@ -15,10 +15,16 @@ class TrackersService extends ChangeNotifier {
   late Box<Goal> _goalBox;
   late Box<Event> _eventBox;
 
+  bool _initialized = false;
+  bool get isInitialized => _initialized;
+
   Future<void> init() async {
+    if (_initialized) return;
+
     _taskBox = await Hive.openBox<Task>('tasks');
     _goalBox = await Hive.openBox<Goal>('goals');
     _eventBox = await Hive.openBox<Event>('events');
+    _initialized = true;
     notifyListeners();
   }
 
