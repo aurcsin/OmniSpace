@@ -56,6 +56,11 @@ class _DayReflectionPageState extends State<DayReflectionPage> {
     );
   }
 
+  Future<void> _delete(DayReflection reflection) async {
+    await DayReflectionService.instance.deleteReflection(reflection.dateKey);
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,6 +77,7 @@ class _DayReflectionPageState extends State<DayReflectionPage> {
                     return DayReflectionTile(
                       reflection: r,
                       onEdit: () => _edit(r),
+                      onDelete: () => _delete(r),
                     );
                   },
                 ),

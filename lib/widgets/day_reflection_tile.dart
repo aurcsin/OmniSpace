@@ -9,11 +9,13 @@ import '../models/day_reflection.dart';
 class DayReflectionTile extends StatelessWidget {
   final DayReflection reflection;
   final VoidCallback onEdit;
+  final VoidCallback? onDelete;
 
   const DayReflectionTile({
     Key? key,
     required this.reflection,
     required this.onEdit,
+    this.onDelete,
   }) : super(key: key);
 
   @override
@@ -30,9 +32,19 @@ class DayReflectionTile extends StatelessWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: IconButton(
-        icon: const Icon(Icons.edit),
-        onPressed: onEdit,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: onEdit,
+          ),
+          if (onDelete != null)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: onDelete,
+            ),
+        ],
       ),
     );
   }

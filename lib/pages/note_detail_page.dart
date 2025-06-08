@@ -1,6 +1,7 @@
 // lib/pages/note_detail_page.dart
 
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,9 +15,11 @@ import 'package:audioplayers/audioplayers.dart';
 
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
+import '../models/task.dart';
+import '../models/goal.dart';
+import '../models/event.dart';
 import '../services/omni_note_service.dart';
 import '../services/ai_service.dart';
-import '../services/series_service.dart';
 
 enum NoteMode { text, voice, image, video }
 
@@ -49,7 +52,13 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   final Set<String> _pickedTags = {};
 
   Color _noteColor = Colors.white;
-  String? _mood, _direction, _projectId, _seriesId;
+  String? _mood;
+  final List<Task> _tasks = [];
+  final List<Goal> _goals = [];
+  final List<Event> _events = [];
+
+  StreamSubscription<Amplitude>? _ampSub;
+  double _ampValue = 0;
 
   late NoteMode _mode;
 
@@ -80,9 +89,12 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _customTags = n.tags.split(',').where((s) => s.isNotEmpty).toList();
     _noteColor = Color(n.colorValue);
     _mood = n.mood;
-    _direction = n.direction;
-    _projectId = n.projectId;
-    _seriesId = n.seriesId;
+    _tasks.clear();
+    if (n.tasks != null) _tasks.addAll(n.tasks!);
+    _goals.clear();
+    if (n.goals != null) _goals.addAll(n.goals!);
+    _events.clear();
+    if (n.events != null) _events.addAll(n.events!);
     // Load attachments for viewing/playback
     final img = n.attachments
         .where((a) => a.type == AttachmentType.image)
@@ -163,9 +175,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     if (_isRecording) {
       // Stop and get file path
       final path = await _audioRecorder.stop();
+      await _ampSub?.cancel();
       setState(() {
         _isRecording = false;
         if (path != null) _audioPath = path;
+        _ampValue = 0;
       });
     } else {
       if (!await _req(Permission.microphone)) return;
@@ -177,6 +191,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
         const RecordConfig(encoder: AudioEncoder.aacLc),
         path: p,
       );
+      _ampSub = _audioRecorder
+          .onAmplitudeChanged(const Duration(milliseconds: 100))
+          .listen((amp) {
+        setState(() => _ampValue = amp.current);
+      });
       setState(() => _isRecording = true);
     }
   }
@@ -195,28 +214,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     }
   }
 
-  Future<void> _promptCreateSeries() async {
-    final ctl = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('New Series Name'),
-        content: TextField(controller: ctl, decoration: const InputDecoration(hintText: 'Series title')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, ctl.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-    if (name != null && name.isNotEmpty) {
-      final id = await SeriesService.instance.createSeries(name);
-      setState(() => _seriesId = id);
-    }
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final svc = OmniNoteService.instance;
@@ -232,11 +229,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
             tags: _customTags.join(','),
             attachments: [],
             mood: _mood,
-            direction: _direction,
-            projectId: _projectId,
-            seriesId: _seriesId,
+            tasks: _tasks,
+            goals: _goals,
+            events: _events,
             colorValue: _noteColor.value,
-          );
+            );
 
     note
       ..subtitle = _subtitle
@@ -244,9 +241,9 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ..zone = _zone
       ..tags = _customTags.join(',')
       ..mood = _mood
-      ..direction = _direction
-      ..projectId = _projectId
-      ..seriesId = _seriesId
+      ..tasks = _tasks
+      ..goals = _goals
+      ..events = _events
       ..colorValue = _noteColor.value
       ..recommendedTag = _pickedTags.isNotEmpty ? _pickedTags.first : null;
 
@@ -266,6 +263,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   void dispose() {
     _contentCtl.dispose();
     _player?.dispose();
+    _ampSub?.cancel();
     super.dispose();
   }
 
@@ -277,7 +275,13 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/journal_bg.png', fit: BoxFit.cover),
+            child: Image.asset(
+              'assets/images/journal_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Theme.of(context).scaffoldBackgroundColor,
+              ),
+            ),
           ),
           SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 40, 16, 80),
@@ -394,8 +398,31 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 Text(_isRecording ? 'Recording...' : 'Playback'),
               ],
             ),
+          if (_isRecording)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: LinearProgressIndicator(value: _ampValue / 120),
+            ),
           ElevatedButton.icon(
-            icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+            icon: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(_isRecording ? Icons.stop : Icons.mic),
+                if (_isRecording)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             label: Text(_isRecording ? 'Stop Recording' : 'Record Audio'),
             onPressed: _toggleRecording,
           ),
@@ -476,42 +503,101 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
             onChanged: (v) => _mood = v,
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            initialValue: _direction,
-            decoration: const InputDecoration(labelText: 'Direction'),
-            onChanged: (v) => _direction = v,
-          ),
+          _buildTaskSection(),
           const SizedBox(height: 12),
-          TextFormField(
-            initialValue: _projectId,
-            decoration: const InputDecoration(labelText: 'Project'),
-            onChanged: (v) => _projectId = v,
-          ),
+          _buildGoalSection(),
           const SizedBox(height: 12),
+          _buildEventSection(),
+        ],
+      );
+
+  Widget _buildTaskSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Series:'),
-              const SizedBox(width: 8),
-              DropdownButton<String>(
-                value: _seriesId,
-                hint: const Text('None / Create New'),
-                items: [
-                  ...SeriesService.instance.allSeries.map((s) => DropdownMenuItem(
-                        value: s.id,
-                        child: Text(s.name),
-                      )),
-                  const DropdownMenuItem(value: 'CREATE_NEW', child: Text('➕ Create New')),
-                ],
-                onChanged: (v) {
-                  if (v == 'CREATE_NEW') {
-                    _promptCreateSeries();
-                  } else {
-                    setState(() => _seriesId = v);
+              const Text('Tasks', style: TextStyle(fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () async {
+                  final desc = await _promptText('New Task');
+                  if (desc != null && desc.trim().isNotEmpty) {
+                    setState(() => _tasks.add(Task(description: desc.trim())));
                   }
                 },
               ),
             ],
           ),
+          ..._tasks.map(
+            (t) => CheckboxListTile(
+              value: t.isCompleted,
+              title: Text(t.description),
+              onChanged: (v) => setState(() => t.isCompleted = v ?? false),
+            ),
+          ),
         ],
       );
+
+  Widget _buildGoalSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Goals', style: TextStyle(fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () async {
+                  final title = await _promptText('New Goal');
+                  if (title != null && title.trim().isNotEmpty) {
+                    setState(() => _goals.add(Goal(title: title.trim())));
+                  }
+                },
+              ),
+            ],
+          ),
+          ..._goals.map((g) => ListTile(title: Text(g.title))),
+        ],
+      );
+
+  Widget _buildEventSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Events', style: TextStyle(fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () async {
+                  final title = await _promptText('New Event');
+                  if (title != null && title.trim().isNotEmpty) {
+                    setState(() => _events.add(Event(title: title.trim(), eventDate: DateTime.now())));
+                  }
+                },
+              ),
+            ],
+          ),
+          ..._events.map((e) => ListTile(
+                title: Text(e.title),
+                subtitle: Text(e.eventDate.toIso8601String().split('T').first),
+              )),
+        ],
+      );
+
+  Future<String?> _promptText(String title) async {
+    String value = '';
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(onChanged: (v) => value = v),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, value), child: const Text('Add')),
+        ],
+      ),
+    );
+  }
 }
