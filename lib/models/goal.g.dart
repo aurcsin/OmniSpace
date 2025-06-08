@@ -20,19 +20,22 @@ class GoalAdapter extends TypeAdapter<Goal> {
       title: fields[0] as String,
       description: fields[1] as String?,
       progressNotes: (fields[2] as List?)?.cast<String>(),
+      linkedNoteIds: (fields[3] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Goal obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
       ..write(obj.description)
       ..writeByte(2)
-      ..write(obj.progressNotes);
+      ..write(obj.progressNotes)
+      ..writeByte(3)
+      ..write(obj.linkedNoteIds);
   }
 
   @override

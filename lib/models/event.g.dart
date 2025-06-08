@@ -21,13 +21,14 @@ class EventAdapter extends TypeAdapter<Event> {
       eventDate: fields[1] as DateTime,
       isRecurring: fields[2] as bool,
       recurringRule: fields[3] as String?,
+      linkedNoteIds: (fields[4] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Event obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class EventAdapter extends TypeAdapter<Event> {
       ..writeByte(2)
       ..write(obj.isRecurring)
       ..writeByte(3)
-      ..write(obj.recurringRule);
+      ..write(obj.recurringRule)
+      ..writeByte(4)
+      ..write(obj.linkedNoteIds);
   }
 
   @override

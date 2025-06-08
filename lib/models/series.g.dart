@@ -1,41 +1,35 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'task.dart';
+part of 'series.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TaskAdapter extends TypeAdapter<Task> {
+class SeriesAdapter extends TypeAdapter<Series> {
   @override
-  final int typeId = 4;
+  final int typeId = 8;
 
   @override
-  Task read(BinaryReader reader) {
+  Series read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Task(
-      description: fields[0] as String,
-      isCompleted: fields[1] as bool,
-      recurringRule: fields[2] as String?,
-      linkedNoteIds: (fields[3] as List?)?.cast<String>(),
+    return Series(
+      id: fields[0] as String,
+      name: fields[1] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Task obj) {
+  void write(BinaryWriter writer, Series obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.description)
-      ..writeByte(1)
-      ..write(obj.isCompleted)
       ..writeByte(2)
-      ..write(obj.recurringRule)
-      ..writeByte(3)
-      ..write(obj.linkedNoteIds);
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name);
   }
 
   @override
@@ -44,7 +38,7 @@ class TaskAdapter extends TypeAdapter<Task> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TaskAdapter &&
+      other is SeriesAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

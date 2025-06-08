@@ -8,6 +8,7 @@ import '../pages/garden_forest_page.dart';
 import '../pages/studio_underwater_page.dart';
 import '../pages/root_cave_page.dart';
 import '../pages/journal_page.dart';
+import '../pages/trackers_page.dart';
 import '../pages/collections_page.dart';
 import '../pages/options_page.dart';
 import '../pages/account_page.dart';
@@ -74,6 +75,12 @@ class MainMenuDrawer extends StatelessWidget {
               icon: Icons.book,
               title: 'Journal',
               page: const JournalPage(),
+            ),
+            _buildTile(
+              context,
+              icon: Icons.track_changes,
+              title: 'Trackers',
+              page: const TrackersPage(),
             ),
 
             const Divider(),

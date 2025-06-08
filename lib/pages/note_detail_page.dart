@@ -16,6 +16,7 @@ import '../models/omni_note.dart';
 import '../models/attachment.dart';
 import '../services/omni_note_service.dart';
 import '../services/ai_service.dart';
+import '../services/series_service.dart';
 
 enum NoteMode { text, voice, image, video }
 
@@ -48,7 +49,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   final Set<String> _pickedTags = {};
 
   Color _noteColor = Colors.white;
-  String? _mood, _direction, _projectId;
+  String? _mood, _direction, _projectId, _seriesId;
 
   late NoteMode _mode;
 
@@ -81,6 +82,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _mood = n.mood;
     _direction = n.direction;
     _projectId = n.projectId;
+    _seriesId = n.seriesId;
     // Load attachments for viewing/playback
     final img = n.attachments
         .where((a) => a.type == AttachmentType.image)
@@ -193,6 +195,28 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     }
   }
 
+  Future<void> _promptCreateSeries() async {
+    final ctl = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('New Series Name'),
+        content: TextField(controller: ctl, decoration: const InputDecoration(hintText: 'Series title')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, ctl.text.trim()),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty) {
+      final id = await SeriesService.instance.createSeries(name);
+      setState(() => _seriesId = id);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final svc = OmniNoteService.instance;
@@ -210,6 +234,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
             mood: _mood,
             direction: _direction,
             projectId: _projectId,
+            seriesId: _seriesId,
             colorValue: _noteColor.value,
           );
 
@@ -221,6 +246,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ..mood = _mood
       ..direction = _direction
       ..projectId = _projectId
+      ..seriesId = _seriesId
       ..colorValue = _noteColor.value
       ..recommendedTag = _pickedTags.isNotEmpty ? _pickedTags.first : null;
 
@@ -460,6 +486,31 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
             initialValue: _projectId,
             decoration: const InputDecoration(labelText: 'Project'),
             onChanged: (v) => _projectId = v,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Series:'),
+              const SizedBox(width: 8),
+              DropdownButton<String>(
+                value: _seriesId,
+                hint: const Text('None / Create New'),
+                items: [
+                  ...SeriesService.instance.allSeries.map((s) => DropdownMenuItem(
+                        value: s.id,
+                        child: Text(s.name),
+                      )),
+                  const DropdownMenuItem(value: 'CREATE_NEW', child: Text('➕ Create New')),
+                ],
+                onChanged: (v) {
+                  if (v == 'CREATE_NEW') {
+                    _promptCreateSeries();
+                  } else {
+                    setState(() => _seriesId = v);
+                  }
+                },
+              ),
+            ],
           ),
         ],
       );

@@ -14,9 +14,13 @@ class Task extends HiveObject {
   @HiveField(2)
   String? recurringRule;
 
+  @HiveField(3)
+  List<String> linkedNoteIds;
+
   Task({
     required this.description,
     this.isCompleted = false,
     this.recurringRule,
-  });
+    List<String>? linkedNoteIds,
+  }) : linkedNoteIds = linkedNoteIds ?? [];
 }

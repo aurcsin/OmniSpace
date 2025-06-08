@@ -17,10 +17,14 @@ class Event extends HiveObject {
   @HiveField(3)
   String? recurringRule;
 
+  @HiveField(4)
+  List<String> linkedNoteIds;
+
   Event({
     required this.title,
     required this.eventDate,
     this.isRecurring = false,
     this.recurringRule,
-  });
+    List<String>? linkedNoteIds,
+  }) : linkedNoteIds = linkedNoteIds ?? [];
 }

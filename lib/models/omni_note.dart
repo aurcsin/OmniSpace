@@ -58,6 +58,9 @@ class OmniNote extends HiveObject {
   @HiveField(9)
   String? recommendedTag;
 
+  @HiveField(15)
+  String? seriesId;
+
   @HiveField(10)
   List<Attachment> attachments;
 
@@ -84,6 +87,7 @@ class OmniNote extends HiveObject {
     this.direction,
     this.projectId,
     this.recommendedTag,
+    this.seriesId,
     List<Attachment>? attachments,
     this.tasks,
     this.goals,
