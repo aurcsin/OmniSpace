@@ -27,20 +27,19 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       direction: fields[7] as String?,
       projectId: fields[8] as String?,
       recommendedTag: fields[9] as String?,
+      seriesId: fields[15] as String?,
       attachments: (fields[10] as List?)?.cast<Attachment>(),
       tasks: (fields[11] as List?)?.cast<Task>(),
       goals: (fields[12] as List?)?.cast<Goal>(),
       events: (fields[13] as List?)?.cast<Event>(),
       createdAt: fields[14] as DateTime?,
-      seriesId: fields[15] as String?,
-      bundleMemberIds: (fields[16] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -61,6 +60,8 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..write(obj.projectId)
       ..writeByte(9)
       ..write(obj.recommendedTag)
+      ..writeByte(15)
+      ..write(obj.seriesId)
       ..writeByte(10)
       ..write(obj.attachments)
       ..writeByte(11)
@@ -70,11 +71,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(13)
       ..write(obj.events)
       ..writeByte(14)
-      ..write(obj.createdAt)
-      ..writeByte(15)
-      ..write(obj.seriesId)
-      ..writeByte(16)
-      ..write(obj.bundleMemberIds);
+      ..write(obj.createdAt);
   }
 
   @override

@@ -58,6 +58,9 @@ class OmniNote extends HiveObject {
   @HiveField(9)
   String? recommendedTag;
 
+  @HiveField(15)
+  String? seriesId;
+
   @HiveField(10)
   List<Attachment> attachments;
 
@@ -73,12 +76,6 @@ class OmniNote extends HiveObject {
   @HiveField(14)
   DateTime createdAt;
 
-  @HiveField(15)
-  String? seriesId;
-
-  @HiveField(16)
-  List<String> bundleMemberIds;
-
   OmniNote({
     required this.title,
     required this.subtitle,
@@ -90,14 +87,12 @@ class OmniNote extends HiveObject {
     this.direction,
     this.projectId,
     this.recommendedTag,
+    this.seriesId,
     List<Attachment>? attachments,
     this.tasks,
     this.goals,
     this.events,
     DateTime? createdAt,
-    this.seriesId,
-    List<String>? bundleMemberIds,
   })  : attachments = attachments ?? [],
-        createdAt = createdAt ?? DateTime.now(),
-        bundleMemberIds = bundleMemberIds ?? [];
+        createdAt = createdAt ?? DateTime.now();
 }

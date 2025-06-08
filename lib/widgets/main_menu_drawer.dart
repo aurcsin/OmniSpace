@@ -8,11 +8,10 @@ import '../pages/garden_forest_page.dart';
 import '../pages/studio_underwater_page.dart';
 import '../pages/root_cave_page.dart';
 import '../pages/journal_page.dart';
+import '../pages/trackers_page.dart';
 import '../pages/collections_page.dart';
 import '../pages/options_page.dart';
 import '../pages/account_page.dart';
-import '../pages/trackers_page.dart';
-import '../pages/media_page.dart';
 
 class MainMenuDrawer extends StatelessWidget {
   const MainMenuDrawer({super.key});
@@ -41,31 +40,31 @@ class MainMenuDrawer extends StatelessWidget {
               context,
               icon: Icons.cloud,
               title: 'Sky / Space',
-              route: '/sky',
+              page: const SkySpacePage(),
             ),
             _buildTile(
               context,
               icon: Icons.build,
               title: 'Workshop / Forge',
-              route: '/forge',
+              page: const WorkshopForgePage(),
             ),
             _buildTile(
               context,
               icon: Icons.grass,
               title: 'Garden / Forest',
-              route: '/garden',
+              page: const GardenForestPage(),
             ),
             _buildTile(
               context,
               icon: Icons.water,
               title: 'Studio / Underwater',
-              route: '/studio',
+              page: const StudioUnderwaterPage(),
             ),
             _buildTile(
               context,
               icon: Icons.account_tree,
               title: 'Root Cave / Underground',
-              route: '/root-cave',
+              page: const RootCavePage(),
             ),
 
             const Divider(),
@@ -75,21 +74,13 @@ class MainMenuDrawer extends StatelessWidget {
               context,
               icon: Icons.book,
               title: 'Journal',
-              route: '/journal',
+              page: const JournalPage(),
             ),
-
             _buildTile(
               context,
               icon: Icons.track_changes,
               title: 'Trackers',
-              route: '/trackers',
-            ),
-
-            _buildTile(
-              context,
-              icon: Icons.perm_media,
-              title: 'Media',
-              route: '/media',
+              page: const TrackersPage(),
             ),
 
             const Divider(),
@@ -99,19 +90,19 @@ class MainMenuDrawer extends StatelessWidget {
               context,
               icon: Icons.collections,
               title: 'Collections',
-              route: '/collections',
+              page: const CollectionsPage(),
             ),
             _buildTile(
               context,
               icon: Icons.settings,
               title: 'Options',
-              route: '/options',
+              page: const OptionsPage(),
             ),
             _buildTile(
               context,
               icon: Icons.person,
               title: 'Account',
-              route: '/account',
+              page: const AccountPage(),
             ),
           ],
         ),
@@ -123,14 +114,16 @@ class MainMenuDrawer extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String route,
+    required Widget page,
   }) {
     return ListTile(
       leading: Icon(icon, color: Colors.deepPurple),
       title: Text(title),
       onTap: () {
         Navigator.of(context).pop(); // close drawer
-        Navigator.pushNamed(context, route);
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => page),
+        );
       },
     );
   }
