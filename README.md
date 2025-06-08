@@ -37,6 +37,7 @@
 - Store spirit creatures, artifacts, biomes, and achievements.
 - Build, customize, and equip decks that influence app interaction.
 - Cards evolve with use and can unlock new insights.
+- Manage tasks across notes using the **Tasks Tracker** page.
 
 ### 🧘‍♂️ Integrated Reflection Tools
 - AI-assisted insight generation from text, voice, or image-based entries.
@@ -60,4 +61,4 @@
 
 ---
 
-## 📦 Project Structure (Simplified)
+## 📦 Project Structure (Simplified)root@0c8a5a147595:/workspace/OmniSpace#

@@ -7,11 +7,10 @@ import 'models/day_reflection.dart';
 import 'models/task.dart';
 import 'models/goal.dart';
 import 'models/event.dart';
-import 'models/series.dart';
 
 import 'services/omni_note_service.dart';
 import 'services/day_reflection_service.dart';
-import 'services/series_service.dart';
+import 'services/task_service.dart';
 
 import 'pages/journal_page.dart';
 
@@ -30,12 +29,11 @@ void main() async {
   Hive.registerAdapter(TaskAdapter());
   Hive.registerAdapter(GoalAdapter());
   Hive.registerAdapter(EventAdapter());
-  Hive.registerAdapter(SeriesAdapter());
 
   // Initialize your services (open boxes, etc.)
   await OmniNoteService.instance.init();
   await DayReflectionService.instance.init();
-  await SeriesService.instance.init();
+  await TaskService.instance.init();
 
   runApp(const MyApp());
 }

@@ -1,154 +1,260 @@
-// lib/pages/trackers_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-import '../models/event.dart';         // used for Event fields (e.title, e.eventDate, e.isRecurring)
-import '../models/goal.dart';          // used for Goal fields (g.title, g.progressNotes)
-import '../models/task.dart';          // used for Task fields (t.description, t.isCompleted, t.recurringRule)
-import '../models/tracker_type.dart';  // used for TrackerType in _createNewTracker
-
-import '../services/event_service.dart';  // used to fetch and reorder events
-import '../services/goal_service.dart';   // used to fetch and reorder goals
-import '../services/task_service.dart';   // used to fetch, reorder, and toggle tasks
+import '../models/task.dart';
+import '../models/goal.dart';
+import '../models/event.dart';
+import '../services/trackers_service.dart';
+import '../widgets/main_menu_drawer.dart';
 
 class TrackersPage extends StatefulWidget {
-  const TrackersPage({Key? key}) : super(key: key);
+  const TrackersPage({super.key});
 
   @override
   State<TrackersPage> createState() => _TrackersPageState();
 }
 
-class _TrackersPageState extends State<TrackersPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _controller;
-
-  int get _tab => _controller.index;
-
+class _TrackersPageState extends State<TrackersPage> {
   @override
   void initState() {
     super.initState();
-    _controller = TabController(length: 3, vsync: this)
-      ..addListener(() => setState(() {}));
+    TrackersService.instance.init();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Future<void> _addTask() async {
+    final descCtl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('New Task'),
+        content: TextField(
+          controller: descCtl,
+          decoration: const InputDecoration(labelText: 'Description'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final text = descCtl.text.trim();
+              if (text.isNotEmpty) {
+                await TrackersService.instance
+                    .addTask(Task(description: text));
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    descCtl.dispose();
   }
 
-  void _openForge(dynamic payload) {
-    Navigator.pushNamed(context, '/forge', arguments: payload);
+  Future<void> _addGoal() async {
+    final titleCtl = TextEditingController();
+    final descCtl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('New Goal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleCtl,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: descCtl,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final title = titleCtl.text.trim();
+              final desc = descCtl.text.trim();
+              if (title.isNotEmpty) {
+                await TrackersService.instance.addGoal(
+                  Goal(title: title, description: desc.isEmpty ? null : desc),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    titleCtl.dispose();
+    descCtl.dispose();
   }
 
-  void _createNewTracker() {
-    _openForge(TrackerType.values[_tab]);
+  Future<void> _addEvent() async {
+    final titleCtl = TextEditingController();
+    DateTime date = DateTime.now();
+    await showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('New Event'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleCtl,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(DateFormat.yMd().format(date)),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        initialDate: date,
+                      );
+                      if (picked != null) {
+                        setState(() => date = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final title = titleCtl.text.trim();
+                if (title.isNotEmpty) {
+                  await TrackersService.instance.addEvent(
+                    Event(title: title, eventDate: date),
+                  );
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    titleCtl.dispose();
+  }
+
+  Widget _buildTasks() {
+    final tasks = TrackersService.instance.tasks;
+    return ExpansionTile(
+      title: const Text('Tasks'),
+      children: [
+        if (tasks.isEmpty)
+          const ListTile(title: Text('No tasks yet.'))
+        else
+          ...tasks.map(
+            (t) => CheckboxListTile(
+              value: t.isCompleted,
+              title: Text(t.description),
+              onChanged: (val) async {
+                t.isCompleted = val ?? false;
+                await TrackersService.instance.updateTask(t);
+                setState(() {});
+              },
+            ),
+          ),
+        TextButton.icon(
+          onPressed: _addTask,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Task'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoals() {
+    final goals = TrackersService.instance.goals;
+    return ExpansionTile(
+      title: const Text('Goals'),
+      children: [
+        if (goals.isEmpty)
+          const ListTile(title: Text('No goals yet.'))
+        else
+          ...goals.map(
+            (g) => ListTile(
+              title: Text(g.title),
+              subtitle: g.description != null ? Text(g.description!) : null,
+            ),
+          ),
+        TextButton.icon(
+          onPressed: _addGoal,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Goal'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEvents() {
+    final events = TrackersService.instance.events;
+    return ExpansionTile(
+      title: const Text('Events'),
+      children: [
+        if (events.isEmpty)
+          const ListTile(title: Text('No events yet.'))
+        else
+          ...events.map(
+            (e) => ListTile(
+              title: Text(e.title),
+              subtitle: Text(DateFormat.yMd().format(e.eventDate)),
+            ),
+          ),
+        TextButton.icon(
+          onPressed: _addEvent,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Event'),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trackers'),
-        bottom: TabBar(
-          controller: _controller,
-          tabs: const [
-            Tab(text: 'Goals'),
-            Tab(text: 'Tasks'),
-            Tab(text: 'Events'),
-          ],
+    return ChangeNotifierProvider<TrackersService>.value(
+      value: TrackersService.instance,
+      child: Consumer<TrackersService>(
+        builder: (_, __, ___) => Scaffold(
+          drawer: const MainMenuDrawer(),
+          appBar: AppBar(title: const Text('Trackers')),
+          body: ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              _buildTasks(),
+              const SizedBox(height: 8),
+              _buildGoals(),
+              const SizedBox(height: 8),
+              _buildEvents(),
+            ],
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _controller,
-        children: [
-          _buildGoalsTab(),
-          _buildTasksTab(),
-          _buildEventsTab(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNewTracker,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget _buildGoalsTab() {
-    final goals = GoalService.instance.goals;
-    if (goals.isEmpty) {
-      return const Center(child: Text('No goals yet.'));
-    }
-    return ReorderableListView(
-      onReorder: GoalService.instance.reorder,
-      children: [
-        for (final g in goals)
-          ListTile(
-            key: ValueKey(g.key),
-            title: Text(g.title),
-            subtitle: LinearProgressIndicator(
-              value: (g.progressNotes.length / (g.progressNotes.isEmpty ? 1 : 10))
-                  .clamp(0.0, 1.0),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForge(g),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildTasksTab() {
-    final tasks = TaskService.instance.tasks;
-    if (tasks.isEmpty) {
-      return const Center(child: Text('No tasks yet.'));
-    }
-    return ReorderableListView(
-      onReorder: TaskService.instance.reorder,
-      children: [
-        for (final t in tasks)
-          CheckboxListTile(
-            key: ValueKey(t.key),
-            value: t.isCompleted,
-            title: Text(t.description),
-            subtitle: Text('${t.recurringRule ?? 'one-off'}'),
-            onChanged: (_) {
-              TaskService.instance.toggleComplete(t);
-              setState(() {});
-            },
-            secondary: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForge(t),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildEventsTab() {
-    final events = EventService.instance.events;
-    if (events.isEmpty) {
-      return const Center(child: Text('No events yet.'));
-    }
-    return ReorderableListView(
-      onReorder: EventService.instance.reorder,
-      children: [
-        for (final e in events)
-          ListTile(
-            key: ValueKey(e.key),
-            title: Text(e.title),
-            subtitle: Text(
-              '${DateFormat.jm().format(e.eventDate)}'
-              '${e.isRecurring ? ' • Recurring' : ''}',
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForge(e),
-            ),
-          ),
-      ],
     );
   }
 }
