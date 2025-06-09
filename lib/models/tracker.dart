@@ -5,7 +5,7 @@ import 'tracker_type.dart';
 
 part 'tracker.g.dart';
 
-@HiveType(typeId: 8)
+@HiveType(typeId: 17)
 class Tracker extends HiveObject {
   @HiveField(0)
   String id;

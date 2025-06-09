@@ -3,7 +3,7 @@ import 'attachment.dart';
 
 part 'media_attachment.g.dart';
 
-@HiveType(typeId: 7)
+@HiveType(typeId: 15)
 class MediaAttachment extends HiveObject {
   @HiveField(0)
   String path;

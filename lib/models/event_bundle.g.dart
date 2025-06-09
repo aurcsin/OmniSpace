@@ -1,35 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'day_reflection.dart';
+part of 'event_bundle.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class DayReflectionAdapter extends TypeAdapter<DayReflection> {
+class EventBundleAdapter extends TypeAdapter<EventBundle> {
   @override
-  final int typeId = 14;
+  final int typeId = 15;
 
   @override
-  DayReflection read(BinaryReader reader) {
+  EventBundle read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return DayReflection(
-      dateKey: fields[0] as String,
-      summary: fields[1] as String?,
+    return EventBundle(
+      id: fields[0] as String,
+      name: fields[1] as String,
+      events: (fields[2] as List?)?.cast<Event>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, DayReflection obj) {
+  void write(BinaryWriter writer, EventBundle obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
-      ..write(obj.dateKey)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.summary);
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.events);
   }
 
   @override
@@ -38,7 +41,7 @@ class DayReflectionAdapter extends TypeAdapter<DayReflection> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DayReflectionAdapter &&
+      other is EventBundleAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

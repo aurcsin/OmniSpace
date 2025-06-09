@@ -1,45 +1,55 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'tracker_type.dart';
+part of 'zone_theme.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
+class ZoneThemeAdapter extends TypeAdapter<ZoneTheme> {
   @override
-  final int typeId = 16;
+  final int typeId = 10;
 
   @override
-  TrackerType read(BinaryReader reader) {
+  ZoneTheme read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return TrackerType.goal;
+        return ZoneTheme.Air;
       case 1:
-        return TrackerType.task;
+        return ZoneTheme.Earth;
       case 2:
-        return TrackerType.event;
+        return ZoneTheme.Fire;
       case 3:
-        return TrackerType.series;
+        return ZoneTheme.Water;
+      case 4:
+        return ZoneTheme.Void;
+      case 5:
+        return ZoneTheme.Fusion;
       default:
-        return TrackerType.goal;
+        return ZoneTheme.Air;
     }
   }
 
   @override
-  void write(BinaryWriter writer, TrackerType obj) {
+  void write(BinaryWriter writer, ZoneTheme obj) {
     switch (obj) {
-      case TrackerType.goal:
+      case ZoneTheme.Air:
         writer.writeByte(0);
         break;
-      case TrackerType.task:
+      case ZoneTheme.Earth:
         writer.writeByte(1);
         break;
-      case TrackerType.event:
+      case ZoneTheme.Fire:
         writer.writeByte(2);
         break;
-      case TrackerType.series:
+      case ZoneTheme.Water:
         writer.writeByte(3);
+        break;
+      case ZoneTheme.Void:
+        writer.writeByte(4);
+        break;
+      case ZoneTheme.Fusion:
+        writer.writeByte(5);
         break;
     }
   }
@@ -50,7 +60,7 @@ class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TrackerTypeAdapter &&
+      other is ZoneThemeAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

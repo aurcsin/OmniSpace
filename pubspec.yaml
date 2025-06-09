@@ -28,6 +28,7 @@ dependencies:
   record: ^6.0.0
   audioplayers: ^6.4.0
   audio_waveforms: ^1.3.0
+  video_player: ^2.7.2
 
   # Notifications & timezones
   flutter_local_notifications: ^12.0.4

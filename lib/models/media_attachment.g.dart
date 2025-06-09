@@ -8,7 +8,7 @@ part of 'media_attachment.dart';
 
 class MediaAttachmentAdapter extends TypeAdapter<MediaAttachment> {
   @override
-  final int typeId = 7;
+  final int typeId = 15;
 
   @override
   MediaAttachment read(BinaryReader reader) {

@@ -1,41 +1,93 @@
-# dependency_map.yaml
-version: "1.0"
-
 services:
-  omni_note_service:
-    path: lib/services/omni_note_service.dart
-    description: Load, save, query and archive journal notes
-    models:
-      - OmniNote          # lib/models/omni_note.dart
-      - Attachment        # lib/models/attachment.dart
-      - Tag               # lib/models/tag.dart
-
-  ai_service:
-    path: lib/services/ai_service.dart
-    description: Generate summaries, mood‐analysis, and insights
+  OmniNoteService:
     models:
       - OmniNote
       - Attachment
-      - AnalysisResult    # lib/models/analysis_result.dart
-
-  auth_service:
-    path: lib/services/auth_service.dart
-    description: Handle user login, signup, tokens
+      - Task
+      - Goal
+      - Event
+  DayReflectionService:
     models:
-      - User              # lib/models/user.dart
-      - Session           # lib/models/session.dart
-
-  sync_service:
-    path: lib/services/sync_service.dart
-    description: Sync local DB with remote backend
+      - DayReflection
+  TrackerService:
+    models:
+      - Tracker
+      - TrackerType
+  TaskService:
+    models:
+      - Task
+  NotificationService:
+    models:
+      - Tracker
+  UserProfileService:
+    models:
+      - UserProfile
+      - Settings
+  SyncService:
     models:
       - OmniNote
-      - Attachment
-      - SyncMetadata      # lib/models/sync_metadata.dart
-
-  user_profile_service:
-    path: lib/services/user_profile_service.dart
-    description: Manage user settings and preferences
+      - SyncMetadata
+  AIService:
     models:
-      - UserProfile       # lib/models/user_profile.dart
-      - Settings          # lib/models/settings.dart
+      - OmniNote
+  TimezoneHelperService:
+    models: []  # purely helper, no direct model deps
+
+pages:
+  JournalPage:
+    services:
+      - OmniNoteService
+    models:
+      - OmniNote
+  NoteDetailPage:
+    services:
+      - OmniNoteService
+      - TrackerService
+    models:
+      - OmniNote
+      - Tracker
+      - TrackerType
+  CalendarOverviewPage:
+    services:
+      - OmniNoteService
+    models:
+      - OmniNote
+  DayReflectionPage:
+    services:
+      - DayReflectionService
+    models:
+      - DayReflection
+  TrackerPage:
+    services:
+      - TrackerService
+    models:
+      - Tracker
+      - TrackerType
+  TrackerDetailPage:
+    services:
+      - TrackerService
+      - OmniNoteService
+    models:
+      - Tracker
+      - OmniNote
+  MediaPage:
+    services: []    # currently no direct service calls
+    models: []
+  GardenForestPage:
+    services:
+      - OmniNoteService
+    models:
+      - OmniNote
+      - ZoneTheme
+  StatsPage:
+    services:
+      - OmniNoteService
+    models:
+      - OmniNote
+      - ZoneTheme
+  TimeGroupJournalPage:
+    services:
+      - OmniNoteService
+    models:
+      - OmniNote
+      - ZoneTheme

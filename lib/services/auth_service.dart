@@ -5,10 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/user.dart';
 import '../models/session.dart';
 
-/// A service for handling user authentication:
-/// - login
-/// - signup
-/// - token/session management
+/// Service to handle user login, signup, and tokens.
 class AuthService {
   // Singleton instance
   static final AuthService instance = AuthService._internal();

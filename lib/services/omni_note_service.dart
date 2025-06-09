@@ -8,7 +8,7 @@ import '../models/omni_note.dart';
 import '../models/attachment.dart';
 import 'tracker_service.dart';
 
-/// Service to manage OmniNote CRUD and attachments using Hive.
+/// Service to load, save, query and archive journal notes.
 class OmniNoteService extends ChangeNotifier {
   OmniNoteService._();
   static final OmniNoteService instance = OmniNoteService._();

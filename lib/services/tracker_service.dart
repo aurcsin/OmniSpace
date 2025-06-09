@@ -52,6 +52,7 @@ class TrackerService extends ChangeNotifier {
   final Map<String, List<String>> _links = {};
 
   /// Link a note to a tracker.
+  @Deprecated('Linking notes to trackers will be removed in a future release.')
   Future<void> linkNote(String trackerId, String noteId) async {
     _links.putIfAbsent(noteId, () => []);
     if (!_links[noteId]!.contains(trackerId)) {
@@ -60,21 +61,5 @@ class TrackerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Unlink a tracker from a note.
-  Future<void> unlinkNote(String trackerId, String noteId) async {
-    _links[noteId]?.remove(trackerId);
-    notifyListeners();
-  }
-
-  /// Get tracker IDs linked to a note.
-  List<String> linkedTo(String noteId) => _links[noteId] ?? [];
-
-  /// Get note IDs linked to a tracker.
-  List<String> notesForTracker(String trackerId) {
-    final ids = <String>[];
-    _links.forEach((noteId, trackerIds) {
-      if (trackerIds.contains(trackerId)) ids.add(noteId);
-    });
-    return ids;
-  }
+  // The unlink and lookup functionality was unused and has been removed.
 }

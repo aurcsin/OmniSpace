@@ -1,0 +1,33 @@
+import 'package:flutter/material.dart';
+
+import '../models/tracker.dart';
+
+/// A simple page to display details about a [Tracker].
+class TrackerDetailPage extends StatelessWidget {
+  final Tracker tracker;
+  const TrackerDetailPage({required this.tracker, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(tracker.title)),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Type: ${tracker.type.name}'),
+            if (tracker.progress != null)
+              Text('Progress: ${(tracker.progress! * 100).round()}%'),
+            if (tracker.frequency != null)
+              Text('Frequency: ${tracker.frequency}'),
+            if (tracker.start != null)
+              Text('Start: ${tracker.start}'),
+            if (tracker.childIds.isNotEmpty)
+              Text('Child items: ${tracker.childIds.length}'),
+          ],
+        ),
+      ),
+    );
+  }
+}

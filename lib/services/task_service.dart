@@ -9,7 +9,8 @@ class TaskService extends ChangeNotifier {
   TaskService._internal();
   static final TaskService instance = TaskService._internal();
 
-  static const String _boxName = 'tasks';
+  static const String _boxName = 'tasks_v2';
+  static const String _oldBoxName = 'tasks';
   late Box<Task> _box;
 
   /// Initialize Hive box. Call once at app startup.
@@ -18,7 +19,22 @@ class TaskService extends ChangeNotifier {
     if (!Hive.isAdapterRegistered(TaskAdapter().typeId)) {
       Hive.registerAdapter(TaskAdapter());
     }
-    _box = await Hive.openBox<Task>(_boxName);
+
+    if (await Hive.boxExists(_oldBoxName)) {
+      final oldBox = await Hive.openBox<Task>(_oldBoxName);
+      final newBox = await Hive.openBox<Task>(_boxName);
+      for (final key in oldBox.keys) {
+        final value = oldBox.get(key);
+        if (value != null) {
+          await newBox.put(key, value);
+        }
+      }
+      await oldBox.deleteFromDisk();
+      _box = newBox;
+    } else {
+      _box = await Hive.openBox<Task>(_boxName);
+    }
+
     notifyListeners();
   }
 

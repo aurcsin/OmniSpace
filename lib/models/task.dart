@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'task.g.dart';
 
 /// A to-do task attached to a note.
-@HiveType(typeId: 3)
+@HiveType(typeId: 13)
 class Task extends HiveObject {
   @HiveField(0)
   String id;

@@ -10,11 +10,27 @@ class DayReflectionService extends ChangeNotifier {
   DayReflectionService._();
   static final DayReflectionService instance = DayReflectionService._();
 
+  static const String _boxName = 'day_reflections_v2';
+  static const String _oldBoxName = 'day_reflections';
+
   late Box<DayReflection> _box;
 
   /// Initialize Hive box; call once at app startup (e.g. in main.dart)
   Future<void> init() async {
-    _box = await Hive.openBox<DayReflection>('day_reflections');
+    if (await Hive.boxExists(_oldBoxName)) {
+      final oldBox = await Hive.openBox<DayReflection>(_oldBoxName);
+      final newBox = await Hive.openBox<DayReflection>(_boxName);
+      for (final key in oldBox.keys) {
+        final value = oldBox.get(key);
+        if (value != null) {
+          await newBox.put(key, value);
+        }
+      }
+      await oldBox.deleteFromDisk();
+      _box = newBox;
+    } else {
+      _box = await Hive.openBox<DayReflection>(_boxName);
+    }
     notifyListeners();
   }
 

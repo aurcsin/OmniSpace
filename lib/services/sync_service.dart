@@ -6,7 +6,7 @@ import '../models/omni_note.dart';
 import '../models/sync_metadata.dart';
 import 'omni_note_service.dart';
 
-/// A service to synchronize local notes (and attachments) with a remote backend.
+/// Service to sync local DB with remote backend.
 ///
 /// Supports:
 ///  • Pushing new/updated notes
@@ -111,5 +111,5 @@ class SyncException implements Exception {
   SyncException(this.message);
 
   @override
-  String toString() => 'SyncException: \$message';
+  String toString() => 'SyncException: $message';
 }

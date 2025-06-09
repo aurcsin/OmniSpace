@@ -1,5 +1,3 @@
-// File: lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -39,6 +37,9 @@ Future<void> main() async {
   if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
     Hive.registerAdapter(OmniNoteAdapter());
   }
+  if (!Hive.isAdapterRegistered(ZoneThemeAdapter().typeId)) {
+    Hive.registerAdapter(ZoneThemeAdapter());
+  }
   if (!Hive.isAdapterRegistered(AttachmentAdapter().typeId)) {
     Hive.registerAdapter(AttachmentAdapter());
   }
@@ -77,7 +78,7 @@ Future<void> main() async {
   await DayReflectionService.instance.init();
   await TaskService.instance.init();
   await UserProfileService.instance.init();
-  
+
   runApp(const MyApp());
 }
 

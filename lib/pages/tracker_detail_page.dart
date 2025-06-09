@@ -1,6 +1,7 @@
 // File: lib/pages/tracker_detail_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:omnispace/models/omni_note.dart';
 import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/services/tracker_service.dart';
 import 'package:omnispace/services/omni_note_service.dart';

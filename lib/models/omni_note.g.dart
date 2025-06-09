@@ -33,6 +33,10 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       tasks: (fields[13] as List?)?.cast<Task>(),
       goals: (fields[14] as List?)?.cast<Goal>(),
       events: (fields[15] as List?)?.cast<Event>(),
+      goalBundles: (fields[19] as List?)?.cast<GoalBundle>(),
+      eventBundles: (fields[20] as List?)?.cast<EventBundle>(),
+      taskBundles: (fields[21] as List?)?.cast<TaskBundle>(),
+      seriesBundles: (fields[22] as List?)?.cast<SeriesBundle>(),
       createdAt: fields[16] as DateTime?,
       lastUpdated: fields[17] as DateTime?,
       isPinned: fields[18] as bool,
@@ -42,7 +46,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(19)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -80,7 +84,15 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(17)
       ..write(obj.lastUpdated)
       ..writeByte(18)
-      ..write(obj.isPinned);
+      ..write(obj.isPinned)
+      ..writeByte(19)
+      ..write(obj.goalBundles)
+      ..writeByte(20)
+      ..write(obj.eventBundles)
+      ..writeByte(21)
+      ..write(obj.taskBundles)
+      ..writeByte(22)
+      ..write(obj.seriesBundles);
   }
 
   @override
@@ -90,65 +102,6 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is OmniNoteAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
-}
-
-class ZoneThemeAdapter extends TypeAdapter<ZoneTheme> {
-  @override
-  final int typeId = 10;
-
-  @override
-  ZoneTheme read(BinaryReader reader) {
-    switch (reader.readByte()) {
-      case 0:
-        return ZoneTheme.Air;
-      case 1:
-        return ZoneTheme.Earth;
-      case 2:
-        return ZoneTheme.Fire;
-      case 3:
-        return ZoneTheme.Water;
-      case 4:
-        return ZoneTheme.Void;
-      case 5:
-        return ZoneTheme.Fusion;
-      default:
-        return ZoneTheme.Air;
-    }
-  }
-
-  @override
-  void write(BinaryWriter writer, ZoneTheme obj) {
-    switch (obj) {
-      case ZoneTheme.Air:
-        writer.writeByte(0);
-        break;
-      case ZoneTheme.Earth:
-        writer.writeByte(1);
-        break;
-      case ZoneTheme.Fire:
-        writer.writeByte(2);
-        break;
-      case ZoneTheme.Water:
-        writer.writeByte(3);
-        break;
-      case ZoneTheme.Void:
-        writer.writeByte(4);
-        break;
-      case ZoneTheme.Fusion:
-        writer.writeByte(5);
-        break;
-    }
-  }
-
-  @override
-  int get hashCode => typeId.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ZoneThemeAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

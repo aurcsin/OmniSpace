@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 
 part 'tracker_type.g.dart';
 
-@HiveType(typeId: 7)
+@HiveType(typeId: 16)
 enum TrackerType {
   @HiveField(0)
   goal,

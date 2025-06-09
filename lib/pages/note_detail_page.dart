@@ -1,6 +1,10 @@
 // File: lib/pages/note_detail_page.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/omni_note.dart';
 import '../models/tracker_type.dart';
@@ -9,7 +13,7 @@ import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
 import '../widgets/main_menu_drawer.dart';
 
-/// Modes for the detail page: text, voice, image, or video.
+/// Modes for attachments/demo starting points (not shown in UI)
 enum NoteMode { text, voice, image, video }
 
 class NoteDetailPage extends StatefulWidget {
@@ -23,17 +27,17 @@ class NoteDetailPage extends StatefulWidget {
   });
 
   @override
-  _NoteDetailPageState createState() => _NoteDetailPageState();
+  State<NoteDetailPage> createState() => _NoteDetailPageState();
 }
 
 class _NoteDetailPageState extends State<NoteDetailPage> {
   final _formKey = GlobalKey<FormState>();
-  final Map<TrackerType, List<Tracker>> _pendingLinks = {
-    for (var t in TrackerType.values) t: <Tracker>[],
-  };
   late TextEditingController _titleCtl;
   late TextEditingController _contentCtl;
   late ZoneTheme _zone;
+  final List<File> _imageFiles = [];
+  final List<File> _audioFiles = [];
+  final List<File> _videoFiles = [];
 
   @override
   void initState() {
@@ -41,7 +45,20 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _titleCtl = TextEditingController(text: widget.omniNote?.title ?? '');
     _contentCtl = TextEditingController(text: widget.omniNote?.content ?? '');
     _zone = widget.omniNote?.zone ?? ZoneTheme.Fusion;
-    _initLinked();
+    // Optional: activate initial mode
+    switch (widget.initialMode) {
+      case NoteMode.image:
+        _pickImage();
+        break;
+      case NoteMode.video:
+        _pickVideo();
+        break;
+      case NoteMode.voice:
+        _recordAudio();
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -49,20 +66,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _titleCtl.dispose();
     _contentCtl.dispose();
     super.dispose();
-  }
-
-  void _initLinked() {
-    final note = widget.omniNote;
-    if (note == null) return;
-    final ids = TrackerService.instance.linkedTo(note.id);
-    for (final id in ids) {
-      final matches =
-          TrackerService.instance.all.where((t) => t.id == id);
-      if (matches.isNotEmpty) {
-        final tracker = matches.first;
-        _pendingLinks[tracker.type]!.add(tracker);
-      }
-    }
   }
 
   Future<void> _saveNote() async {
@@ -84,22 +87,64 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
           tasks: null,
           goals: null,
           events: null,
+          goalBundles: null,
+          eventBundles: null,
+          taskBundles: null,
+          seriesBundles: null,
           createdAt: DateTime.now(),
           lastUpdated: DateTime.now(),
           isPinned: false,
         );
+
     note
       ..title = _titleCtl.text
       ..content = _contentCtl.text
       ..zone = _zone
       ..lastUpdated = DateTime.now();
+
     await OmniNoteService.instance.saveNote(note);
-    for (final entry in _pendingLinks.entries) {
-      for (final tracker in entry.value) {
-        await TrackerService.instance.linkNote(tracker.id, note.id);
+
+    for (final f in _imageFiles) {
+      await OmniNoteService.instance.addImageAttachment(note, f);
+    }
+    for (final f in _audioFiles) {
+      await OmniNoteService.instance.addAudioAttachment(note, f);
+    }
+    for (final f in _videoFiles) {
+      await OmniNoteService.instance.addVideoAttachment(note, f);
+    }
+
+    Navigator.pop(context);
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera);
+    if (picked != null) {
+      setState(() => _imageFiles.add(File(picked.path)));
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickVideo(source: ImageSource.camera);
+    if (picked != null) {
+      setState(() => _videoFiles.add(File(picked.path)));
+    }
+  }
+
+  Future<void> _recordAudio() async {
+    final rec = Record();
+    if (await rec.hasPermission()) {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await rec.start(path: path);
+      await Future.delayed(const Duration(seconds: 5));
+      final filePath = await rec.stop();
+      if (filePath != null) {
+        setState(() => _audioFiles.add(File(filePath)));
       }
     }
-    Navigator.pop(context);
   }
 
   @override
@@ -107,14 +152,8 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Text(widget.omniNote == null ? 'New Note' : 'Edit Note'),
-        actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _saveNote),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.save), onPressed: _saveNote)],
       ),
       body: Form(
         key: _formKey,
@@ -123,43 +162,76 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Title
               TextFormField(
                 controller: _titleCtl,
                 decoration: const InputDecoration(labelText: 'Title'),
               ),
-
               const SizedBox(height: 12),
-
-              // Content
               TextFormField(
                 controller: _contentCtl,
                 decoration: const InputDecoration(labelText: 'Content'),
                 maxLines: null,
                 keyboardType: TextInputType.multiline,
               ),
-
               const SizedBox(height: 12),
-
-              // Zone selector
               DropdownButtonFormField<ZoneTheme>(
                 value: _zone,
                 decoration: const InputDecoration(labelText: 'Zone'),
                 items: ZoneTheme.values.map((z) {
                   final name = z.toString().split('.').last;
-                  return DropdownMenuItem(
-                    value: z,
-                    child: Text(name),
-                  );
+                  return DropdownMenuItem(value: z, child: Text(name));
                 }).toList(),
                 onChanged: (v) => setState(() => _zone = v!),
               ),
-              // —— LINK TO TRACKERS ——
               const SizedBox(height: 12),
-              for (final type in TrackerType.values)
+              if (_imageFiles.isNotEmpty || _audioFiles.isNotEmpty || _videoFiles.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    if (_imageFiles.isNotEmpty) const Icon(Icons.image, size: 20),
+                    if (_audioFiles.isNotEmpty) const Icon(Icons.mic, size: 20),
+                    if (_videoFiles.isNotEmpty) const Icon(Icons.videocam, size: 20),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              for (final type in [
+                TrackerType.goal,
+                TrackerType.event,
+                TrackerType.task,
+                TrackerType.series
+              ])
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: _buildTrackerField(type),
+                  child: DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      labelText: '${type.name[0].toUpperCase()}${type.name.substring(1)} Link',
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('— none —')),
+                      ...TrackerService.instance.all
+                          .where((t) => t.type == type)
+                          .map((t) => DropdownMenuItem(value: t.id, child: Text(t.title))),
+                      const DropdownMenuItem(value: '__new__', child: Text('Create new…')),
+                    ],
+                    onChanged: (val) async {
+                      if (val == null) return;
+                      final note = widget.omniNote;
+                      if (val == '__new__') {
+                        final newTitle = await showDialog<String>(
+                          context: context,
+                          builder: (_) => _NamePromptDialog(label: type.name),
+                        );
+                        if (newTitle != null && newTitle.isNotEmpty && note != null) {
+                          final newTracker =
+                              Tracker(id: UniqueKey().toString(), type: type, title: newTitle);
+                          await TrackerService.instance.create(newTracker);
+                          await TrackerService.instance.linkNote(newTracker.id, note.id);
+                        }
+                      } else if (note != null) {
+                        await TrackerService.instance.linkNote(val, note.id);
+                      }
+                    },
+                  ),
                 ),
             ],
           ),
@@ -167,72 +239,21 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ),
     );
   }
+}
 
-  Widget _buildTrackerField(TrackerType type) {
-    final selected = _pendingLinks[type]!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 4,
-          children: [
-            for (final t in selected)
-              InputChip(
-                label: Text(t.title),
-                onDeleted: () async {
-                  setState(() => selected.remove(t));
-                  if (widget.omniNote != null) {
-                    await TrackerService.instance.unlinkNote(t.id, widget.omniNote!.id);
-                  }
-                },
-              ),
-          ],
-        ),
-        Autocomplete<Tracker>(
-          optionsBuilder: (text) {
-            final q = text.text.toLowerCase();
-            final opts = TrackerService.instance.ofType(type);
-            if (q.isEmpty) return opts;
-            return opts.where((t) => t.title.toLowerCase().contains(q));
-          },
-          displayStringForOption: (t) => t.title,
-          onSelected: (tracker) async {
-            if (!selected.contains(tracker)) {
-              setState(() => selected.add(tracker));
-              if (widget.omniNote != null) {
-                await TrackerService.instance.linkNote(tracker.id, widget.omniNote!.id);
-              }
-            }
-          },
-          fieldViewBuilder: (context, ctl, focus, onSubmit) {
-            return TextField(
-              controller: ctl,
-              focusNode: focus,
-              decoration: InputDecoration(
-                labelText: '${type.name[0].toUpperCase()}${type.name.substring(1)} Link',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () async {
-                    final title = ctl.text.trim();
-                    if (title.isEmpty) return;
-                    final newTracker = Tracker(
-                      id: UniqueKey().toString(),
-                      type: type,
-                      title: title,
-                    );
-                    await TrackerService.instance.create(newTracker);
-                    setState(() => selected.add(newTracker));
-                    if (widget.omniNote != null) {
-                      await TrackerService.instance.linkNote(newTracker.id, widget.omniNote!.id);
-                    }
-                    ctl.clear();
-                  },
-                ),
-              ),
-              onSubmitted: (_) {},
-            );
-          },
-        ),
+class _NamePromptDialog extends StatelessWidget {
+  final String label;
+  const _NamePromptDialog({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctl = TextEditingController();
+    return AlertDialog(
+      title: Text('New ${label[0].toUpperCase()}${label.substring(1)}'),
+      content: TextField(controller: ctl, decoration: InputDecoration(hintText: '$label title')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(onPressed: () => Navigator.pop(context, ctl.text), child: const Text('Create')),
       ],
     );
   }

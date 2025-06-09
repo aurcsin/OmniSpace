@@ -1,7 +1,8 @@
-// lib/services/ai_service.dart
+// File: lib/services/ai_service.dart
 
 import 'dart:async';
 
+/// Service to generate summaries, mood-analysis, and insights.
 class AIService {
   AIService._();
   static final instance = AIService._();

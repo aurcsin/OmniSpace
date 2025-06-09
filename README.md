@@ -67,3 +67,6 @@
 - `assets/` – Shared images and data
 - `android/`, `ios/`, `linux/`, `macos/`, `windows/`, `web/` – Platform-specific projects
 - `test/` – Unit and widget tests
+
+### Development Notes
+- `linkNote` remains for backward compatibility but is deprecated. `unlinkNote` and `linkedTo` were removed as they were unused.

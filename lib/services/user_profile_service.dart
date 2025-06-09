@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:omnispace/models/settings.dart';
 import 'package:omnispace/models/user_profile.dart';
 
-/// Service to load and save the user profile and settings via Hive.
+/// Service to manage user settings and preferences.
 class UserProfileService extends ChangeNotifier {
   UserProfileService._internal();
   static final UserProfileService instance = UserProfileService._internal();
