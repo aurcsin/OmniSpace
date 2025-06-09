@@ -1,8 +1,10 @@
 // File: lib/pages/tracker_detail_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:omnispace/models/omni_note.dart';
 import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/omni_note.dart';
 import 'package:omnispace/services/tracker_service.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/pages/note_detail_page.dart';
@@ -10,7 +12,7 @@ import 'package:omnispace/pages/note_detail_page.dart';
 /// Displays details for a single tracker and its linked notes.
 class TrackerDetailPage extends StatefulWidget {
   final Tracker tracker;
-  const TrackerDetailPage({required this.tracker, super.key});
+  const TrackerDetailPage({required this.tracker, Key? key}) : super(key: key);
 
   @override
   _TrackerDetailPageState createState() => _TrackerDetailPageState();
@@ -30,8 +32,14 @@ class _TrackerDetailPageState extends State<TrackerDetailPage> {
     _loadLinkedNotes();
   }
 
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadLinkedNotes() async {
-    final noteIds = TrackerService.instance.linkedTo(_tracker.id);
+    final noteIds = TrackerService.instance.notesForTracker(_tracker.id);
     final allNotes = OmniNoteService.instance.notes;
     setState(() {
       _linkedNotes = allNotes.where((n) => noteIds.contains(n.id)).toList();
@@ -42,28 +50,30 @@ class _TrackerDetailPageState extends State<TrackerDetailPage> {
     setState(() {
       _isEditing = !_isEditing;
       if (!_isEditing) {
-        // Save on exit edit
+        // Save when exiting edit mode
         _tracker.title = _titleController.text;
-        TrackerService.instance.create(_tracker); // save or update logic
+        TrackerService.instance.save(_tracker);
       }
     });
   }
 
   void _addLinkedNote() async {
-    // Create a new note and link it
+    // Create a new note, save it, then link to tracker
     final newNote = OmniNote(
       id: UniqueKey().toString(),
       title: '',
       subtitle: '',
       content: '',
-      attachments: [],
+      zone: _tracker.type == TrackerType.event ? ZoneTheme.Earth : ZoneTheme.Fusion,
+      tags: '',
+      colorValue: 0xFFFFFFFF,
       createdAt: DateTime.now(),
       lastUpdated: DateTime.now(),
+      attachments: [],
     );
-    await OmniNoteService.instance.createNote(newNote);
+    await OmniNoteService.instance.saveNote(newNote);
     await TrackerService.instance.linkNote(_tracker.id, newNote.id);
     await _loadLinkedNotes();
-    // Navigate to note detail
     if (mounted) {
       Navigator.of(context)
           .push(MaterialPageRoute(
@@ -98,7 +108,10 @@ class _TrackerDetailPageState extends State<TrackerDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Linked Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Linked Notes',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: _addLinkedNote,
@@ -112,10 +125,11 @@ class _TrackerDetailPageState extends State<TrackerDetailPage> {
                 ? const Center(child: Text('No notes linked to this tracker.'))
                 : ListView.builder(
                     itemCount: _linkedNotes.length,
-                    itemBuilder: (_, i) {
-                      final note = _linkedNotes[i];
+                    itemBuilder: (context, index) {
+                      final note = _linkedNotes[index];
                       return ListTile(
-                        title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                        title: Text(
+                            note.title.isNotEmpty ? note.title : '(No Title)'),
                         subtitle: Text(
                           note.content.length > 50
                               ? '${note.content.substring(0, 50)}...'

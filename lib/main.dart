@@ -1,8 +1,11 @@
+// File: lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 // Models
 import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
 import 'package:omnispace/models/attachment.dart';
 import 'package:omnispace/models/task.dart';
 import 'package:omnispace/models/goal.dart';

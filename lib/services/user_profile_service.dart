@@ -1,11 +1,11 @@
 // File: lib/services/user_profile_service.dart
 
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
-import 'package:omnispace/models/settings.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:omnispace/models/user_profile.dart';
+import 'package:omnispace/models/settings.dart';
 
-/// Service to manage user settings and preferences.
+/// Service to load and save the user profile and settings via Hive.
 class UserProfileService extends ChangeNotifier {
   UserProfileService._internal();
   static final UserProfileService instance = UserProfileService._internal();
@@ -13,8 +13,11 @@ class UserProfileService extends ChangeNotifier {
   static const String _boxName = 'user_profile';
   late Box<UserProfile> _box;
 
-  /// Initialize Hive box. Call once at app startup (main.dart).
+  /// Initialize Hive box. Call once at app startup.
   Future<void> init() async {
+    // Ensure Hive is initialized
+    await Hive.initFlutter();
+
     // Register adapters if not already registered
     if (!Hive.isAdapterRegistered(UserProfileAdapter().typeId)) {
       Hive.registerAdapter(UserProfileAdapter());
@@ -58,9 +61,23 @@ class UserProfileService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Toggles dark mode in the user’s settings.
+  Future<void> setDarkMode(bool value) async {
+    await _ensureInit();
+    UserProfile profile;
+    if (_box.isEmpty) {
+      profile = UserProfile(settings: Settings(darkMode: value));
+    } else {
+      profile = _box.get('profile')!;
+      profile.settings.darkMode = value;
+    }
+    await _box.put('profile', profile);
+    notifyListeners();
+  }
+
   /// Current in-memory profile, or null if not loaded.
   UserProfile? get currentProfile {
-    if (Hive.isBoxOpen(_boxName) && !_box.isEmpty) {
+    if (Hive.isBoxOpen(_boxName) && _box.isNotEmpty) {
       return _box.get('profile');
     }
     return null;

@@ -1,12 +1,12 @@
-// File: lib/extensions/zone_theme_x.dart
+// File: lib/utils/zone_theme_extensions.dart
 
 import 'package:flutter/material.dart';
-import '../models/zone_theme.dart';
+import 'package:omnispace/models/zone_theme.dart';
 
-/// Extension to add UI helpers to [ZoneTheme].
-extension ZoneThemeX on ZoneTheme {
-  /// Human-readable name for display.
-  String get displayName {
+/// Convenience getters for [ZoneTheme].
+extension ZoneThemeExtension on ZoneTheme {
+  /// Human-friendly zone name.
+  String get label {
     switch (this) {
       case ZoneTheme.Air:
         return 'Air';
@@ -23,7 +23,7 @@ extension ZoneThemeX on ZoneTheme {
     }
   }
 
-  /// Associated color for this zone.
+  /// A representative color for the zone.
   Color get color {
     switch (this) {
       case ZoneTheme.Air:
@@ -38,8 +38,6 @@ extension ZoneThemeX on ZoneTheme {
         return Colors.grey;
       case ZoneTheme.Fusion:
         return Colors.purple;
-      default:
-        return Colors.black;
     }
   }
 }

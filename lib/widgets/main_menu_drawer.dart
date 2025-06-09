@@ -1,18 +1,19 @@
-// lib/widgets/main_menu_drawer.dart
+// File: lib/widgets/main_menu_drawer.dart
 
 import 'package:flutter/material.dart';
 
-import '../pages/sky_space_page.dart';
-import '../pages/workshop_forge_page.dart';
-import '../pages/garden_forest_page.dart';
-import '../pages/studio_underwater_page.dart';
-import '../pages/root_cave_page.dart';
-import '../pages/journal_page.dart';
-import '../pages/collections_page.dart';
-import '../pages/tracker_page.dart';
-import '../pages/options_page.dart';
-import '../pages/account_page.dart';
+import 'package:omnispace/pages/sky_space_page.dart';
+import 'package:omnispace/pages/workshop_forge_page.dart';
+import 'package:omnispace/pages/garden_forest_page.dart';
+import 'package:omnispace/pages/studio_underwater_page.dart';
+import 'package:omnispace/pages/root_cave_page.dart';
+import 'package:omnispace/pages/journal_page.dart';
+import 'package:omnispace/pages/collections_page.dart';
+import 'package:omnispace/pages/tracker_page.dart';
+import 'package:omnispace/pages/options_page.dart';
+import 'package:omnispace/pages/account_page.dart';
 
+/// A side drawer for navigating between the core zones and utility pages.
 class MainMenuDrawer extends StatelessWidget {
   const MainMenuDrawer({super.key});
 
@@ -35,7 +36,7 @@ class MainMenuDrawer extends StatelessWidget {
               ),
             ),
 
-            // Themed real page entries:
+            // Themed zones:
             _buildTile(
               context,
               icon: Icons.cloud,
@@ -69,7 +70,7 @@ class MainMenuDrawer extends StatelessWidget {
 
             const Divider(),
 
-            // Neutral Journal page now after Root Cave:
+            // Journal:
             _buildTile(
               context,
               icon: Icons.book,
@@ -79,7 +80,7 @@ class MainMenuDrawer extends StatelessWidget {
 
             const Divider(),
 
-            // Utility pages:
+            // Utilities:
             _buildTile(
               context,
               icon: Icons.collections,

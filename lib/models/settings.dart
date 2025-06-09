@@ -25,4 +25,22 @@ class Settings extends HiveObject {
     this.locale = 'en_US',
     this.defaultTimeZone = 'UTC',
   });
+
+  /// Convert Settings to JSON for persistence or synchronization.
+  Map<String, dynamic> toJson() => {
+        'darkMode': darkMode,
+        'notificationsEnabled': notificationsEnabled,
+        'locale': locale,
+        'defaultTimeZone': defaultTimeZone,
+      };
+
+  /// Create Settings from a JSON map.
+  factory Settings.fromJson(Map<String, dynamic> json) {
+    return Settings(
+      darkMode: json['darkMode'] as bool? ?? false,
+      notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+      locale: json['locale'] as String? ?? 'en_US',
+      defaultTimeZone: json['defaultTimeZone'] as String? ?? 'UTC',
+    );
+  }
 }

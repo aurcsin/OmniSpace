@@ -1,12 +1,12 @@
 // File: lib/services/sync_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:hive/hive.dart';
 import '../models/omni_note.dart';
 import '../models/sync_metadata.dart';
 import 'omni_note_service.dart';
 
-/// Service to sync local DB with remote backend.
+/// A service to synchronize local notes (and attachments) with a remote backend.
 ///
 /// Supports:
 ///  • Pushing new/updated notes
@@ -16,6 +16,13 @@ class SyncService {
   // Singleton instance
   static final SyncService instance = SyncService._internal();
   SyncService._internal();
+
+  /// Ensure required Hive adapters are registered.
+  Future<void> init() async {
+    if (!Hive.isAdapterRegistered(SyncMetadataAdapter().typeId)) {
+      Hive.registerAdapter(SyncMetadataAdapter());
+    }
+  }
 
   // Base URL for sync endpoints
   static const String _baseUrl = 'https://api.yourapp.com/sync';

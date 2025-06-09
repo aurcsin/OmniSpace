@@ -1,20 +1,26 @@
-// lib/pages/stats_page.dart
+// File: lib/pages/stats_page.dart
+
 import 'package:flutter/material.dart';
 
-import '../models/omni_note.dart';
-import '../services/omni_note_service.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/utils/zone_theme_extensions.dart';
 
+/// Shows overall statistics about notes by zone.
 class StatsPage extends StatelessWidget {
-  const StatsPage({super.key});
+  const StatsPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final notes = OmniNoteService.instance.notes;
+    // Initialize counts for each zone
     final byZone = {for (var z in ZoneTheme.values) z: 0};
     for (var n in notes) {
       byZone[n.zone] = byZone[n.zone]! + 1;
     }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Stats')),
       drawer: const MainMenuDrawer(),
@@ -25,9 +31,10 @@ class StatsPage extends StatelessWidget {
             trailing: Text('${notes.length}'),
           ),
           const Divider(),
+          // Display count per zone
           ...ZoneTheme.values.map(
             (z) => ListTile(
-              title: Text(z.toString().split('.').last),
+              title: Text(z.label),
               trailing: Text('${byZone[z]}'),
             ),
           ),
