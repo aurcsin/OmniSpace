@@ -6,15 +6,16 @@ import 'package:intl/intl.dart';
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import '../widgets/main_menu_drawer.dart';
-import 'note_detail_page.dart';
+
+// Alias this import so its own Padding (if any) doesn’t clash with Flutter’s.
+import 'note_detail_page.dart' as detail;
 
 enum CalView { day, week, month, year }
 
 class CalendarOverviewPage extends StatefulWidget {
   const CalendarOverviewPage({super.key});
-
   @override
-  _CalendarOverviewPageState createState() => _CalendarOverviewPageState();
+  State<CalendarOverviewPage> createState() => _CalendarOverviewPageState();
 }
 
 class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
@@ -57,7 +58,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = DateTime(_focusDate.year + 1, 1, 1);
         break;
     }
-    _notes = all.where((n) => n.createdAt.isAfter(start) && n.createdAt.isBefore(end)).toList();
+    _notes = all.where((n) {
+      return n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
+    }).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
   void _prev() {
@@ -133,6 +137,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
@@ -142,7 +147,6 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(_formatFocusLabel()),
-              const SizedBox(width: 4),
               const Icon(Icons.arrow_drop_down),
             ],
           ),
@@ -163,7 +167,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
       ),
       body: Column(
         children: [
-          // View toggles
+          // View toggle buttons
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ToggleButtons(
@@ -183,15 +187,12 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             ),
           ),
 
-          // Prev/Next controls
+          // Prev / Next
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(icon: const Icon(Icons.chevron_left), onPressed: _prev),
-              Text(
-                _formatFocusLabel(),
-                style: textTheme.titleMedium,
-              ),
+              Text(_formatFocusLabel(), style: textTheme.titleMedium),
               IconButton(icon: const Icon(Icons.chevron_right), onPressed: _next),
             ],
           ),
@@ -202,21 +203,28 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _notes.isEmpty
+                : (_notes.isEmpty
                     ? const Center(child: Text('No notes in this range.'))
                     : ListView.builder(
                         itemCount: _notes.length,
                         itemBuilder: (_, i) {
                           final note = _notes[i];
                           return ListTile(
-                            title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                            title: Text(
+                              note.title.isNotEmpty ? note.title : '(No Title)',
+                            ),
                             subtitle: Text(DateFormat.jm().format(note.createdAt)),
                             onTap: () => Navigator.of(context)
-                                .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                                .push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        detail.NoteDetailPage(omniNote: note),
+                                  ),
+                                )
                                 .then((_) => _loadNotes()),
                           );
                         },
-                      ),
+                      )),
           ),
         ],
       ),

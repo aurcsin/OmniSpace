@@ -5,8 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
-import 'note_detail_page.dart';
 import '../widgets/main_menu_drawer.dart';
+// Alias the note detail page import to avoid name collisions
+import '../pages/note_detail_page.dart' as ndp;
 
 class TimeGroupJournalPage extends StatefulWidget {
   const TimeGroupJournalPage({super.key});
@@ -29,11 +30,13 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
     await OmniNoteService.instance.loadAllNotes();
     final notes = OmniNoteService.instance.notes;
     notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     final Map<String, List<OmniNote>> grouped = {};
     for (var n in notes) {
       final key = DateFormat('yyyy-MM-dd').format(n.createdAt);
       grouped.putIfAbsent(key, () => []).add(n);
     }
+
     setState(() {
       _grouped = grouped;
       _isLoading = false;
@@ -73,6 +76,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Date header
                         Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Text(
@@ -80,22 +84,22 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
-                        ...entry.value.map(
-                          (note) => ListTile(
-                            title: Text(note.title),
+
+                        // Notes for this date
+                        ...entry.value.map((note) {
+                          return ListTile(
+                            title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
                             subtitle: Text(note.subtitle),
                             trailing: Text(_formatZone(note.zone)),
                             onTap: () => Navigator.of(context)
                                 .push(
                                   MaterialPageRoute(
-                                    builder: (_) => NoteDetailPage(
-                                      omniNote: note,
-                                    ),
+                                    builder: (_) => ndp.NoteDetailPage(omniNote: note),
                                   ),
                                 )
                                 .then((_) => _loadNotes()),
-                          ),
-                        )
+                          );
+                        }).toList(),
                       ],
                     );
                   }).toList(),
@@ -103,9 +107,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context)
             .push(
-              MaterialPageRoute(
-                builder: (_) => const NoteDetailPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const ndp.NoteDetailPage()),
             )
             .then((_) => _loadNotes()),
         child: const Icon(Icons.add),

@@ -1,0 +1,41 @@
+# dependency_map.yaml
+version: "1.0"
+
+services:
+  omni_note_service:
+    path: lib/services/omni_note_service.dart
+    description: Load, save, query and archive journal notes
+    models:
+      - OmniNote          # lib/models/omni_note.dart
+      - Attachment        # lib/models/attachment.dart
+      - Tag               # lib/models/tag.dart
+
+  ai_service:
+    path: lib/services/ai_service.dart
+    description: Generate summaries, mood‐analysis, and insights
+    models:
+      - OmniNote
+      - Attachment
+      - AnalysisResult    # lib/models/analysis_result.dart
+
+  auth_service:
+    path: lib/services/auth_service.dart
+    description: Handle user login, signup, tokens
+    models:
+      - User              # lib/models/user.dart
+      - Session           # lib/models/session.dart
+
+  sync_service:
+    path: lib/services/sync_service.dart
+    description: Sync local DB with remote backend
+    models:
+      - OmniNote
+      - Attachment
+      - SyncMetadata      # lib/models/sync_metadata.dart
+
+  user_profile_service:
+    path: lib/services/user_profile_service.dart
+    description: Manage user settings and preferences
+    models:
+      - UserProfile       # lib/models/user_profile.dart
+      - Settings          # lib/models/settings.dart

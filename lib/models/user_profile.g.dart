@@ -1,41 +1,41 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'user_profile.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class UserProfileAdapter extends TypeAdapter<UserProfile> {
   @override
-  final int typeId = 4;
+  final int typeId = 12;
 
   @override
-  Goal read(BinaryReader reader) {
+  UserProfile read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
-      id: fields[0] as String,
-      title: fields[1] as String,
-      progress: fields[2] as double,
-      target: fields[3] as double,
+    return UserProfile(
+      userId: fields[0] as String?,
+      name: fields[1] as String?,
+      email: fields[2] as String?,
+      settings: fields[3] as Settings?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, UserProfile obj) {
     writer
       ..writeByte(4)
       ..writeByte(0)
-      ..write(obj.id)
+      ..write(obj.userId)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.progress)
+      ..write(obj.email)
       ..writeByte(3)
-      ..write(obj.target);
+      ..write(obj.settings);
   }
 
   @override
@@ -44,7 +44,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is UserProfileAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

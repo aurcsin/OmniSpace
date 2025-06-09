@@ -1,6 +1,7 @@
-// lib/models/omni_note.dart
+// File: lib/models/omni_note.dart
 
 import 'package:hive/hive.dart';
+import 'package:flutter/foundation.dart';
 import 'attachment.dart';
 import 'task.dart';
 import 'goal.dart';
@@ -29,57 +30,67 @@ enum ZoneTheme {
 @HiveType(typeId: 0)
 class OmniNote extends HiveObject {
   @HiveField(0)
-  String title;
+  String id;
 
   @HiveField(1)
-  String subtitle;
+  String title;
 
   @HiveField(2)
-  String content;
+  String subtitle;
 
   @HiveField(3)
-  ZoneTheme zone;
+  String content;
 
   @HiveField(4)
-  String tags;
+  ZoneTheme zone;
 
   @HiveField(5)
-  int colorValue;
+  String tags;
 
   @HiveField(6)
-  String? mood;
+  int colorValue;
 
   @HiveField(7)
-  String? direction;
+  String? mood;
 
   @HiveField(8)
-  String? projectId;
+  String? direction;
 
   @HiveField(9)
-  String? recommendedTag;
-
-  @HiveField(15)
-  String? seriesId;
+  String? projectId;
 
   @HiveField(10)
-  List<Attachment> attachments;
+  String? recommendedTag;
 
   @HiveField(11)
-  List<Task>? tasks;
+  String? seriesId;
 
   @HiveField(12)
-  List<Goal>? goals;
+  List<Attachment> attachments;
 
   @HiveField(13)
-  List<Event>? events;
+  List<Task>? tasks;
 
   @HiveField(14)
+  List<Goal>? goals;
+
+  @HiveField(15)
+  List<Event>? events;
+
+  @HiveField(16)
   DateTime createdAt;
 
+  @HiveField(17)
+  DateTime lastUpdated;
+
+  @HiveField(18)
+  bool isPinned;
+
   OmniNote({
-    required this.title,
-    required this.subtitle,
-    required this.content,
+    required this.id,
+    this.title = '',
+    this.subtitle = '',
+    this.content = '',
     this.zone = ZoneTheme.Fusion,
     this.tags = '',
     this.colorValue = 0xFFFFFFFF,
@@ -93,6 +104,64 @@ class OmniNote extends HiveObject {
     this.goals,
     this.events,
     DateTime? createdAt,
+    DateTime? lastUpdated,
+    this.isPinned = false,
   })  : attachments = attachments ?? [],
-        createdAt = createdAt ?? DateTime.now();
+        createdAt = createdAt ?? DateTime.now(),
+        lastUpdated = lastUpdated ?? createdAt ?? DateTime.now();
+
+  /// Convert this note to a JSON-compatible map.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'subtitle': subtitle,
+        'content': content,
+        'zone': describeEnum(zone),
+        'tags': tags,
+        'colorValue': colorValue,
+        'mood': mood,
+        'direction': direction,
+        'projectId': projectId,
+        'recommendedTag': recommendedTag,
+        'seriesId': seriesId,
+        'attachments': attachments.map((a) => a.toJson()).toList(),
+        'tasks': tasks?.map((t) => t.toJson()).toList(),
+        'goals': goals?.map((g) => g.toJson()).toList(),
+        'events': events?.map((e) => e.toJson()).toList(),
+        'createdAt': createdAt.toIso8601String(),
+        'lastUpdated': lastUpdated.toIso8601String(),
+        'isPinned': isPinned,
+      };
+
+  /// Create an OmniNote from a JSON map.
+  factory OmniNote.fromJson(Map<String, dynamic> json) => OmniNote(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        subtitle: json['subtitle'] as String,
+        content: json['content'] as String,
+        zone: ZoneTheme.values.firstWhere(
+            (z) => describeEnum(z) == json['zone']),
+        tags: json['tags'] as String,
+        colorValue: json['colorValue'] as int,
+        mood: json['mood'] as String?,
+        direction: json['direction'] as String?,
+        projectId: json['projectId'] as String?,
+        recommendedTag: json['recommendedTag'] as String?,
+        seriesId: json['seriesId'] as String?,
+        attachments: (json['attachments'] as List<dynamic>)
+            .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+            .toList(),
+        tasks: (json['tasks'] as List<dynamic>?)
+            ?.map((t) => Task.fromJson(t as Map<String, dynamic>))
+            .toList(),
+        goals: (json['goals'] as List<dynamic>?)
+            ?.map((g) => Goal.fromJson(g as Map<String, dynamic>))
+            .toList(),
+        events: (json['events'] as List<dynamic>?)
+            ?.map((e) => Event.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+        isPinned: json['isPinned'] as bool,
+      );
 }

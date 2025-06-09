@@ -1,7 +1,7 @@
 name: omnispace
 description: A spirit-driven, ecosystemic journaling & life-management app.
 version: 0.1.0+1
-publish_to: "none" # not published
+publish_to: "none"
 
 environment:
   sdk: ">=2.18.0 <4.0.0"
@@ -19,37 +19,38 @@ dependencies:
   hive_flutter: ^1.1.0
   path_provider: ^2.0.11
 
-  # Code generation
-  # (run: flutter pub run build_runner build --delete-conflicting-outputs)
-  hive_generator: ^2.0.0
-  build_runner: ^2.3.3
+  # Networking & Auth
+  http: ^1.4.0
 
   # Permissions & media
   permission_handler: ^12.0.0+1
   image_picker: ^1.1.2
   record: ^6.0.0
   audioplayers: ^6.4.0
-  # Updated waveform package for live audio recording widgets
   audio_waveforms: ^1.3.0
 
-  # Utilities
-  flutter_colorpicker: ^1.0.3
+  # Notifications & timezones
+  flutter_local_notifications: ^12.0.4
+  timezone: ^0.9.0
   intl: ^0.20.2
 
-  # UI
+  # UI & utilities
   flutter_staggered_grid_view: ^0.7.0
+  flutter_colorpicker: ^1.0.3
   cupertino_icons: ^1.0.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  # Linting
   flutter_lints: ^6.0.0
+
+  # Code generation for Hive adapters
+  build_runner: ^2.4.0
+  hive_generator: ^2.0.0
 
 flutter:
   uses-material-design: true
 
+  # Assets
   assets:
-    # add your other asset paths here
-
-  # If you have font or other assets, list them here
+    - assets/images/

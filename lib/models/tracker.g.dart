@@ -1,41 +1,50 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'tracker.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class TrackerAdapter extends TypeAdapter<Tracker> {
   @override
-  final int typeId = 4;
+  final int typeId = 8;
 
   @override
-  Goal read(BinaryReader reader) {
+  Tracker read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
+    return Tracker(
       id: fields[0] as String,
-      title: fields[1] as String,
-      progress: fields[2] as double,
-      target: fields[3] as double,
+      type: fields[1] as TrackerType,
+      title: fields[2] as String,
+      progress: fields[3] as double?,
+      frequency: fields[4] as String?,
+      start: fields[5] as DateTime?,
+      childIds: (fields[6] as List?)?.cast<String>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, Tracker obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.type)
       ..writeByte(2)
-      ..write(obj.progress)
+      ..write(obj.title)
       ..writeByte(3)
-      ..write(obj.target);
+      ..write(obj.progress)
+      ..writeByte(4)
+      ..write(obj.frequency)
+      ..writeByte(5)
+      ..write(obj.start)
+      ..writeByte(6)
+      ..write(obj.childIds);
   }
 
   @override
@@ -44,7 +53,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is TrackerAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

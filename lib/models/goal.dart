@@ -1,27 +1,46 @@
+// File: lib/models/goal.dart
+
 import 'package:hive/hive.dart';
 
 part 'goal.g.dart';
 
-@HiveType(typeId: 5)
+/// A progress-based goal attached to a note.
+@HiveType(typeId: 4)
 class Goal extends HiveObject {
   @HiveField(0)
-  String title;
+  String id;
 
   @HiveField(1)
-  String? description;
+  String title;
 
-  /// A growing list of “progress notes” (e.g. ["Did X today", "Followed up with Y", …])
   @HiveField(2)
-  List<String> progressNotes;
+  double progress;
 
   @HiveField(3)
-  List<String> linkedNoteIds;
+  double target;
 
   Goal({
-    required this.title,
-    this.description,
-    List<String>? progressNotes,
-    List<String>? linkedNoteIds,
-  })  : progressNotes = progressNotes ?? [],
-        linkedNoteIds = linkedNoteIds ?? [];
+    required this.id,
+    this.title = '',
+    this.progress = 0.0,
+    this.target = 1.0,
+  });
+
+  /// Convert to JSON for sync or serialization.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'progress': progress,
+        'target': target,
+      };
+
+  /// Create a Goal from a JSON map.
+  factory Goal.fromJson(Map<String, dynamic> json) {
+    return Goal(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      progress: (json['progress'] as num).toDouble(),
+      target: (json['target'] as num).toDouble(),
+    );
+  }
 }

@@ -1,41 +1,41 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'settings.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class SettingsAdapter extends TypeAdapter<Settings> {
   @override
-  final int typeId = 4;
+  final int typeId = 11;
 
   @override
-  Goal read(BinaryReader reader) {
+  Settings read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
-      id: fields[0] as String,
-      title: fields[1] as String,
-      progress: fields[2] as double,
-      target: fields[3] as double,
+    return Settings(
+      darkMode: fields[0] as bool,
+      notificationsEnabled: fields[1] as bool,
+      locale: fields[2] as String,
+      defaultTimeZone: fields[3] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, Settings obj) {
     writer
       ..writeByte(4)
       ..writeByte(0)
-      ..write(obj.id)
+      ..write(obj.darkMode)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.notificationsEnabled)
       ..writeByte(2)
-      ..write(obj.progress)
+      ..write(obj.locale)
       ..writeByte(3)
-      ..write(obj.target);
+      ..write(obj.defaultTimeZone);
   }
 
   @override
@@ -44,7 +44,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is SettingsAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

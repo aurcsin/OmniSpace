@@ -1,41 +1,32 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'sync_metadata.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class SyncMetadataAdapter extends TypeAdapter<SyncMetadata> {
   @override
-  final int typeId = 4;
+  final int typeId = 9;
 
   @override
-  Goal read(BinaryReader reader) {
+  SyncMetadata read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
-      id: fields[0] as String,
-      title: fields[1] as String,
-      progress: fields[2] as double,
-      target: fields[3] as double,
+    return SyncMetadata(
+      lastSyncedAt: fields[0] as DateTime?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, SyncMetadata obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
-      ..writeByte(2)
-      ..write(obj.progress)
-      ..writeByte(3)
-      ..write(obj.target);
+      ..writeByte(0)
+      ..write(obj.lastSyncedAt);
   }
 
   @override
@@ -44,7 +35,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is SyncMetadataAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

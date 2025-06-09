@@ -1,4 +1,4 @@
-// lib/pages/journal_page.dart
+// File: lib/pages/journal_page.dart
 
 import 'dart:io';
 
@@ -9,7 +9,10 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
 import '../services/omni_note_service.dart';
-import 'note_detail_page.dart';
+
+// Alias note_detail_page to avoid name conflicts
+import 'note_detail_page.dart' as detail;
+
 import 'calendar_overview_page.dart';
 import '../widgets/main_menu_drawer.dart';
 
@@ -119,9 +122,8 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        NoteDetailPage(
-                                                            omniNote: note),
+                                                    builder: (_) => detail.NoteDetailPage(
+                                                        omniNote: note),
                                                   ),
                                                 )
                                                 .then((_) => _initializeNotes()),
@@ -139,9 +141,8 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        NoteDetailPage(
-                                                            omniNote: note),
+                                                    builder: (_) => detail.NoteDetailPage(
+                                                        omniNote: note),
                                                   ),
                                                 )
                                                 .then((_) => _initializeNotes()),
@@ -166,7 +167,8 @@ class _JournalPageState extends State<JournalPage> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Wrap(
@@ -180,8 +182,9 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.text)))
+                      builder: (_) => const detail.NoteDetailPage(
+                          initialMode: detail.NoteMode.text),
+                    ))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -193,8 +196,9 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.voice)))
+                      builder: (_) => const detail.NoteDetailPage(
+                          initialMode: detail.NoteMode.voice),
+                    ))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -206,8 +210,9 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.image)))
+                      builder: (_) => const detail.NoteDetailPage(
+                          initialMode: detail.NoteMode.image),
+                    ))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -219,8 +224,9 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(initialMode: NoteMode.video)))
+                      builder: (_) => const detail.NoteDetailPage(
+                          initialMode: detail.NoteMode.video),
+                    ))
                     .then((_) => _initializeNotes());
               },
             ),
@@ -293,7 +299,7 @@ class _NoteCard extends StatelessWidget {
                   File(
                     note.attachments
                         .firstWhere((a) => a.type == AttachmentType.image)
-                        .localPath, // use localPath
+                        .localPath,
                   ),
                   fit: BoxFit.cover,
                   width: double.infinity,

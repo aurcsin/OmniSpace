@@ -9,7 +9,7 @@ import '../pages/studio_underwater_page.dart';
 import '../pages/root_cave_page.dart';
 import '../pages/journal_page.dart';
 import '../pages/collections_page.dart';
-import '../pages/trackers_page.dart';
+import '../pages/tracker_page.dart';
 import '../pages/options_page.dart';
 import '../pages/account_page.dart';
 
@@ -90,7 +90,7 @@ class MainMenuDrawer extends StatelessWidget {
               context,
               icon: Icons.checklist,
               title: 'Trackers',
-              page: const TrackersPage(),
+              page: const TrackerPage(),
             ),
             _buildTile(
               context,
