@@ -63,6 +63,32 @@ class TrackerService extends ChangeNotifier {
   List<Tracker> ofType(TrackerType type) =>
       _box.values.where((t) => t.type == type).toList();
 
+  /// Reorder trackers of a specific type and persist the new order.
+  Future<void> reorder(TrackerType type, int oldIndex, int newIndex) async {
+    final allTrackers = _box.values.toList();
+    final typedIndexes = <int>[];
+    for (int i = 0; i < allTrackers.length; i++) {
+      if (allTrackers[i].type == type) typedIndexes.add(i);
+    }
+    if (oldIndex < 0 || oldIndex >= typedIndexes.length) return;
+    if (newIndex > typedIndexes.length) newIndex = typedIndexes.length;
+
+    int from = typedIndexes[oldIndex];
+    int to = newIndex == typedIndexes.length
+        ? allTrackers.length
+        : typedIndexes[newIndex];
+    if (from < to) to -= 1;
+
+    final item = allTrackers.removeAt(from);
+    allTrackers.insert(to, item);
+
+    await _box.clear();
+    for (final t in allTrackers) {
+      await _box.put(t.id, t);
+    }
+    notifyListeners();
+  }
+
   // In-memory link map: noteId -> list of trackerIds
   final Map<String, List<String>> _links = {};
 

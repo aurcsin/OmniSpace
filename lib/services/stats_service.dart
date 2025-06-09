@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart'; // <-- for debugPrint
 import 'package:http/http.dart' as http;
 
 import '../models/omni_note.dart';

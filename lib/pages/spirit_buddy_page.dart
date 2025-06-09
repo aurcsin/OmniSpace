@@ -1,54 +1,28 @@
-import 'package:flutter/material.dart';
+// lib/services/spirit_buddy_service.dart
+
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 
 import '../models/omni_note.dart';
-import '../services/omni_note_service.dart';
-import '../services/spirit_buddy_service.dart';
-import '../widgets/main_menu_drawer.dart';
 
-class SpiritBuddyPage extends StatefulWidget {
-  const SpiritBuddyPage({super.key});
+class SpiritBuddyService {
+  SpiritBuddyService._();
+  static final instance = SpiritBuddyService._();
 
-  @override
-  _SpiritBuddyPageState createState() => _SpiritBuddyPageState();
-}
+  static const String _baseUrl = 'https://api.yourapp.com/spirit';
 
-class _SpiritBuddyPageState extends State<SpiritBuddyPage> {
-  String _message = '';
-
-  void _reflectOn(OmniNote note) {
-    SpiritBuddyService.instance.reflectOnEntry(note);
-    setState(() {
-      _message = 'Reflected on "${note.title}"';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final notes = OmniNoteService.instance.notes;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Spirit Buddy')),
-      drawer: const MainMenuDrawer(),
-      body: Column(
-        children: [
-          if (_message.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(_message),
-            ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: notes.length,
-              itemBuilder: (_, i) {
-                final n = notes[i];
-                return ListTile(
-                  title: Text(n.title.isNotEmpty ? n.title : '(No Title)'),
-                  onTap: () => _reflectOn(n),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+  Future<void> reflectOnEntry(OmniNote note, {http.Client? client}) async {
+    client ??= http.Client();
+    final url = Uri.parse('$_baseUrl/reflect');
+    final response = await client.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(note.toJson()),
     );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to reflect on entry: ${response.body}');
+    }
   }
 }

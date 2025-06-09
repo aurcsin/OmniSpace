@@ -1,19 +1,15 @@
-// File: lib/pages/note_detail_page.dart
+// File: lib/pages/time_group_journal_page.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
+//import 'package:record/record.dart';
 
 import '../models/omni_note.dart';
-import '../models/zone_theme.dart';
-import '../models/zone_theme.dart';
-import '../models/zone_theme.dart';
-import '../models/zone_theme.dart';
-import '../models/zone_theme.dart';
-import '../models/tracker_type.dart';
 import '../models/tracker.dart';
+import '../models/tracker_type.dart';
+import '../models/zone_theme.dart';
 import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
 import '../widgets/main_menu_drawer.dart';
@@ -227,7 +223,8 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                           builder: (_) => _NamePromptDialog(label: type.name),
                         );
                         if (newTitle != null && newTitle.isNotEmpty && note != null) {
-                          final newTracker = Tracker(id: UniqueKey().toString(), type: type, title: newTitle);
+                          final newTracker =
+                              Tracker(id: UniqueKey().toString(), type: type, title: newTitle);
                           await TrackerService.instance.create(newTracker);
                           await TrackerService.instance.linkNote(newTracker.id, note.id);
                         }

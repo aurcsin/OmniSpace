@@ -1,5 +1,3 @@
-// File: lib/extensions/zone_theme_x.dart
-
 import 'package:flutter/material.dart';
 import '../models/zone_theme.dart';
 
@@ -22,6 +20,9 @@ extension ZoneThemeX on ZoneTheme {
         return 'Fusion';
     }
   }
+
+  /// Alias for [displayName] used in some widgets.
+  String get label => displayName;
 
   /// Associated color for this zone.
   Color get color {

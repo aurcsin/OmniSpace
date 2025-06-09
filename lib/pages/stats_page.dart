@@ -1,12 +1,9 @@
-// File: lib/pages/stats_page.dart
-
 import 'package:flutter/material.dart';
 
 import 'package:omnispace/models/zone_theme.dart';
-import 'package:omnispace/models/omni_note.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/widgets/main_menu_drawer.dart';
-import 'package:omnispace/utils/zone_theme_extensions.dart';
+import '../extensions/zone_theme_extensions.dart';
 
 /// Shows overall statistics about notes by zone.
 class StatsPage extends StatelessWidget {
