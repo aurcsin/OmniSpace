@@ -12,4 +12,4 @@ export 'package:matcher/src/expect/expect_async.dart' show expectAsync;
 export 'package:matcher/src/expect/throws_matcher.dart' show Throws, throws;
 // The non-deprecated API (through a deprecated import).
 // ignore: deprecated_member_use
-export 'package:test_core/test_core.dart';
+export 'package:test_api/test_api.dart';

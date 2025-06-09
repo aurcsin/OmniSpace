@@ -43,6 +43,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  test: ^1.26.0
   flutter_lints: ^6.0.0
 
   # Code generation for Hive adapters
