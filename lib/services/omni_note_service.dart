@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
+import 'tracker_service.dart';
 
 /// Service to manage OmniNote CRUD and attachments using Hive.
 class OmniNoteService extends ChangeNotifier {
@@ -38,16 +39,23 @@ class OmniNoteService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Full-text search on title, content, or tags.
+  /// Full-text search on title, content, tags, and linked trackers.
   Future<List<OmniNote>> searchNotes(String query) async {
     await _ensureInit();
     final q = query.toLowerCase();
-    return _box.values
-        .where((n) =>
-            n.title.toLowerCase().contains(q) ||
-            n.content.toLowerCase().contains(q) ||
-            n.tags.toLowerCase().contains(q))
-        .toList();
+    final trackers = TrackerService.instance.all;
+    return _box.values.where((n) {
+      final trackerIds = TrackerService.instance.linkedTo(n.id);
+      final trackerTitles = trackers
+          .where((t) => trackerIds.contains(t.id))
+          .map((t) => t.title.toLowerCase());
+      final trackerMatch =
+          trackerTitles.any((title) => title.contains(q));
+      return n.title.toLowerCase().contains(q) ||
+          n.content.toLowerCase().contains(q) ||
+          n.tags.toLowerCase().contains(q) ||
+          trackerMatch;
+    }).toList();
   }
 
   /// Create or update a note based on its Hive key.

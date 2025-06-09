@@ -68,4 +68,13 @@ class TrackerService extends ChangeNotifier {
 
   /// Get tracker IDs linked to a note.
   List<String> linkedTo(String noteId) => _links[noteId] ?? [];
+
+  /// Get note IDs linked to a tracker.
+  List<String> notesForTracker(String trackerId) {
+    final ids = <String>[];
+    _links.forEach((noteId, trackerIds) {
+      if (trackerIds.contains(trackerId)) ids.add(noteId);
+    });
+    return ids;
+  }
 }
