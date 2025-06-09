@@ -1,7 +1,9 @@
+// File: lib/pages/time_group_journal_page.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-//import 'package:record/record.dart';
+import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:omnispace/models/omni_note.dart';
@@ -11,7 +13,6 @@ import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/tracker_service.dart';
 import 'package:omnispace/widgets/main_menu_drawer.dart';
-
 
 /// Modes for attachments/demo starting points (not shown in UI)
 enum NoteMode { text, voice, image, video }
@@ -70,7 +71,8 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
   Future<void> _saveNote() async {
     if (!_formKey.currentState!.validate()) return;
-    final note = widget.omniNote ?? OmniNote(
+    final note = widget.omniNote ??
+        OmniNote(
           id: UniqueKey().toString(),
           title: _titleCtl.text,
           subtitle: '',
@@ -134,11 +136,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   }
 
   Future<void> _recordAudio() async {
-    final rec = Record();
+    final rec = AudioRecorder();
     if (await rec.hasPermission()) {
       final dir = await getTemporaryDirectory();
       final path = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await rec.start(path: path);
+      await rec.start(const RecordConfig(), path: path);
       await Future.delayed(const Duration(seconds: 5));
       final filePath = await rec.stop();
       if (filePath != null) {
@@ -184,13 +186,18 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 onChanged: (v) => setState(() => _zone = v!),
               ),
               const SizedBox(height: 12),
-              if (_imageFiles.isNotEmpty || _audioFiles.isNotEmpty || _videoFiles.isNotEmpty)
+              if (_imageFiles.isNotEmpty ||
+                  _audioFiles.isNotEmpty ||
+                  _videoFiles.isNotEmpty)
                 Wrap(
                   spacing: 8,
                   children: [
-                    if (_imageFiles.isNotEmpty) const Icon(Icons.image, size: 20),
-                    if (_audioFiles.isNotEmpty) const Icon(Icons.mic, size: 20),
-                    if (_videoFiles.isNotEmpty) const Icon(Icons.videocam, size: 20),
+                    if (_imageFiles.isNotEmpty)
+                      const Icon(Icons.image, size: 20),
+                    if (_audioFiles.isNotEmpty)
+                      const Icon(Icons.mic, size: 20),
+                    if (_videoFiles.isNotEmpty)
+                      const Icon(Icons.videocam, size: 20),
                   ],
                 ),
               const SizedBox(height: 12),
@@ -204,14 +211,18 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: DropdownButtonFormField<String>(
                     decoration: InputDecoration(
-                      labelText: '${type.name[0].toUpperCase()}${type.name.substring(1)} Link',
+                      labelText:
+                          '${type.name[0].toUpperCase()}${type.name.substring(1)} Link',
                     ),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('— none —')),
+                      const DropdownMenuItem(
+                          value: null, child: Text('— none —')),
                       ...TrackerService.instance.all
                           .where((t) => t.type == type)
-                          .map((t) => DropdownMenuItem(value: t.id, child: Text(t.title))),
-                      const DropdownMenuItem(value: '__new__', child: Text('Create new…')),
+                          .map((t) =>
+                              DropdownMenuItem(value: t.id, child: Text(t.title))),
+                      const DropdownMenuItem(
+                          value: '__new__', child: Text('Create new…')),
                     ],
                     onChanged: (val) async {
                       if (val == null) return;
@@ -221,11 +232,16 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                           context: context,
                           builder: (_) => _NamePromptDialog(label: type.name),
                         );
-                        if (newTitle != null && newTitle.isNotEmpty && note != null) {
-                          final newTracker =
-                              Tracker(id: UniqueKey().toString(), type: type, title: newTitle);
+                        if (newTitle != null &&
+                            newTitle.isNotEmpty &&
+                            note != null) {
+                          final newTracker = Tracker(
+                              id: UniqueKey().toString(),
+                              type: type,
+                              title: newTitle);
                           await TrackerService.instance.create(newTracker);
-                          await TrackerService.instance.linkNote(newTracker.id, note.id);
+                          await TrackerService.instance
+                              .linkNote(newTracker.id, note.id);
                         }
                       } else if (note != null) {
                         await TrackerService.instance.linkNote(val, note.id);
@@ -250,10 +266,13 @@ class _NamePromptDialog extends StatelessWidget {
     final ctl = TextEditingController();
     return AlertDialog(
       title: Text('New ${label[0].toUpperCase()}${label.substring(1)}'),
-      content: TextField(controller: ctl, decoration: InputDecoration(hintText: '$label title')),
+      content: TextField(
+          controller: ctl, decoration: InputDecoration(hintText: '$label title')),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        ElevatedButton(onPressed: () => Navigator.pop(context, ctl.text), child: const Text('Create')),
+        ElevatedButton(
+            onPressed: () => Navigator.pop(context, ctl.text),
+            child: const Text('Create')),
       ],
     );
   }
