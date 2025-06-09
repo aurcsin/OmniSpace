@@ -3,9 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/omni_note.dart';
-import '../services/omni_note_service.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+
 
 // Alias this import so its own Padding (if any) doesn’t clash with Flutter’s.
 import 'note_detail_page.dart' as detail;

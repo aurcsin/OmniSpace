@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../services/tracker_service.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/services/tracker_service.dart';
+
 
 class TrackerEditorPage extends StatefulWidget {
   final Tracker? tracker;

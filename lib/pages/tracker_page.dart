@@ -1,9 +1,9 @@
-// File: lib/pages/tracker_page.dart
 import 'package:flutter/material.dart';
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../services/tracker_service.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/services/tracker_service.dart';
 import 'tracker_detail_page.dart';
+
 
 class TrackerPage extends StatefulWidget {
   const TrackerPage({super.key});
@@ -67,7 +67,8 @@ class _TrackerPageState extends State<TrackerPage>
     return ReorderableListView.builder(
       itemCount: trackers.length,
       onReorder: (oldIndex, newIndex) {
-        // TODO: implement reordering logic
+        TrackerService.instance.reorder(type, oldIndex, newIndex);
+        setState(() {});
       },
       itemBuilder: (context, index) {
         final tracker = trackers[index];

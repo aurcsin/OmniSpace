@@ -1,18 +1,17 @@
-// File: lib/pages/time_group_journal_page.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 //import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 
-import '../models/omni_note.dart';
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/tracker_service.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+
 
 /// Modes for attachments/demo starting points (not shown in UI)
 enum NoteMode { text, voice, image, video }

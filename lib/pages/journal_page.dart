@@ -6,15 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
-import '../models/omni_note.dart';
-import '../models/attachment.dart';
-import '../services/omni_note_service.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/attachment.dart';
+import 'package:omnispace/services/omni_note_service.dart';
 
 // Alias note_detail_page to avoid name conflicts
 import 'note_detail_page.dart' as detail;
-
 import 'calendar_overview_page.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+
 
 /// JournalPage shows all notes either in a grid or list.
 class JournalPage extends StatefulWidget {

@@ -3,11 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/day_reflection.dart';
-import '../services/day_reflection_service.dart';
-import '../widgets/day_reflection_editor.dart';
-import '../widgets/day_reflection_tile.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/day_reflection.dart';
+import 'package:omnispace/services/day_reflection_service.dart';
+import 'package:omnispace/widgets/day_reflection_editor.dart';
+import 'package:omnispace/widgets/day_reflection_tile.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+
 
 class DayReflectionPage extends StatefulWidget {
   const DayReflectionPage({Key? key}) : super(key: key);

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../models/omni_note.dart';
-import '../models/tracker_type.dart';
-import '../models/tracker.dart';
-import '../extensions/zone_theme_extensions.dart';
-import '../services/omni_note_service.dart';
-import '../services/tracker_service.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/extensions/zone_theme_extensions.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+
 
 /// Modes for the detail page: text, voice, image, or video.
 enum NoteMode { text, voice, image, video }
@@ -50,7 +51,8 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
   Future<void> _saveNote() async {
     if (!_formKey.currentState!.validate()) return;
-    final note = widget.omniNote ?? OmniNote(
+    final note = widget.omniNote ??
+        OmniNote(
           id: UniqueKey().toString(),
           title: _titleCtl.text,
           subtitle: '',
@@ -76,6 +78,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ..content = _contentCtl.text
       ..zone = _zone
       ..lastUpdated = DateTime.now();
+
     await OmniNoteService.instance.saveNote(note);
     Navigator.pop(context);
   }
@@ -128,15 +131,17 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 onChanged: (v) => setState(() => _zone = v!),
               ),
 
-              // Mode indicator (uses _mode)
               const SizedBox(height: 12),
+
+              // Mode indicator
               Text(
                 'Mode: ${_mode.name[0].toUpperCase()}${_mode.name.substring(1)}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
 
-              // —— LINK TO TRACKERS ——
               const SizedBox(height: 12),
+
+              // —— LINK TO TRACKERS ——
               for (final type in TrackerType.values)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -147,8 +152,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                     ),
                     value: null,
                     items: [
-                      const DropdownMenuItem(
-                          value: null, child: Text('— none —')),
+                      const DropdownMenuItem(value: null, child: Text('— none —')),
                       ...TrackerService.instance.all
                           .where((t) => t.type == type)
                           .map((t) => DropdownMenuItem(

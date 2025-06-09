@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../services/user_profile_service.dart';
+import 'package:omnispace/services/user_profile_service.dart';
 
 class OptionsPage extends StatelessWidget {
   const OptionsPage({super.key});

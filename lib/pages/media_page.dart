@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/attachment.dart';
-import '../widgets/main_menu_drawer.dart';
-import '../widgets/photo_video_preview.dart';
+import 'package:omnispace/models/attachment.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/widgets/photo_video_preview.dart';
+
 
 /// Simple gallery page demonstrating photo and video picking.
 class MediaPage extends StatefulWidget {
