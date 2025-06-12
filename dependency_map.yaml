@@ -25,6 +25,31 @@ services:
       - User              # lib/models/user.dart
       - Session           # lib/models/session.dart
 
+    cloud_sync_service:
+    path: lib/services/cloud_sync_service.dart
+    description: Manage sync across cloud providers
+    models:
+      - OmniNote
+      - Block
+      - Deck
+
+  secure_storage_service:
+    path: lib/services/secure_storage_service.dart
+    description: Securely store sensitive information
+    models:
+      - User
+      - Session
+      - Settings
+
+  plugin_manager:
+    path: lib/plugins/plugin_manager.dart
+    description: Load and manage optional plugins
+    models:
+      - OmniNote
+      - Block
+      - Deck
+
+
   sync_service:
     path: lib/services/sync_service.dart
     description: Sync local DB with remote backend

@@ -30,6 +30,8 @@ import 'package:omnispace/pages/tracker_page.dart';
 import 'package:omnispace/pages/media_page.dart';
 import 'package:omnispace/pages/calendar_overview_page.dart';
 import 'package:omnispace/pages/day_reflection_page.dart';
+import 'package:omnispace/pages/multi_pane_editor_page.dart';
+import 'themes/theme_loader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,7 +79,7 @@ Future<void> main() async {
   await DayReflectionService.instance.init();
   await TaskService.instance.init();
   await UserProfileService.instance.init();
-  
+
   runApp(const MyApp());
 }
 
@@ -88,7 +90,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'OmniSpace',
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      theme: ThemeLoader.load('light'),
       initialRoute: '/journal',
       routes: {
         '/journal': (_) => const JournalPage(),
@@ -96,6 +98,7 @@ class MyApp extends StatelessWidget {
         '/media': (_) => const MediaPage(),
         '/calendar': (_) => const CalendarOverviewPage(),
         '/reflections': (_) => const DayReflectionPage(),
+        '/editor': (_) => const MultiPaneEditorPage(),
       },
     );
   }

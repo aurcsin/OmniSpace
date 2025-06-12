@@ -3,7 +3,6 @@
 **OmniSpace** is an immersive, AI-driven, multi-sensory journaling and self-exploration platform designed to transform your inner world into a living, breathing ecosystem. Whether you're seeking reflection, growth, or play, OmniSpace offers an interface between your thoughts, moods, goals, and creative spirit—visualized through gardens, constellations, spirits, and elemental realms.
 
 ## ✨ Features
-
 ### 🪷 Journal as a Living Garden
 - Write entries in multiple formats: text, voice, photo, sketch, video.
 - Each journal entry blossoms into a flower in your garden.
@@ -44,10 +43,15 @@
 - Highlight content for spiritual companion analysis.
 - Meditation prompts and advisability features promote well-being.
 
+### 🛠 Experimental Modules
+- **Multi-Pane Editor** for arranging modular blocks side-by-side.
+- **Visual Knowledge Map** with draggable nodes.
+- **Mood Charts** showing emotion trends.
+- **Plugin API** and theme loader for community extensions.
+
 ---
 
 ## 🛠️ Built With
-
 - **Flutter** – Cross-platform UI toolkit.
 - **Hive** – Local data storage for entries and collections.
 - **Dart** – Core programming language for logic and UI.
@@ -56,13 +60,11 @@
 ---
 
 ## 📸 Screenshots (Coming Soon)
-
 <!-- Add screenshots of Sky, Journal, Garden, and Spirit Onboarding screens here -->
 
 ---
 
 ## 📦 Project Structure (Simplified)
-
 - `lib/` – Main Flutter source code
 - `assets/` – Shared images and data
 - `android/`, `ios/`, `linux/`, `macos/`, `windows/`, `web/` – Platform-specific projects

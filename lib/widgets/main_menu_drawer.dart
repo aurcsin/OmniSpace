@@ -8,6 +8,7 @@ import '../pages/garden_forest_page.dart';
 import '../pages/studio_underwater_page.dart';
 import '../pages/root_cave_page.dart';
 import '../pages/journal_page.dart';
+import '../pages/multi_pane_editor_page.dart';
 import '../pages/collections_page.dart';
 import '../pages/tracker_page.dart';
 import '../pages/options_page.dart';
@@ -75,6 +76,12 @@ class MainMenuDrawer extends StatelessWidget {
               icon: Icons.book,
               title: 'Journal',
               page: const JournalPage(),
+            ),
+            _buildTile(
+              context,
+              icon: Icons.view_week,
+              title: 'Multi-Pane Editor',
+              page: const MultiPaneEditorPage(),
             ),
 
             const Divider(),
