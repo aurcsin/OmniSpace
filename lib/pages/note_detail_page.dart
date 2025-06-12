@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
 import 'package:omnispace/models/tracker_type.dart';
 import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/extensions/zone_theme_extensions.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/tracker_service.dart';
 import 'package:omnispace/widgets/main_menu_drawer.dart';
-
 
 /// Modes for the detail page: text, voice, image, or video.
 enum NoteMode { text, voice, image, video }

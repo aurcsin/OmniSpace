@@ -65,27 +65,34 @@ class TrackerService extends ChangeNotifier {
 
   /// Reorder trackers of a specific type and persist the new order.
   Future<void> reorder(TrackerType type, int oldIndex, int newIndex) async {
-    final allTrackers = _box.values.toList();
-    final typedIndexes = <int>[];
-    for (int i = 0; i < allTrackers.length; i++) {
-      if (allTrackers[i].type == type) typedIndexes.add(i);
+    // Get the current list of trackers in insertion order
+    final all = _box.values.toList();
+    // Extract only trackers of the requested [type]
+    final typed = all.where((t) => t.type == type).toList();
+
+    if (oldIndex < 0 || oldIndex >= typed.length) return;
+
+    // Clamp newIndex to the end of the typed list
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex > typed.length) newIndex = typed.length;
+
+    final item = typed.removeAt(oldIndex);
+    typed.insert(newIndex, item);
+
+    // Merge reordered typed trackers back into the master list
+    int typedPos = 0;
+    for (int i = 0; i < all.length; i++) {
+      if (all[i].type == type) {
+        all[i] = typed[typedPos++];
+      }
     }
-    if (oldIndex < 0 || oldIndex >= typedIndexes.length) return;
-    if (newIndex > typedIndexes.length) newIndex = typedIndexes.length;
 
-    int from = typedIndexes[oldIndex];
-    int to = newIndex == typedIndexes.length
-        ? allTrackers.length
-        : typedIndexes[newIndex];
-    if (from < to) to -= 1;
-
-    final item = allTrackers.removeAt(from);
-    allTrackers.insert(to, item);
-
+    // Persist the new order
     await _box.clear();
-    for (final t in allTrackers) {
+    for (final t in all) {
       await _box.put(t.id, t);
     }
+
     notifyListeners();
   }
 
