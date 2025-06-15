@@ -1,53 +1,50 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'tracker.dart';
+part of 'project.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TrackerAdapter extends TypeAdapter<Tracker> {
+class ProjectAdapter extends TypeAdapter<Project> {
   @override
-  final int typeId = 8;
+  final int typeId = 13;
 
   @override
-  Tracker read(BinaryReader reader) {
+  Project read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Tracker(
+    return Project(
       id: fields[0] as String,
-      type: fields[1] as TrackerType,
-      title: fields[2] as String,
-      progress: fields[3] as double?,
-      frequency: fields[4] as String?,
-      start: fields[5] as DateTime?,
-      childIds: (fields[6] as List?)?.cast<String>(),
-      isPinned: fields[7] as bool,
+      title: fields[1] as String,
+      noteIds: (fields[2] as List?)?.cast<String>(),
+      trackerIds: (fields[3] as List?)?.cast<String>(),
+      goalIds: (fields[4] as List?)?.cast<String>(),
+      eventIds: (fields[5] as List?)?.cast<String>(),
+      seriesIds: (fields[6] as List?)?.cast<String>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, Tracker obj) {
+  void write(BinaryWriter writer, Project obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.type)
-      ..writeByte(2)
       ..write(obj.title)
+      ..writeByte(2)
+      ..write(obj.noteIds)
       ..writeByte(3)
-      ..write(obj.progress)
+      ..write(obj.trackerIds)
       ..writeByte(4)
-      ..write(obj.frequency)
+      ..write(obj.goalIds)
       ..writeByte(5)
-      ..write(obj.start)
+      ..write(obj.eventIds)
       ..writeByte(6)
-      ..write(obj.childIds)
-      ..writeByte(7)
-      ..write(obj.isPinned);
+      ..write(obj.seriesIds);
   }
 
   @override
@@ -56,7 +53,7 @@ class TrackerAdapter extends TypeAdapter<Tracker> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TrackerAdapter &&
+      other is ProjectAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

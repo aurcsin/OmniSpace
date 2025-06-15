@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
+import '../utils/id_generator.dart';
 
 /// Page for creating or editing a [Tracker].
 class ForgeEditorPage extends StatefulWidget {
@@ -67,7 +68,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _type == null) return;
     final tracker =
-        _tracker ?? Tracker(id: UniqueKey().toString(), type: _type!, title: '');
+        _tracker ?? Tracker(id: generateId(), type: _type!, title: '');
     tracker
       ..title = _titleCtl.text
       ..type = _type!;

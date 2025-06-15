@@ -15,6 +15,7 @@ import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/models/sync_metadata.dart';
 import 'package:omnispace/models/settings.dart';
 import 'package:omnispace/models/user_profile.dart';
+import 'package:omnispace/models/project.dart';
 
 // Services
 import 'package:omnispace/services/notification_service.dart';
@@ -23,6 +24,7 @@ import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/day_reflection_service.dart';
 import 'package:omnispace/services/task_service.dart';
 import 'package:omnispace/services/user_profile_service.dart';
+import 'package:omnispace/services/project_service.dart';
 
 // Pages
 import 'package:omnispace/pages/journal_page.dart';
@@ -74,6 +76,9 @@ Future<void> main() async {
   if (!Hive.isAdapterRegistered(UserProfileAdapter().typeId)) {
     Hive.registerAdapter(UserProfileAdapter());
   }
+  if (!Hive.isAdapterRegistered(ProjectAdapter().typeId)) {
+    Hive.registerAdapter(ProjectAdapter());
+  }
 
   // Initialize services
   await NotificationService.instance.init();
@@ -82,6 +87,7 @@ Future<void> main() async {
   await DayReflectionService.instance.init();
   await TaskService.instance.init();
   await UserProfileService.instance.init();
+  await ProjectService.instance.init();
 
   runApp(const MyApp());
 }

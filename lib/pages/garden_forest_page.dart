@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/omni_note.dart';
+//import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import '../widgets/main_menu_drawer.dart';
 import '../extensions/zone_theme_extensions.dart';

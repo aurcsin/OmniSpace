@@ -8,6 +8,7 @@ import '../models/tracker.dart';
 import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import '../utils/id_generator.dart';
 
 /// Modes for the detail page: text, voice, image, or video.
 enum NoteMode { text, voice, image, video }
@@ -52,7 +53,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   Future<void> _saveNote() async {
     if (!_formKey.currentState!.validate()) return;
     final note = widget.omniNote ?? OmniNote(
-          id: UniqueKey().toString(),
+          id: generateId(),
           title: _titleCtl.text,
           subtitle: '',
           content: _contentCtl.text,
@@ -91,7 +92,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       );
       if (newTitle != null && newTitle.isNotEmpty) {
         final newTracker = Tracker(
-          id: UniqueKey().toString(),
+          id: generateId(),
           type: type,
           title: newTitle,
         );
