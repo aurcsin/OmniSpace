@@ -7,9 +7,9 @@ class NavigatorService {
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  /// Opens the Forge editor for a given Tracker ID.
+  /// Opens the Tracker detail page for a given Tracker ID.
   Future<void> openTrackerEditor(String trackerId) async {
     navigatorKey.currentState
-        ?.pushNamed('/forge', arguments: trackerId);
+        ?.pushNamed('/trackerDetail', arguments: trackerId);
   }
 }

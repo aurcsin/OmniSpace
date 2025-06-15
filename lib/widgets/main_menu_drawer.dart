@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 
 import '../pages/sky_space_page.dart';
-import '../pages/workshop_forge_page.dart';
 import '../pages/garden_forest_page.dart';
 import '../pages/studio_underwater_page.dart';
 import '../pages/root_cave_page.dart';
@@ -43,11 +42,13 @@ class MainMenuDrawer extends StatelessWidget {
               title: 'Sky / Space',
               page: const SkySpacePage(),
             ),
-            _buildTile(
-              context,
-              icon: Icons.build,
-              title: 'Workshop / Forge',
-              page: const WorkshopForgePage(),
+            ListTile(
+              leading: const Icon(Icons.build, color: Colors.deepPurple),
+              title: const Text('Workshop / Forge'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed('/forge');
+              },
             ),
             _buildTile(
               context,

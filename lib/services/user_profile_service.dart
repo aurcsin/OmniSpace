@@ -60,7 +60,7 @@ class UserProfileService extends ChangeNotifier {
 
   /// Current in-memory profile, or null if not loaded.
   UserProfile? get currentProfile {
-    if (Hive.isBoxOpen(_boxName) && !_box.isEmpty) {
+    if (Hive.isBoxOpen(_boxName) && _box.isNotEmpty) {
       return _box.get('profile');
     }
     return null;

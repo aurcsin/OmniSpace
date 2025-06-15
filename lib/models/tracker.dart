@@ -32,6 +32,10 @@ class Tracker extends HiveObject {
   @HiveField(6)
   List<String> childIds;
 
+  /// Whether this tracker is pinned for quick access.
+  @HiveField(7)
+  bool isPinned;
+
   Tracker({
     required this.id,
     required this.type,
@@ -40,5 +44,6 @@ class Tracker extends HiveObject {
     this.frequency,
     this.start,
     List<String>? childIds,
+    this.isPinned = false,
   }) : childIds = childIds ?? [];
 }

@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/services/navigator_service.dart';
 import 'package:omnispace/services/timezone_helper.dart';
+import 'package:omnispace/services/tracker_service.dart';
 
 class NotificationService {
   NotificationService._();
@@ -31,7 +32,10 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     final payload = response.payload;
     if (payload != null && payload.isNotEmpty) {
-      NavigatorService.instance.openTrackerEditor(payload);
+      final tracker = TrackerService.instance.byId(payload);
+      if (tracker != null) {
+        NavigatorService.instance.openTrackerEditor(tracker.id);
+      }
     }
   }
 

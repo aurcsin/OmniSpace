@@ -11,10 +11,10 @@ class DayReflectionEditor extends StatefulWidget {
   final Future<void> Function(String) onSave;
 
   const DayReflectionEditor({
-    Key? key,
+    super.key,
     this.existing,
     required this.onSave,
-  }) : super(key: key);
+  });
 
   @override
   _DayReflectionEditorState createState() => _DayReflectionEditorState();

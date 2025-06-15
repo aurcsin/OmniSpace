@@ -12,11 +12,11 @@ class DayReflectionTile extends StatelessWidget {
   final VoidCallback? onDelete;
 
   const DayReflectionTile({
-    Key? key,
+    super.key,
     required this.reflection,
     required this.onEdit,
     this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

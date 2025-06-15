@@ -38,6 +38,11 @@ class OmniNoteService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Retrieve a note by its id, or null if it doesn't exist.
+  OmniNote? getNoteById(String id) {
+    return _box.get(id);
+  }
+
   /// Full-text search on title, content, or tags.
   Future<List<OmniNote>> searchNotes(String query) async {
     await _ensureInit();

@@ -10,7 +10,7 @@ import '../widgets/day_reflection_tile.dart';
 import '../widgets/main_menu_drawer.dart';
 
 class DayReflectionPage extends StatefulWidget {
-  const DayReflectionPage({Key? key}) : super(key: key);
+  const DayReflectionPage({super.key});
 
   @override
   _DayReflectionPageState createState() => _DayReflectionPageState();
@@ -42,9 +42,7 @@ class _DayReflectionPageState extends State<DayReflectionPage> {
         onSave: (text) async {
           final key = existing?.dateKey ??
               DateFormat('yyyy-MM-dd').format(DateTime.now());
-          final reflection = existing != null
-              ? existing
-              : DayReflection(dateKey: key);
+          final reflection = existing ?? DayReflection(dateKey: key);
 
           reflection.summary = text;           // write into summary
 

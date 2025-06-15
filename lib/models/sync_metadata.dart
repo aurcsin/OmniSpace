@@ -25,6 +25,7 @@ class SyncMetadata extends HiveObject {
   }
 
   /// Persist this metadata instance to Hive.
+  @override
   Future<void> save() async {
     const boxName = 'sync_metadata';
     final box = await Hive.openBox<SyncMetadata>(boxName);

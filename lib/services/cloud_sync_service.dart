@@ -1,5 +1,8 @@
 // File: lib/services/cloud_sync_service.dart
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import '../models/omni_note.dart';
 import 'secure_storage_service.dart';
 
@@ -15,11 +18,27 @@ class CloudSyncService {
   Future<String?> get _token async =>
       SecureStorageService.instance.read('auth_token');
 
-  /// Pushes a note to the cloud. This method is a stub and does not
-  /// perform network requests in this example.
+  /// Pushes a note to the cloud.
+  ///
+  /// If no auth token is stored, an [Exception] is thrown. The note is
+  /// serialized to JSON and sent via a POST request to `$_baseUrl/notes`.
   Future<void> pushNote(OmniNote note) async {
     final token = await _token;
-    // TODO: send note to server using token
-    await Future.delayed(const Duration(milliseconds: 100));
+    if (token == null) {
+      throw Exception('No auth token found');
+    }
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/notes'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(note.toJson()),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to push note: ${response.body}');
+    }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import '../extensions/zone_theme_extensions.dart';
 
 class GardenForestPage extends StatelessWidget {
   const GardenForestPage({super.key});
@@ -22,27 +23,9 @@ class GardenForestPage extends StatelessWidget {
         itemCount: notes.length,
         itemBuilder: (_, i) {
           final n = notes[i];
-          final color = _zoneColor(n.zone);
-          return Icon(Icons.local_florist, color: color, size: 32);
+          return Icon(Icons.local_florist, color: n.zone.color, size: 32);
         },
       ),
     );
-  }
-
-  Color _zoneColor(ZoneTheme z) {
-    switch (z) {
-      case ZoneTheme.Air:
-        return Colors.lightBlue;
-      case ZoneTheme.Earth:
-        return Colors.brown;
-      case ZoneTheme.Fire:
-        return Colors.red;
-      case ZoneTheme.Water:
-        return Colors.blueAccent;
-      case ZoneTheme.Void:
-        return Colors.grey;
-      case ZoneTheme.Fusion:
-        return Colors.purple;
-    }
   }
 }

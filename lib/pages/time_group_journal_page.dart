@@ -99,7 +99,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                                 )
                                 .then((_) => _loadNotes()),
                           );
-                        }).toList(),
+                        }),
                       ],
                     );
                   }).toList(),

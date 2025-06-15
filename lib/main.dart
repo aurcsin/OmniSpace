@@ -31,6 +31,9 @@ import 'package:omnispace/pages/media_page.dart';
 import 'package:omnispace/pages/calendar_overview_page.dart';
 import 'package:omnispace/pages/day_reflection_page.dart';
 import 'package:omnispace/pages/multi_pane_editor_page.dart';
+import 'package:omnispace/pages/workshop_forge_page.dart';
+import 'package:omnispace/pages/tracker_detail_page.dart';
+import 'package:omnispace/services/navigator_service.dart';
 import 'themes/theme_loader.dart';
 
 Future<void> main() async {
@@ -91,6 +94,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'OmniSpace',
       theme: ThemeLoader.load('light'),
+      navigatorKey: NavigatorService.instance.navigatorKey,
       initialRoute: '/journal',
       routes: {
         '/journal': (_) => const JournalPage(),
@@ -99,6 +103,19 @@ class MyApp extends StatelessWidget {
         '/calendar': (_) => const CalendarOverviewPage(),
         '/reflections': (_) => const DayReflectionPage(),
         '/editor': (_) => const MultiPaneEditorPage(),
+        '/forge': (_) => const WorkshopForgePage(),
+        '/trackerDetail': (ctx) {
+          final arg = ModalRoute.of(ctx)!.settings.arguments;
+          Tracker tracker;
+          if (arg is Tracker) {
+            tracker = arg;
+          } else if (arg is String) {
+            tracker = TrackerService.instance.all.firstWhere((t) => t.id == arg);
+          } else {
+            throw ArgumentError('Tracker or tracker id required');
+          }
+          return TrackerDetailPage(tracker: tracker);
+        },
       },
     );
   }

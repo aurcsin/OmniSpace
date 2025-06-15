@@ -81,6 +81,28 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     Navigator.pop(context);
   }
 
+  Future<void> _handleTrackerChange(TrackerType type, String? val) async {
+    final note = widget.omniNote;
+    if (note == null || val == null) return;
+    if (val == '__new__') {
+      final newTitle = await showDialog<String>(
+        context: context,
+        builder: (_) => _NamePromptDialog(label: type.name),
+      );
+      if (newTitle != null && newTitle.isNotEmpty) {
+        final newTracker = Tracker(
+          id: UniqueKey().toString(),
+          type: type,
+          title: newTitle,
+        );
+        await TrackerService.instance.create(newTracker);
+        await TrackerService.instance.linkNote(newTracker.id, note.id);
+      }
+    } else {
+      await TrackerService.instance.linkNote(val, note.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -162,28 +184,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                         child: Text('Create new…'),
                       ),
                     ],
-                    onChanged: (val) async {
-                      final note = widget.omniNote;
-                      if (note == null || val == null) return;
-                      if (val == '__new__') {
-                        final newTitle = await showDialog<String>(
-                          context: context,
-                          builder: (_) => _NamePromptDialog(label: type.name),
-                        );
-                        if (newTitle != null && newTitle.isNotEmpty) {
-                          final newTracker = Tracker(
-                            id: UniqueKey().toString(),
-                            type: type,
-                            title: newTitle,
-                          );
-                          await TrackerService.instance.create(newTracker);
-                          await TrackerService.instance.linkNote(
-                              newTracker.id, note.id);
-                        }
-                      } else {
-                        await TrackerService.instance.linkNote(val, note.id);
-                      }
-                    },
+                    onChanged: (val) => _handleTrackerChange(type, val),
                   ),
                 ),
             ],

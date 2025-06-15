@@ -75,6 +75,11 @@ class _TrackerPageState extends State<TrackerPage>
           key: ValueKey(tracker.id),
           title: Text(tracker.title),
           subtitle: Text(_subtitleFor(tracker, type)),
+          onTap: () => Navigator.pushNamed(
+            context,
+            '/trackerDetail',
+            arguments: tracker,
+          ),
           trailing: IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () => Navigator.pushNamed(

@@ -29,6 +29,9 @@ class TrackerService extends ChangeNotifier {
   /// All trackers stored.
   List<Tracker> get all => _box.values.toList();
 
+  /// Get a tracker by its id.
+  Tracker? byId(String id) => _box.get(id);
+
   /// Create or update a tracker.
   Future<void> save(Tracker tracker) async {
     await _box.put(tracker.id, tracker);
