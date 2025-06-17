@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/project_service.dart';
 import '../models/project.dart';
 import 'project_forge_page.dart';
+import '../widgets/main_menu_drawer.dart';
 
 class WorkshopForgePage extends StatelessWidget {
   const WorkshopForgePage({super.key});
@@ -10,6 +11,7 @@ class WorkshopForgePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final projects = ProjectService.instance.all;
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(title: const Text('Workshop / Forge')),
       body: projects.isEmpty
           ? const Center(child: Text('No projects yet.'))

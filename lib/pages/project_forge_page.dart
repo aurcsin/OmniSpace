@@ -3,6 +3,9 @@ import '../models/project.dart';
 import '../services/project_service.dart';
 import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
+import '../widgets/main_menu_drawer.dart';
+import 'note_detail_page.dart' as detail;
+import 'forge_editor_page.dart';
 import '../utils/id_generator.dart';
 
 class ProjectForgePage extends StatefulWidget {
@@ -45,11 +48,25 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _createNote() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const detail.NoteDetailPage()));
+    await OmniNoteService.instance.loadAllNotes();
+    setState(() {});
+  }
+
+  Future<void> _createTracker() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const ForgeEditorPage()));
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final notes = OmniNoteService.instance.notes;
     final trackers = TrackerService.instance.all;
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(
         title: Text(widget.project == null ? 'New Project' : 'Edit Project'),
         actions: [IconButton(icon: const Icon(Icons.save), onPressed: _save)],
@@ -67,7 +84,18 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              Text('Notes', style: Theme.of(context).textTheme.titleMedium),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Notes',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    tooltip: 'New Note',
+                    onPressed: _createNote,
+                  ),
+                ],
+              ),
               ...notes.map((n) => CheckboxListTile(
                     value: _noteIds.contains(n.id),
                     title: Text(n.title.isNotEmpty ? n.title : '(No title)'),
@@ -82,8 +110,18 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                     },
                   )),
               const SizedBox(height: 16),
-              Text('Trackers',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Trackers',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    tooltip: 'New Tracker',
+                    onPressed: _createTracker,
+                  ),
+                ],
+              ),
               ...trackers.map((t) => CheckboxListTile(
                     value: _trackerIds.contains(t.id),
                     title: Text(t.title),

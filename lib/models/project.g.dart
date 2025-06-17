@@ -2,10 +2,6 @@
 
 part of 'project.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class ProjectAdapter extends TypeAdapter<Project> {
   @override
   final int typeId = 13;
@@ -19,11 +15,11 @@ class ProjectAdapter extends TypeAdapter<Project> {
     return Project(
       id: fields[0] as String,
       title: fields[1] as String,
-      noteIds: (fields[2] as List?)?.cast<String>(),
-      trackerIds: (fields[3] as List?)?.cast<String>(),
-      goalIds: (fields[4] as List?)?.cast<String>(),
-      eventIds: (fields[5] as List?)?.cast<String>(),
-      seriesIds: (fields[6] as List?)?.cast<String>(),
+      noteIds: (fields[2] as List?)?.cast<String>() ?? [],
+      trackerIds: (fields[3] as List?)?.cast<String>() ?? [],
+      goalIds: (fields[4] as List?)?.cast<String>() ?? [],
+      eventIds: (fields[5] as List?)?.cast<String>() ?? [],
+      seriesIds: (fields[6] as List?)?.cast<String>() ?? [],
     );
   }
 

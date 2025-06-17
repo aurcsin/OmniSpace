@@ -71,4 +71,10 @@ class TrackerService extends ChangeNotifier {
 
   /// Get tracker IDs linked to a note.
   List<String> linkedTo(String noteId) => _links[noteId] ?? [];
+
+  /// Get [Tracker] objects linked to a note.
+  List<Tracker> trackersForNote(String noteId) {
+    final ids = linkedTo(noteId);
+    return ids.map((id) => byId(id)).whereType<Tracker>().toList();
+  }
 }

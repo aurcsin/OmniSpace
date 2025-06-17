@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
+import 'tracker_forge_page.dart';
 
 class TrackerPage extends StatefulWidget {
   const TrackerPage({super.key});
@@ -82,10 +83,10 @@ class _TrackerPageState extends State<TrackerPage>
           ),
           trailing: IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () => Navigator.pushNamed(
-              context,
-              '/forge',
-              arguments: tracker,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TrackerForgePage(tracker: tracker),
+              ),
             ),
           ),
         );
@@ -111,6 +112,8 @@ class _TrackerPageState extends State<TrackerPage>
 
   void _createNewTracker() {
     final type = TrackerType.values[_tabController.index];
-    Navigator.pushNamed(context, '/forge', arguments: type);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)),
+    );
   }
 }

@@ -3,6 +3,7 @@ import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
 import '../utils/id_generator.dart';
+import '../widgets/main_menu_drawer.dart';
 
 /// Page for creating or editing a [Tracker].
 class ForgeEditorPage extends StatefulWidget {
@@ -122,6 +123,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
   Widget build(BuildContext context) {
     final title = _tracker == null ? 'New Tracker' : 'Edit Tracker';
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(
         title: Text(title),
         actions: [

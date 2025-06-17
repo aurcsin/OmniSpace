@@ -23,6 +23,8 @@ import 'package:omnispace/services/tracker_service.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/day_reflection_service.dart';
 import 'package:omnispace/services/task_service.dart';
+import 'package:omnispace/services/goal_service.dart';
+import 'package:omnispace/services/event_service.dart';
 import 'package:omnispace/services/user_profile_service.dart';
 import 'package:omnispace/services/project_service.dart';
 
@@ -86,6 +88,8 @@ Future<void> main() async {
   await OmniNoteService.instance.init();
   await DayReflectionService.instance.init();
   await TaskService.instance.init();
+  await GoalService.instance.init();
+  await EventService.instance.init();
   await UserProfileService.instance.init();
   await ProjectService.instance.init();
 

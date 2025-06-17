@@ -56,6 +56,13 @@ class _JournalPageState extends State<JournalPage> {
     });
   }
 
+  Future<void> _refreshNotes() {
+    if (_searchQuery.isNotEmpty) {
+      return _performSearch(_searchQuery);
+    }
+    return _initializeNotes();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<OmniNoteService>.value(
@@ -122,11 +129,12 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) => detail.NoteDetailPage(
-                                                        omniNote: note),
+                                                    builder: (_) => detail
+                                                        .NoteDetailPage(
+                                                            omniNote: note),
                                                   ),
                                                 )
-                                                .then((_) => _initializeNotes()),
+                                                .then((_) => _refreshNotes()),
                                           );
                                         },
                                       )
@@ -141,11 +149,12 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) => detail.NoteDetailPage(
-                                                        omniNote: note),
+                                                    builder: (_) => detail
+                                                        .NoteDetailPage(
+                                                            omniNote: note),
                                                   ),
                                                 )
-                                                .then((_) => _initializeNotes()),
+                                                .then((_) => _refreshNotes()),
                                           );
                                         },
                                       ),
@@ -182,10 +191,10 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                      builder: (_) => const detail.NoteDetailPage(
-                          initialMode: detail.NoteMode.text),
+                      builder: (_) =>
+                          const detail.NoteDetailPage(initialMode: detail.NoteMode.text),
                     ))
-                    .then((_) => _initializeNotes());
+                    .then((_) => _refreshNotes());
               },
             ),
             _buildOptionIcon(
@@ -196,10 +205,10 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                      builder: (_) => const detail.NoteDetailPage(
-                          initialMode: detail.NoteMode.voice),
+                      builder: (_) =>
+                          const detail.NoteDetailPage(initialMode: detail.NoteMode.voice),
                     ))
-                    .then((_) => _initializeNotes());
+                    .then((_) => _refreshNotes());
               },
             ),
             _buildOptionIcon(
@@ -210,10 +219,10 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                      builder: (_) => const detail.NoteDetailPage(
-                          initialMode: detail.NoteMode.image),
+                      builder: (_) =>
+                          const detail.NoteDetailPage(initialMode: detail.NoteMode.image),
                     ))
-                    .then((_) => _initializeNotes());
+                    .then((_) => _refreshNotes());
               },
             ),
             _buildOptionIcon(
@@ -224,10 +233,10 @@ class _JournalPageState extends State<JournalPage> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context)
                     .push(MaterialPageRoute(
-                      builder: (_) => const detail.NoteDetailPage(
-                          initialMode: detail.NoteMode.video),
+                      builder: (_) =>
+                          const detail.NoteDetailPage(initialMode: detail.NoteMode.video),
                     ))
-                    .then((_) => _initializeNotes());
+                    .then((_) => _refreshNotes());
               },
             ),
           ],

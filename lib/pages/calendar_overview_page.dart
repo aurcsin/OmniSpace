@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import '../models/tracker.dart';
+import '../models/tracker_type.dart';
+import '../services/tracker_service.dart';
 
 // Alias this import so its own Padding (if any) doesn’t clash with Flutter’s.
 import 'note_detail_page.dart' as detail;
@@ -22,6 +25,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   CalView _view = CalView.day;
   DateTime _focusDate = DateTime.now();
   List<OmniNote> _notes = [];
+  List<Tracker> _events = [];
+  bool _showEvents = true;
   bool _loading = true;
 
   @override
@@ -33,12 +38,16 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   Future<void> _loadNotes() async {
     setState(() => _loading = true);
     await OmniNoteService.instance.loadAllNotes();
+    // No explicit load needed for TrackerService as it's initialized in main.
     _filterNotes();
     setState(() => _loading = false);
   }
 
   void _filterNotes() {
     final all = OmniNoteService.instance.notes;
+    final eventsAll = TrackerService.instance.all
+        .where((t) => t.type == TrackerType.event && t.start != null)
+        .toList();
     DateTime start, end;
     switch (_view) {
       case CalView.day:
@@ -62,6 +71,11 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
       return n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
     }).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    _events = eventsAll
+        .where((e) => e.start!.isAfter(start) && e.start!.isBefore(end))
+        .toList()
+      ..sort((a, b) => a.start!.compareTo(b.start!));
   }
 
   void _prev() {
@@ -74,10 +88,12 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = _focusDate.subtract(const Duration(days: 7));
           break;
         case CalView.month:
-          _focusDate = DateTime(_focusDate.year, _focusDate.month - 1, _focusDate.day);
+          _focusDate =
+              DateTime(_focusDate.year, _focusDate.month - 1, _focusDate.day);
           break;
         case CalView.year:
-          _focusDate = DateTime(_focusDate.year - 1, _focusDate.month, _focusDate.day);
+          _focusDate =
+              DateTime(_focusDate.year - 1, _focusDate.month, _focusDate.day);
           break;
       }
       _filterNotes();
@@ -94,10 +110,12 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = _focusDate.add(const Duration(days: 7));
           break;
         case CalView.month:
-          _focusDate = DateTime(_focusDate.year, _focusDate.month + 1, _focusDate.day);
+          _focusDate =
+              DateTime(_focusDate.year, _focusDate.month + 1, _focusDate.day);
           break;
         case CalView.year:
-          _focusDate = DateTime(_focusDate.year + 1, _focusDate.month, _focusDate.day);
+          _focusDate =
+              DateTime(_focusDate.year + 1, _focusDate.month, _focusDate.day);
           break;
       }
       _filterNotes();
@@ -199,31 +217,49 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
 
           const Divider(),
 
+          SwitchListTile(
+            title: const Text('Show Events'),
+            value: _showEvents,
+            onChanged: (v) => setState(() {
+              _showEvents = v;
+              _filterNotes();
+            }),
+          ),
+
           // Notes list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : (_notes.isEmpty
-                    ? const Center(child: Text('No notes in this range.'))
-                    : ListView.builder(
-                        itemCount: _notes.length,
-                        itemBuilder: (_, i) {
-                          final note = _notes[i];
-                          return ListTile(
-                            title: Text(
-                              note.title.isNotEmpty ? note.title : '(No Title)',
-                            ),
-                            subtitle: Text(DateFormat.jm().format(note.createdAt)),
-                            onTap: () => Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        detail.NoteDetailPage(omniNote: note),
-                                  ),
-                                )
-                                .then((_) => _loadNotes()),
-                          );
-                        },
+                : (_notes.isEmpty && (!_showEvents || _events.isEmpty)
+                    ? const Center(child: Text('No items in this range.'))
+                    : ListView(
+                        children: [
+                          ..._notes.map((note) => ListTile(
+                                title: Text(note.title.isNotEmpty
+                                    ? note.title
+                                    : '(No Title)'),
+                                subtitle:
+                                    Text(DateFormat.jm().format(note.createdAt)),
+                                onTap: () => Navigator.of(context)
+                                    .push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            detail.NoteDetailPage(omniNote: note),
+                                      ),
+                                    )
+                                    .then((_) => _loadNotes()),
+                              )),
+                          if (_showEvents)
+                            ..._events.map((e) => ListTile(
+                                  leading: const Icon(Icons.event),
+                                  title: Text(e.title.isNotEmpty
+                                      ? e.title
+                                      : 'Event'),
+                                  subtitle: Text(DateFormat.yMMMd()
+                                      .add_jm()
+                                      .format(e.start!)),
+                                )),
+                        ],
                       )),
           ),
         ],

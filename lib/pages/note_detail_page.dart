@@ -160,6 +160,20 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
 
+              // Linked trackers display
+              if (widget.omniNote != null) ...[
+                const SizedBox(height: 12),
+                Text('Linked Trackers',
+                    style: Theme.of(context).textTheme.titleMedium),
+                Wrap(
+                  spacing: 8,
+                  children: TrackerService.instance
+                      .trackersForNote(widget.omniNote!.id)
+                      .map((t) => Chip(label: Text(t.title)))
+                      .toList(),
+                ),
+              ],
+
               // —— LINK TO TRACKERS ——
               const SizedBox(height: 12),
               for (final type in TrackerType.values)
