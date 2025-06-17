@@ -1,6 +1,5 @@
 // File: lib/services/omni_note_service.dart
 
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -10,7 +9,6 @@ import '../models/task.dart';
 import '../models/goal.dart';
 import '../models/event.dart';
 
-/// Service to manage OmniNote CRUD and attachments using Hive.
 class OmniNoteService extends ChangeNotifier {
   OmniNoteService._();
   static final OmniNoteService instance = OmniNoteService._();
@@ -18,9 +16,7 @@ class OmniNoteService extends ChangeNotifier {
   static const String _boxName = 'notes';
   late Box<OmniNote> _box;
 
-  /// Initialize Hive box. Call once at app startup.
   Future<void> init() async {
-    // Register note-related Hive adapters once
     if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
       Hive.registerAdapter(OmniNoteAdapter());
     }
@@ -50,27 +46,26 @@ class OmniNoteService extends ChangeNotifier {
     }
   }
 
-  /// All notes in insertion order.
-  List<OmniNote> get notes {
-    return _box.values.toList();
-  }
+  /// All non-trashed notes.
+  List<OmniNote> get notes =>
+      _box.values.where((n) => !n.isTrashed).toList();
 
-  /// Reloads notes (no-op for Hive, but matches API).
+  /// All trashed notes.
+  List<OmniNote> get trashedNotes =>
+      _box.values.where((n) => n.isTrashed).toList();
+
+  /// Reload (no-op for Hive, but triggers listeners).
   Future<void> loadAllNotes() async {
     await _ensureInit();
     notifyListeners();
   }
 
-  /// Retrieve a note by its id, or null if it doesn't exist.
-  OmniNote? getNoteById(String id) {
-    return _box.get(id);
-  }
-
-  /// Full-text search on title, content, or tags.
+  /// Search over non-trashed notes.
   Future<List<OmniNote>> searchNotes(String query) async {
     await _ensureInit();
     final q = query.toLowerCase();
     return _box.values
+        .where((n) => !n.isTrashed)
         .where((n) =>
             n.title.toLowerCase().contains(q) ||
             n.content.toLowerCase().contains(q) ||
@@ -78,43 +73,60 @@ class OmniNoteService extends ChangeNotifier {
         .toList();
   }
 
-  /// Create or update a note based on its Hive key.
+  /// Get a note by its id (or null if missing).
+  OmniNote? getNoteById(String id) {
+    if (!_box.isOpen) return null;
+    return _box.get(id);
+  }
+
+  /// Create or update.
   Future<void> saveNote(OmniNote note) async {
     await _ensureInit();
-    // Use note.id as key for consistency
     await _box.put(note.id, note);
     notifyListeners();
   }
 
-  /// Delete a note by its id.
+  /// Hard‐delete by id.
   Future<void> deleteNoteById(String id) async {
     await _ensureInit();
     await _box.delete(id);
     notifyListeners();
   }
 
-  // Attachment helpers:
-  Future<void> addImageAttachment(OmniNote note, File file) async {
+  /// Mark notes trashed.
+  Future<void> trashNotes(List<String> ids) async {
     await _ensureInit();
-    note.attachments.add(
-      Attachment(type: AttachmentType.image, localPath: file.path),
-    );
-    await saveNote(note);
+    for (final id in ids) {
+      final n = _box.get(id);
+      if (n != null && !n.isTrashed) {
+        n.isTrashed = true;
+        await n.save();
+      }
+    }
+    notifyListeners();
   }
 
-  Future<void> addAudioAttachment(OmniNote note, File file) async {
+  /// Restore trashed notes.
+  Future<void> restoreNotes(List<String> ids) async {
     await _ensureInit();
-    note.attachments.add(
-      Attachment(type: AttachmentType.audio, localPath: file.path),
-    );
-    await saveNote(note);
+    for (final id in ids) {
+      final n = _box.get(id);
+      if (n != null && n.isTrashed) {
+        n.isTrashed = false;
+        await n.save();
+      }
+    }
+    notifyListeners();
   }
 
-  Future<void> addVideoAttachment(OmniNote note, File file) async {
+  /// Permanently delete a batch of notes.
+  Future<void> deletePermanent(List<String> ids) async {
     await _ensureInit();
-    note.attachments.add(
-      Attachment(type: AttachmentType.video, localPath: file.path),
-    );
-    await saveNote(note);
+    for (final id in ids) {
+      await _box.delete(id);
+    }
+    notifyListeners();
   }
+
+  // — attachment helpers omitted —
 }

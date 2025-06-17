@@ -5,7 +5,6 @@ import 'package:hive/hive.dart';
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 
-/// A persistent tracker service using Hive for storage.
 class TrackerService extends ChangeNotifier {
   TrackerService._internal();
   static final TrackerService instance = TrackerService._internal();
@@ -13,9 +12,10 @@ class TrackerService extends ChangeNotifier {
   static const String _boxName = 'trackers';
   late Box<Tracker> _box;
 
-  /// Initialize Hive box. Call once at app startup.
+  /// In-memory map: ownerId → list of trackerIds
+  final Map<String, List<String>> _ownerLinks = {};
+
   Future<void> init() async {
-    // Register adapters if not already registered
     if (!Hive.isAdapterRegistered(TrackerAdapter().typeId)) {
       Hive.registerAdapter(TrackerAdapter());
     }
@@ -26,55 +26,69 @@ class TrackerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// All trackers stored.
-  List<Tracker> get all => _box.values.toList();
+  List<Tracker> get all =>
+      _box.values.where((t) => !t.isTrashed).toList();
 
-  /// Get a tracker by its id.
+  List<Tracker> get trashedTrackers =>
+      _box.values.where((t) => t.isTrashed).toList();
+
   Tracker? byId(String id) => _box.get(id);
 
-  /// Create or update a tracker.
   Future<void> save(Tracker tracker) async {
     await _box.put(tracker.id, tracker);
     notifyListeners();
   }
 
-  /// Alias for creating a new tracker
-  Future<void> create(Tracker tracker) => save(tracker);
-
-  /// Delete a tracker by its id.
   Future<void> delete(String id) async {
     await _box.delete(id);
     notifyListeners();
   }
 
-  /// Get trackers of a given type.
-  List<Tracker> ofType(TrackerType type) =>
-      _box.values.where((t) => t.type == type).toList();
-
-  // In-memory link map: noteId -> list of trackerIds
-  final Map<String, List<String>> _links = {};
-
-  /// Link a note to a tracker.
-  Future<void> linkNote(String trackerId, String noteId) async {
-    _links.putIfAbsent(noteId, () => []);
-    if (!_links[noteId]!.contains(trackerId)) {
-      _links[noteId]!.add(trackerId);
+  Future<void> trashTrackers(List<String> ids) async {
+    for (final id in ids) {
+      final t = _box.get(id);
+      if (t != null && !t.isTrashed) {
+        t.isTrashed = true;
+        await t.save();
+      }
     }
     notifyListeners();
   }
 
-  /// Unlink a tracker from a note.
-  Future<void> unlinkNote(String trackerId, String noteId) async {
-    _links[noteId]?.remove(trackerId);
+  Future<void> restoreTrackers(List<String> ids) async {
+    for (final id in ids) {
+      final t = _box.get(id);
+      if (t != null && t.isTrashed) {
+        t.isTrashed = false;
+        await t.save();
+      }
+    }
     notifyListeners();
   }
 
-  /// Get tracker IDs linked to a note.
-  List<String> linkedTo(String noteId) => _links[noteId] ?? [];
-
-  /// Get [Tracker] objects linked to a note.
-  List<Tracker> trackersForNote(String noteId) {
-    final ids = linkedTo(noteId);
-    return ids.map((id) => byId(id)).whereType<Tracker>().toList();
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
+    }
+    notifyListeners();
   }
+
+  /// Link a tracker under a given owner (note, collection, etc).
+  Future<void> linkOwner(String trackerId, String ownerId) async {
+    _ownerLinks.putIfAbsent(ownerId, () => []);
+    if (!_ownerLinks[ownerId]!.contains(trackerId)) {
+      _ownerLinks[ownerId]!.add(trackerId);
+      notifyListeners();
+    }
+  }
+
+  /// Unlink a tracker from that owner
+  Future<void> unlinkOwner(String trackerId, String ownerId) async {
+    _ownerLinks[ownerId]?.remove(trackerId);
+    notifyListeners();
+  }
+
+  /// Get all tracker IDs linked under that owner
+  List<String> trackerIdsForOwner(String ownerId) =>
+      List.unmodifiable(_ownerLinks[ownerId] ?? []);
 }

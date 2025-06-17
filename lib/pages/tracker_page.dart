@@ -101,7 +101,7 @@ class _TrackerPageState extends State<TrackerPage>
     switch (type) {
       case TrackerType.goal:
         final pct = ((tracker.progress ?? 0) * 100).round();
-        return 'Progress: ${pct}%';
+        return 'Progress: $pct%';
       case TrackerType.task:
         return 'Frequency: ${tracker.frequency ?? 'once'}';
       case TrackerType.event:

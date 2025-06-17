@@ -1,35 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'series.dart';
+part of 'tracker_collection.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class SeriesAdapter extends TypeAdapter<Series> {
+class TrackerCollectionAdapter extends TypeAdapter<TrackerCollection> {
   @override
-  final int typeId = 15;
+  final int typeId = 22;
 
   @override
-  Series read(BinaryReader reader) {
+  TrackerCollection read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Series(
+    return TrackerCollection(
       id: fields[0] as String,
       name: fields[1] as String,
+      trackerIds: (fields[2] as List).cast<String>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, Series obj) {
+  void write(BinaryWriter writer, TrackerCollection obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name);
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.trackerIds);
   }
 
   @override
@@ -38,7 +41,7 @@ class SeriesAdapter extends TypeAdapter<Series> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is SeriesAdapter &&
+      other is TrackerCollectionAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -37,13 +37,15 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       lastUpdated: fields[17] as DateTime?,
       isPinned: fields[18] as bool,
       isStarred: fields[19] as bool,
+      isArchived: fields[20] as bool,
+      isTrashed: fields[21] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -83,7 +85,11 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(18)
       ..write(obj.isPinned)
       ..writeByte(19)
-      ..write(obj.isStarred);
+      ..write(obj.isStarred)
+      ..writeByte(20)
+      ..write(obj.isArchived)
+      ..writeByte(21)
+      ..write(obj.isTrashed);
   }
 
   @override

@@ -1,7 +1,5 @@
-// File: lib/models/omni_note.dart
-
-import 'package:hive/hive.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'attachment.dart';
 import 'task.dart';
 import 'goal.dart';
@@ -29,65 +27,30 @@ enum ZoneTheme {
 /// Your core note model.
 @HiveType(typeId: 0)
 class OmniNote extends HiveObject {
-  @HiveField(0)
-  String id;
+  @HiveField(0) String id;
+  @HiveField(1) String title;
+  @HiveField(2) String subtitle;
+  @HiveField(3) String content;
+  @HiveField(4) ZoneTheme zone;
+  @HiveField(5) String tags;
+  @HiveField(6) int colorValue;
+  @HiveField(7) String? mood;
+  @HiveField(8) String? direction;
+  @HiveField(9) String? projectId;
+  @HiveField(10) String? recommendedTag;
+  @HiveField(11) String? seriesId;
+  @HiveField(12) List<Attachment> attachments;
+  @HiveField(13) List<Task>? tasks;
+  @HiveField(14) List<Goal>? goals;
+  @HiveField(15) List<Event>? events;
+  @HiveField(16) DateTime createdAt;
+  @HiveField(17) DateTime lastUpdated;
+  @HiveField(18) bool isPinned;
+  @HiveField(19) bool isStarred;
 
-  @HiveField(1)
-  String title;
-
-  @HiveField(2)
-  String subtitle;
-
-  @HiveField(3)
-  String content;
-
-  @HiveField(4)
-  ZoneTheme zone;
-
-  @HiveField(5)
-  String tags;
-
-  @HiveField(6)
-  int colorValue;
-
-  @HiveField(7)
-  String? mood;
-
-  @HiveField(8)
-  String? direction;
-
-  @HiveField(9)
-  String? projectId;
-
-  @HiveField(10)
-  String? recommendedTag;
-
-  @HiveField(11)
-  String? seriesId;
-
-  @HiveField(12)
-  List<Attachment> attachments;
-
-  @HiveField(13)
-  List<Task>? tasks;
-
-  @HiveField(14)
-  List<Goal>? goals;
-
-  @HiveField(15)
-  List<Event>? events;
-
-  @HiveField(16)
-  DateTime createdAt;
-
-  @HiveField(17)
-  DateTime lastUpdated;
-
-  @HiveField(18)
-  bool isPinned;
-
-  @HiveField(19)
-  bool isStarred;
+  // NEW FIELDS
+  @HiveField(20) bool isArchived;
+  @HiveField(21) bool isTrashed;
 
   OmniNote({
     required this.id,
@@ -110,11 +73,12 @@ class OmniNote extends HiveObject {
     DateTime? lastUpdated,
     this.isPinned = false,
     this.isStarred = false,
+    this.isArchived = false,
+    this.isTrashed = false,
   })  : attachments = attachments ?? [],
         createdAt = createdAt ?? DateTime.now(),
         lastUpdated = lastUpdated ?? createdAt ?? DateTime.now();
 
-  /// Convert this note to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
@@ -136,16 +100,17 @@ class OmniNote extends HiveObject {
         'lastUpdated': lastUpdated.toIso8601String(),
         'isPinned': isPinned,
         'isStarred': isStarred,
+        'isArchived': isArchived,
+        'isTrashed': isTrashed,
       };
 
-  /// Create an OmniNote from a JSON map.
   factory OmniNote.fromJson(Map<String, dynamic> json) => OmniNote(
         id: json['id'] as String,
         title: json['title'] as String,
         subtitle: json['subtitle'] as String,
         content: json['content'] as String,
         zone: ZoneTheme.values.firstWhere(
-            (z) => describeEnum(z) == json['zone']),
+            (z) => describeEnum(z) == json['zone'] as String),
         tags: json['tags'] as String,
         colorValue: json['colorValue'] as int,
         mood: json['mood'] as String?,
@@ -169,5 +134,7 @@ class OmniNote extends HiveObject {
         lastUpdated: DateTime.parse(json['lastUpdated'] as String),
         isPinned: json['isPinned'] as bool,
         isStarred: json['isStarred'] as bool? ?? false,
+        isArchived: json['isArchived'] as bool? ?? false,
+        isTrashed: json['isTrashed'] as bool? ?? false,
       );
 }

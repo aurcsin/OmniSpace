@@ -2,10 +2,12 @@
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:omnispace/models/tracker.dart';
-import 'package:omnispace/services/navigator_service.dart';
-import 'package:omnispace/services/timezone_helper.dart';
-import 'package:omnispace/services/tracker_service.dart';
+
+import '../models/tracker.dart';
+import 'navigator_service.dart';
+// ← point at your existing helper file
+import 'timezone_helper.dart';
+import 'tracker_service.dart';
 
 class NotificationService {
   NotificationService._();
@@ -15,12 +17,12 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // Ensure the IANA database is loaded
+    // Ensure the IANA time zone database is initialized
     TimezoneHelperService.instance;
 
-    // Android settings
+    // Android initialization
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    // iOS settings
+    // iOS initialization
     const iosInit = DarwinInitializationSettings();
 
     await _plugin.initialize(
@@ -46,9 +48,8 @@ class NotificationService {
     // Only schedule if there's a start date
     if (t.start == null) return;
 
-    // Schedule at the start time (no lead time support yet)
-    final tz.TZDateTime scheduled =
-        tz.TZDateTime.from(t.start!, tz.local);
+    // Convert to TZ-aware time
+    final tz.TZDateTime scheduled = tz.TZDateTime.from(t.start!, tz.local);
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(

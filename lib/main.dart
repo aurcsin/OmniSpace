@@ -3,48 +3,52 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-// Models
-import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/models/attachment.dart';
-import 'package:omnispace/models/task.dart';
-import 'package:omnispace/models/goal.dart';
-import 'package:omnispace/models/event.dart';
-import 'package:omnispace/models/day_reflection.dart';
-import 'package:omnispace/models/tracker_type.dart';
-import 'package:omnispace/models/tracker.dart';
-import 'package:omnispace/models/sync_metadata.dart';
-import 'package:omnispace/models/settings.dart';
-import 'package:omnispace/models/user_profile.dart';
-import 'package:omnispace/models/project.dart';
+// Models & Adapters
+import 'models/omni_note.dart';
+import 'models/attachment.dart';
+import 'models/task.dart';
+import 'models/goal.dart';
+import 'models/event.dart';
+import 'models/day_reflection.dart';
+import 'models/tracker_type.dart';
+import 'models/tracker.dart';
+import 'models/sync_metadata.dart';
+import 'models/settings.dart';
+import 'models/user_profile.dart';
+import 'models/project.dart';
+import 'models/tracker_collection.dart';
 
 // Services
-import 'package:omnispace/services/notification_service.dart';
-import 'package:omnispace/services/tracker_service.dart';
-import 'package:omnispace/services/omni_note_service.dart';
-import 'package:omnispace/services/day_reflection_service.dart';
-import 'package:omnispace/services/task_service.dart';
-import 'package:omnispace/services/goal_service.dart';
-import 'package:omnispace/services/event_service.dart';
-import 'package:omnispace/services/user_profile_service.dart';
-import 'package:omnispace/services/project_service.dart';
+import 'services/notification_service.dart';
+import 'services/tracker_service.dart';
+import 'services/omni_note_service.dart';
+import 'services/day_reflection_service.dart';
+import 'services/task_service.dart';
+import 'services/goal_service.dart';
+import 'services/event_service.dart';
+import 'services/user_profile_service.dart';
+import 'services/project_service.dart';
+import 'services/tracker_collection_service.dart';
 
 // Pages
-import 'package:omnispace/pages/journal_page.dart';
-import 'package:omnispace/pages/tracker_page.dart';
-import 'package:omnispace/pages/media_page.dart';
-import 'package:omnispace/pages/calendar_overview_page.dart';
-import 'package:omnispace/pages/day_reflection_page.dart';
-import 'package:omnispace/pages/multi_pane_editor_page.dart';
-import 'package:omnispace/pages/workshop_forge_page.dart';
-import 'package:omnispace/pages/tracker_detail_page.dart';
-import 'package:omnispace/services/navigator_service.dart';
+import 'pages/journal_page.dart';
+import 'pages/omni_tracker_page.dart';
+import 'pages/media_page.dart';
+import 'pages/calendar_overview_page.dart';
+import 'pages/day_reflection_page.dart';
+import 'pages/multi_pane_editor_page.dart';
+import 'pages/workshop_forge_page.dart';
+import 'pages/tracker_detail_page.dart';
+
+// Navigator & Themes
+import 'services/navigator_service.dart';
 import 'themes/theme_loader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  // Register Hive adapters only once
+  // Explicitly register each adapter:
   if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
     Hive.registerAdapter(OmniNoteAdapter());
   }
@@ -81,8 +85,11 @@ Future<void> main() async {
   if (!Hive.isAdapterRegistered(ProjectAdapter().typeId)) {
     Hive.registerAdapter(ProjectAdapter());
   }
+  if (!Hive.isAdapterRegistered(TrackerCollectionAdapter().typeId)) {
+    Hive.registerAdapter(TrackerCollectionAdapter());
+  }
 
-  // Initialize services
+  // Initialize all services in order
   await NotificationService.instance.init();
   await TrackerService.instance.init();
   await OmniNoteService.instance.init();
@@ -92,13 +99,13 @@ Future<void> main() async {
   await EventService.instance.init();
   await UserProfileService.instance.init();
   await ProjectService.instance.init();
+  await TrackerCollectionService.instance.init();
 
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -108,7 +115,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/journal',
       routes: {
         '/journal': (_) => const JournalPage(),
-        '/tracker': (_) => const TrackerPage(),
+        '/omnitracker': (_) => const OmniTrackerPage(),
         '/media': (_) => const MediaPage(),
         '/calendar': (_) => const CalendarOverviewPage(),
         '/reflections': (_) => const DayReflectionPage(),
@@ -116,14 +123,10 @@ class MyApp extends StatelessWidget {
         '/forge': (_) => const WorkshopForgePage(),
         '/trackerDetail': (ctx) {
           final arg = ModalRoute.of(ctx)!.settings.arguments;
-          Tracker tracker;
-          if (arg is Tracker) {
-            tracker = arg;
-          } else if (arg is String) {
-            tracker = TrackerService.instance.all.firstWhere((t) => t.id == arg);
-          } else {
-            throw ArgumentError('Tracker or tracker id required');
-          }
+          final tracker = (arg is Tracker)
+              ? arg
+              : TrackerService.instance.all
+                  .firstWhere((t) => t.id == arg as String);
           return TrackerDetailPage(tracker: tracker);
         },
       },

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
 import '../models/tracker.dart';
-import '../models/tracker_type.dart';
 import '../models/project.dart';
 
 /// A universal card widget that can display a [OmniNote], [Tracker],

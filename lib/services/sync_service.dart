@@ -46,7 +46,8 @@ class SyncService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw SyncException('Failed to push note ${note.id}: ${response.body}');
+      throw SyncException(
+          'Failed to push note ${note.id}: ${response.body}');
     }
   }
 
@@ -63,15 +64,18 @@ class SyncService {
       // Deserialize and save each returned note
       final notesJson = data['notes'] as List<dynamic>;
       for (final noteJson in notesJson) {
-        final note = OmniNote.fromJson(noteJson as Map<String, dynamic>);
+        final note =
+            OmniNote.fromJson(noteJson as Map<String, dynamic>);
         await OmniNoteService.instance.saveNote(note);
       }
 
       // Update and persist the new sync timestamp
-      metadata.lastSyncedAt = DateTime.parse(data['syncedAt'] as String);
+      metadata.lastSyncedAt =
+          DateTime.parse(data['syncedAt'] as String);
       await metadata.save();
     } else {
-      throw SyncException('Failed to pull updates: ${response.body}');
+      throw SyncException(
+          'Failed to pull updates: ${response.body}');
     }
   }
 
@@ -81,9 +85,11 @@ class SyncService {
     final response = await http.delete(url);
 
     if (response.statusCode == 204) {
-      await OmniNoteService.instance.deleteNoteById(id);
+      // Permanently remove locally
+      await OmniNoteService.instance.deletePermanent([id]);
     } else {
-      throw SyncException('Failed to delete note $id: ${response.body}');
+      throw SyncException(
+          'Failed to delete note $id: ${response.body}');
     }
   }
 
@@ -111,5 +117,5 @@ class SyncException implements Exception {
   SyncException(this.message);
 
   @override
-  String toString() => 'SyncException: \$message';
+  String toString() => 'SyncException: $message';
 }

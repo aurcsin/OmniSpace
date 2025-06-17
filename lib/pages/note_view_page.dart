@@ -54,8 +54,11 @@ class _NoteViewPageState extends State<NoteViewPage>
   }
 
   Future<void> _toggleLock() async {
-    if (_locked) await _promptUnlock();
-    else await _promptLock();
+    if (_locked) {
+      await _promptUnlock();
+    } else {
+      await _promptLock();
+    }
   }
 
   Future<void> _promptLock() async {
