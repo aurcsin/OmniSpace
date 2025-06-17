@@ -1,5 +1,3 @@
-// lib/pages/calendar_overview_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,9 +7,7 @@ import '../widgets/main_menu_drawer.dart';
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
-
-// Alias this import so its own Padding (if any) doesn’t clash with Flutter’s.
-import 'note_detail_page.dart' as detail;
+import 'note_view_page.dart';
 
 enum CalView { day, week, month, year }
 
@@ -38,7 +34,6 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   Future<void> _loadNotes() async {
     setState(() => _loading = true);
     await OmniNoteService.instance.loadAllNotes();
-    // No explicit load needed for TrackerService as it's initialized in main.
     _filterNotes();
     setState(() => _loading = false);
   }
@@ -67,9 +62,9 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = DateTime(_focusDate.year + 1, 1, 1);
         break;
     }
-    _notes = all.where((n) {
-      return n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
-    }).toList()
+    _notes = all
+        .where((n) => n.createdAt.isAfter(start) && n.createdAt.isBefore(end))
+        .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     _events = eventsAll
@@ -185,16 +180,12 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
       ),
       body: Column(
         children: [
-          // View toggle buttons
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ToggleButtons(
               isSelected: CalView.values.map((v) => v == _view).toList(),
               onPressed: (i) {
-                setState(() {
-                  _view = CalView.values[i];
-                  _filterNotes();
-                });
+                setState(() { _view = CalView.values[i]; _filterNotes(); });
               },
               children: const [
                 Padding(padding: EdgeInsets.all(8), child: Text('Day')),
@@ -204,8 +195,6 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
               ],
             ),
           ),
-
-          // Prev / Next
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -214,53 +203,34 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
               IconButton(icon: const Icon(Icons.chevron_right), onPressed: _next),
             ],
           ),
-
           const Divider(),
-
           SwitchListTile(
             title: const Text('Show Events'),
             value: _showEvents,
-            onChanged: (v) => setState(() {
-              _showEvents = v;
-              _filterNotes();
-            }),
+            onChanged: (v) => setState(() { _showEvents = v; _filterNotes(); }),
           ),
-
-          // Notes list
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : (_notes.isEmpty && (!_showEvents || _events.isEmpty)
+                : (_notes.isEmpty && (!_showEvents || _events.isEmpty))
                     ? const Center(child: Text('No items in this range.'))
                     : ListView(
                         children: [
                           ..._notes.map((note) => ListTile(
-                                title: Text(note.title.isNotEmpty
-                                    ? note.title
-                                    : '(No Title)'),
-                                subtitle:
-                                    Text(DateFormat.jm().format(note.createdAt)),
+                                title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                                subtitle: Text(DateFormat.jm().format(note.createdAt)),
                                 onTap: () => Navigator.of(context)
-                                    .push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            detail.NoteDetailPage(omniNote: note),
-                                      ),
-                                    )
+                                    .push(MaterialPageRoute(builder: (_) => NoteViewPage(note: note)))
                                     .then((_) => _loadNotes()),
                               )),
                           if (_showEvents)
                             ..._events.map((e) => ListTile(
                                   leading: const Icon(Icons.event),
-                                  title: Text(e.title.isNotEmpty
-                                      ? e.title
-                                      : 'Event'),
-                                  subtitle: Text(DateFormat.yMMMd()
-                                      .add_jm()
-                                      .format(e.start!)),
+                                  title: Text(e.title.isNotEmpty ? e.title : 'Event'),
+                                  subtitle: Text(DateFormat.yMMMd().add_jm().format(e.start!)),
                                 )),
                         ],
-                      )),
+                      ),
           ),
         ],
       ),

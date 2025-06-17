@@ -25,13 +25,14 @@ class TrackerAdapter extends TypeAdapter<Tracker> {
       start: fields[5] as DateTime?,
       childIds: (fields[6] as List?)?.cast<String>(),
       isPinned: fields[7] as bool,
+      tags: fields[8] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Tracker obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class TrackerAdapter extends TypeAdapter<Tracker> {
       ..writeByte(6)
       ..write(obj.childIds)
       ..writeByte(7)
-      ..write(obj.isPinned);
+      ..write(obj.isPinned)
+      ..writeByte(8)
+      ..write(obj.tags);
   }
 
   @override

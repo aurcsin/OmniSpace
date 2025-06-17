@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/project_service.dart';
 import '../models/project.dart';
+import 'project_view_page.dart';
 import 'project_forge_page.dart';
 import '../widgets/main_menu_drawer.dart';
 
@@ -23,7 +24,7 @@ class WorkshopForgePage extends StatelessWidget {
                   title: Text(p.title.isNotEmpty ? p.title : 'Untitled Project'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => ProjectForgePage(project: p),
+                      builder: (_) => ProjectViewPage(project: p),
                     ),
                   ),
                 );

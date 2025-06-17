@@ -86,6 +86,9 @@ class OmniNote extends HiveObject {
   @HiveField(18)
   bool isPinned;
 
+  @HiveField(19)
+  bool isStarred;
+
   OmniNote({
     required this.id,
     this.title = '',
@@ -106,6 +109,7 @@ class OmniNote extends HiveObject {
     DateTime? createdAt,
     DateTime? lastUpdated,
     this.isPinned = false,
+    this.isStarred = false,
   })  : attachments = attachments ?? [],
         createdAt = createdAt ?? DateTime.now(),
         lastUpdated = lastUpdated ?? createdAt ?? DateTime.now();
@@ -131,6 +135,7 @@ class OmniNote extends HiveObject {
         'createdAt': createdAt.toIso8601String(),
         'lastUpdated': lastUpdated.toIso8601String(),
         'isPinned': isPinned,
+        'isStarred': isStarred,
       };
 
   /// Create an OmniNote from a JSON map.
@@ -163,5 +168,6 @@ class OmniNote extends HiveObject {
         createdAt: DateTime.parse(json['createdAt'] as String),
         lastUpdated: DateTime.parse(json['lastUpdated'] as String),
         isPinned: json['isPinned'] as bool,
+        isStarred: json['isStarred'] as bool? ?? false,
       );
 }

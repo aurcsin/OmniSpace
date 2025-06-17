@@ -2,6 +2,10 @@
 
 part of 'project.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class ProjectAdapter extends TypeAdapter<Project> {
   @override
   final int typeId = 13;
@@ -15,18 +19,19 @@ class ProjectAdapter extends TypeAdapter<Project> {
     return Project(
       id: fields[0] as String,
       title: fields[1] as String,
-      noteIds: (fields[2] as List?)?.cast<String>() ?? [],
-      trackerIds: (fields[3] as List?)?.cast<String>() ?? [],
-      goalIds: (fields[4] as List?)?.cast<String>() ?? [],
-      eventIds: (fields[5] as List?)?.cast<String>() ?? [],
-      seriesIds: (fields[6] as List?)?.cast<String>() ?? [],
+      noteIds: (fields[2] as List?)?.cast<String>(),
+      trackerIds: (fields[3] as List?)?.cast<String>(),
+      goalIds: (fields[4] as List?)?.cast<String>(),
+      eventIds: (fields[5] as List?)?.cast<String>(),
+      seriesIds: (fields[6] as List?)?.cast<String>(),
+      tags: fields[7] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Project obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -40,7 +45,9 @@ class ProjectAdapter extends TypeAdapter<Project> {
       ..writeByte(5)
       ..write(obj.eventIds)
       ..writeByte(6)
-      ..write(obj.seriesIds);
+      ..write(obj.seriesIds)
+      ..writeByte(7)
+      ..write(obj.tags);
   }
 
   @override

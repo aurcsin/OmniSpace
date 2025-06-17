@@ -25,6 +25,9 @@ class Project extends HiveObject {
   @HiveField(6)
   List<String> seriesIds;
 
+  @HiveField(7)
+  String tags;
+
   Project({
     required this.id,
     this.title = '',
@@ -33,6 +36,7 @@ class Project extends HiveObject {
     List<String>? goalIds,
     List<String>? eventIds,
     List<String>? seriesIds,
+    this.tags = '',
   })  : noteIds = noteIds ?? [],
         trackerIds = trackerIds ?? [],
         goalIds = goalIds ?? [],

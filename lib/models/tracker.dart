@@ -36,6 +36,9 @@ class Tracker extends HiveObject {
   @HiveField(7)
   bool isPinned;
 
+  @HiveField(8)
+  String tags;
+
   Tracker({
     required this.id,
     required this.type,
@@ -45,5 +48,6 @@ class Tracker extends HiveObject {
     this.start,
     List<String>? childIds,
     this.isPinned = false,
+    this.tags = '',
   }) : childIds = childIds ?? [];
 }

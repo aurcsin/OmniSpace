@@ -1,4 +1,4 @@
-// lib/pages/time_group_journal_page.dart
+// File: lib/pages/time_group_journal_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,8 +6,8 @@ import 'package:intl/intl.dart';
 import '../models/omni_note.dart';
 import '../services/omni_note_service.dart';
 import '../widgets/main_menu_drawer.dart';
-// Alias the note detail page import to avoid name collisions
-import '../pages/note_detail_page.dart' as ndp;
+import 'note_detail_page.dart';
+import 'note_view_page.dart';
 
 class TimeGroupJournalPage extends StatefulWidget {
   const TimeGroupJournalPage({super.key});
@@ -43,22 +43,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
     });
   }
 
-  String _formatZone(ZoneTheme zone) {
-    switch (zone) {
-      case ZoneTheme.Air:
-        return 'Air';
-      case ZoneTheme.Earth:
-        return 'Earth';
-      case ZoneTheme.Fire:
-        return 'Fire';
-      case ZoneTheme.Water:
-        return 'Water';
-      case ZoneTheme.Void:
-        return 'Void';
-      case ZoneTheme.Fusion:
-        return 'Fusion';
-    }
-  }
+  String _formatZone(ZoneTheme zone) => zone.name;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +61,6 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Date header
                         Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Text(
@@ -84,17 +68,18 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
-
-                        // Notes for this date
                         ...entry.value.map((note) {
                           return ListTile(
-                            title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
+                            title: Text(
+                              note.title.isNotEmpty ? note.title : '(No Title)',
+                            ),
                             subtitle: Text(note.subtitle),
                             trailing: Text(_formatZone(note.zone)),
                             onTap: () => Navigator.of(context)
                                 .push(
                                   MaterialPageRoute(
-                                    builder: (_) => ndp.NoteDetailPage(omniNote: note),
+                                    builder: (_) =>
+                                        NoteViewPage(note: note),
                                   ),
                                 )
                                 .then((_) => _loadNotes()),
@@ -107,7 +92,9 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context)
             .push(
-              MaterialPageRoute(builder: (_) => const ndp.NoteDetailPage()),
+              MaterialPageRoute(
+                builder: (_) => const NoteDetailPage(omniNote: null),
+              ),
             )
             .then((_) => _loadNotes()),
         child: const Icon(Icons.add),
