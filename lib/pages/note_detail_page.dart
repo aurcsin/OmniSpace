@@ -84,23 +84,22 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
   Future<void> _handleTrackerChange(TrackerType type, String? val) async {
     final note = widget.omniNote;
-    if (note == null || val == null) return;
+    if (val == null) return;
     if (val == '__new__') {
-      final newTitle = await showDialog<String>(
+      final newTracker = await showDialog<Tracker>(
         context: context,
-        builder: (_) => _NamePromptDialog(label: type.name),
+        builder: (_) => _QuickTrackerDialog(type: type),
       );
-      if (newTitle != null && newTitle.isNotEmpty) {
-        final newTracker = Tracker(
-          id: generateId(),
-          type: type,
-          title: newTitle,
-        );
+      if (newTracker != null) {
         await TrackerService.instance.create(newTracker);
-        await TrackerService.instance.linkNote(newTracker.id, note.id);
+        if (note != null) {
+          await TrackerService.instance.linkNote(newTracker.id, note.id);
+        }
       }
     } else {
-      await TrackerService.instance.linkNote(val, note.id);
+      if (note != null) {
+        await TrackerService.instance.linkNote(val, note.id);
+      }
     }
   }
 
@@ -210,19 +209,106 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   }
 }
 
-/// Dialog to prompt for a new Tracker title.
-class _NamePromptDialog extends StatelessWidget {
-  final String label;
-  const _NamePromptDialog({required this.label});
+/// Dialog for quickly creating a tracker of a specific type.
+class _QuickTrackerDialog extends StatefulWidget {
+  final TrackerType type;
+  const _QuickTrackerDialog({required this.type});
+
+  @override
+  State<_QuickTrackerDialog> createState() => _QuickTrackerDialogState();
+}
+
+class _QuickTrackerDialogState extends State<_QuickTrackerDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _titleCtl;
+  late TextEditingController _progressCtl;
+  late TextEditingController _frequencyCtl;
+  DateTime? _start;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtl = TextEditingController();
+    _progressCtl = TextEditingController();
+    _frequencyCtl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _titleCtl.dispose();
+    _progressCtl.dispose();
+    _frequencyCtl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _start ?? now,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() => _start = picked);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final ctl = TextEditingController();
+    final typeName =
+        '${widget.type.name[0].toUpperCase()}${widget.type.name.substring(1)}';
     return AlertDialog(
-      title: Text('New ${label[0].toUpperCase()}${label.substring(1)}'),
-      content: TextField(
-        controller: ctl,
-        decoration: InputDecoration(hintText: '$label title'),
+      title: Text('New $typeName'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _titleCtl,
+                decoration: const InputDecoration(labelText: 'Title'),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              ),
+              if (widget.type == TrackerType.goal) ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _progressCtl,
+                  decoration:
+                      const InputDecoration(labelText: 'Progress (0.0–1.0)'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
+              if (widget.type == TrackerType.task) ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _frequencyCtl,
+                  decoration: const InputDecoration(labelText: 'Frequency'),
+                ),
+              ],
+              if (widget.type == TrackerType.event) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _start == null
+                            ? 'No date chosen'
+                            : 'Date: ${_start!.toLocal().toIso8601String().split('T').first}',
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _pickDate,
+                      child: const Text('Pick Date'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
       actions: [
         TextButton(
@@ -230,7 +316,21 @@ class _NamePromptDialog extends StatelessWidget {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.pop(context, ctl.text),
+          onPressed: () {
+            if (!_formKey.currentState!.validate()) return;
+            final tracker = Tracker(
+              id: generateId(),
+              type: widget.type,
+              title: _titleCtl.text,
+              progress: widget.type == TrackerType.goal
+                  ? double.tryParse(_progressCtl.text)
+                  : null,
+              frequency:
+                  widget.type == TrackerType.task ? _frequencyCtl.text : null,
+              start: widget.type == TrackerType.event ? _start : null,
+            );
+            Navigator.pop(context, tracker);
+          },
           child: const Text('Create'),
         ),
       ],

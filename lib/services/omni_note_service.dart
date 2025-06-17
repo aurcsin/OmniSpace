@@ -6,6 +6,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/omni_note.dart';
 import '../models/attachment.dart';
+import '../models/task.dart';
+import '../models/goal.dart';
+import '../models/event.dart';
 
 /// Service to manage OmniNote CRUD and attachments using Hive.
 class OmniNoteService extends ChangeNotifier {
@@ -17,6 +20,26 @@ class OmniNoteService extends ChangeNotifier {
 
   /// Initialize Hive box. Call once at app startup.
   Future<void> init() async {
+    // Register note-related Hive adapters once
+    if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
+      Hive.registerAdapter(OmniNoteAdapter());
+    }
+    if (!Hive.isAdapterRegistered(ZoneThemeAdapter().typeId)) {
+      Hive.registerAdapter(ZoneThemeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(AttachmentAdapter().typeId)) {
+      Hive.registerAdapter(AttachmentAdapter());
+    }
+    if (!Hive.isAdapterRegistered(TaskAdapter().typeId)) {
+      Hive.registerAdapter(TaskAdapter());
+    }
+    if (!Hive.isAdapterRegistered(GoalAdapter().typeId)) {
+      Hive.registerAdapter(GoalAdapter());
+    }
+    if (!Hive.isAdapterRegistered(EventAdapter().typeId)) {
+      Hive.registerAdapter(EventAdapter());
+    }
+
     _box = await Hive.openBox<OmniNote>(_boxName);
     notifyListeners();
   }

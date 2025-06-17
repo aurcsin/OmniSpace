@@ -12,6 +12,7 @@ import '../services/omni_note_service.dart';
 
 // Alias note_detail_page to avoid name conflicts
 import 'note_detail_page.dart' as detail;
+import 'note_view_page.dart';
 
 import 'calendar_overview_page.dart';
 import '../widgets/main_menu_drawer.dart';
@@ -29,6 +30,8 @@ class _JournalPageState extends State<JournalPage> {
   bool _isLoading = true;
   bool _gridMode = true;
   List<OmniNote> _displayedNotes = [];
+  List<String> _tags = [];
+  String? _tagFilter;
 
   @override
   void initState() {
@@ -38,8 +41,17 @@ class _JournalPageState extends State<JournalPage> {
 
   Future<void> _initializeNotes() async {
     await OmniNoteService.instance.loadAllNotes();
+    final all = OmniNoteService.instance.notes;
+    final tagSet = <String>{};
+    for (final n in all) {
+      tagSet.addAll(n.tags
+          .split(',')
+          .map((e) => e.trim())
+          .where((element) => element.isNotEmpty));
+    }
     setState(() {
-      _displayedNotes = OmniNoteService.instance.notes;
+      _tags = tagSet.toList();
+      _displayedNotes = _applyFilters(all);
       _isLoading = false;
     });
   }
@@ -51,7 +63,7 @@ class _JournalPageState extends State<JournalPage> {
     });
     final results = await OmniNoteService.instance.searchNotes(query);
     setState(() {
-      _displayedNotes = results;
+      _displayedNotes = _applyFilters(results);
       _isLoading = false;
     });
   }
@@ -61,6 +73,37 @@ class _JournalPageState extends State<JournalPage> {
       return _performSearch(_searchQuery);
     }
     return _initializeNotes();
+  }
+
+  List<OmniNote> _applyFilters(List<OmniNote> notes) {
+    var filtered = notes;
+    if (_tagFilter != null && _tagFilter!.isNotEmpty) {
+      filtered = filtered.where((n) {
+        final tags = n.tags
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty);
+        return tags.contains(_tagFilter);
+      }).toList();
+    }
+    return filtered;
+  }
+
+  Future<void> _changeTag(String? tag) async {
+    setState(() {
+      _tagFilter = tag;
+      _isLoading = true;
+    });
+    List<OmniNote> base;
+    if (_searchQuery.isNotEmpty) {
+      base = await OmniNoteService.instance.searchNotes(_searchQuery);
+    } else {
+      base = OmniNoteService.instance.notes;
+    }
+    setState(() {
+      _displayedNotes = _applyFilters(base);
+      _isLoading = false;
+    });
   }
 
   @override
@@ -103,6 +146,24 @@ class _JournalPageState extends State<JournalPage> {
                           onChanged: _performSearch,
                         ),
                       ),
+                      if (_tags.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: DropdownButton<String?>(
+                            isExpanded: true,
+                            value: _tagFilter,
+                            hint: const Text('Filter by tag'),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                  value: null, child: Text('All Tags')),
+                              ..._tags.map((t) => DropdownMenuItem<String?>(
+                                    value: t,
+                                    child: Text(t),
+                                  )),
+                            ],
+                            onChanged: _changeTag,
+                          ),
+                        ),
                       Expanded(
                         child: notes.isEmpty
                             ? Center(
@@ -129,9 +190,8 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) => detail
-                                                        .NoteDetailPage(
-                                                            omniNote: note),
+                                                    builder: (_) =>
+                                                        NoteViewPage(note: note),
                                                   ),
                                                 )
                                                 .then((_) => _refreshNotes()),
@@ -149,9 +209,8 @@ class _JournalPageState extends State<JournalPage> {
                                             onTap: () => Navigator.of(context)
                                                 .push(
                                                   MaterialPageRoute(
-                                                    builder: (_) => detail
-                                                        .NoteDetailPage(
-                                                            omniNote: note),
+                                                    builder: (_) =>
+                                                        NoteViewPage(note: note),
                                                   ),
                                                 )
                                                 .then((_) => _refreshNotes()),

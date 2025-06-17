@@ -5,6 +5,7 @@ import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
 import 'tracker_forge_page.dart';
+import 'tracker_view_page.dart';
 
 class TrackerPage extends StatefulWidget {
   const TrackerPage({super.key});
@@ -76,11 +77,13 @@ class _TrackerPageState extends State<TrackerPage>
           key: ValueKey(tracker.id),
           title: Text(tracker.title),
           subtitle: Text(_subtitleFor(tracker, type)),
-          onTap: () => Navigator.pushNamed(
-            context,
-            '/trackerDetail',
-            arguments: tracker,
-          ),
+          onTap: () => Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) => TrackerViewPage(tracker: tracker),
+                ),
+              )
+              .then((_) => setState(() {})),
           trailing: IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () => Navigator.of(context).push(
