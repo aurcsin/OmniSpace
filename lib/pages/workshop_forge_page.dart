@@ -5,8 +5,6 @@ import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
 import '../widgets/main_menu_drawer.dart';
 import '../utils/id_generator.dart';
-import '../models/omni_note.dart';
-import '../models/tracker.dart';
 
 class WorkshopForgePage extends StatefulWidget {
   final List<String> preselectedNotes;

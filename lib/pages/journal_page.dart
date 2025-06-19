@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/omni_note.dart';
 import '../models/project.dart';
 import '../services/omni_note_service.dart';
 import '../services/project_service.dart';

@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 
 import '../models/omni_note.dart';
 import 'secure_storage_service.dart';
-import 'auth_service.dart';
 
 /// Exception thrown when cloud sync operations fail.
 class CloudSyncException implements Exception {
