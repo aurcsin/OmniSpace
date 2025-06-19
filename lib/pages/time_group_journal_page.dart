@@ -24,13 +24,24 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
   void initState() {
     super.initState();
     _loadNotes();
+    // Listen for note changes so grouping updates automatically
+    OmniNoteService.instance.addListener(_loadNotes);
+  }
+
+  @override
+  void dispose() {
+    OmniNoteService.instance.removeListener(_loadNotes);
+    super.dispose();
   }
 
   Future<void> _loadNotes() async {
-    await OmniNoteService.instance.loadAllNotes();
+    setState(() => _isLoading = true);
+
+    // Grab and sort notes
     final notes = OmniNoteService.instance.notes;
     notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    // Group by yyyy-MM-dd
     final Map<String, List<OmniNote>> grouped = {};
     for (var n in notes) {
       final key = DateFormat('yyyy-MM-dd').format(n.createdAt);
@@ -58,6 +69,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                   children: _grouped.entries.map((entry) {
                     final displayDate = DateFormat('MMM d, yyyy')
                         .format(DateTime.parse(entry.key));
+                    final notesOnDate = entry.value;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -68,18 +80,16 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
-                        ...entry.value.map((note) {
+                        ...notesOnDate.map((note) {
                           return ListTile(
                             title: Text(
-                              note.title.isNotEmpty ? note.title : '(No Title)',
-                            ),
+                                note.title.isNotEmpty ? note.title : '(No Title)'),
                             subtitle: Text(note.subtitle),
                             trailing: Text(_formatZone(note.zone)),
                             onTap: () => Navigator.of(context)
                                 .push(
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        NoteViewPage(note: note),
+                                    builder: (_) => NoteViewPage(note: note),
                                   ),
                                 )
                                 .then((_) => _loadNotes()),

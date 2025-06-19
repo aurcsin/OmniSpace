@@ -6,9 +6,9 @@ import '../models/tracker_collection.dart';
 import '../utils/id_generator.dart';
 
 class TrackerCollectionService extends ChangeNotifier {
-  TrackerCollectionService._();
+  TrackerCollectionService._internal();
   static final TrackerCollectionService instance =
-      TrackerCollectionService._();
+      TrackerCollectionService._internal();
 
   static const String _boxName = 'tracker_collections';
   late Box<TrackerCollection> _box;
@@ -21,7 +21,12 @@ class TrackerCollectionService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// All collections regardless of owner.
   List<TrackerCollection> get all => _box.values.toList();
+
+  /// Collections belonging to a specific owner.
+  List<TrackerCollection> collectionsForOwner(String ownerId) =>
+      all.where((c) => c.ownerId == ownerId).toList();
 
   Future<void> save(TrackerCollection collection) async {
     await _box.put(collection.id, collection);
@@ -34,10 +39,15 @@ class TrackerCollectionService extends ChangeNotifier {
   }
 
   /// Convenience: create a new collection with a generated id.
-  Future<void> create(String name, List<String> trackerIds) async {
+  Future<void> create({
+    required String name,
+    required String ownerId,
+    required List<String> trackerIds,
+  }) async {
     final col = TrackerCollection(
       id: generateId(),
       name: name,
+      ownerId: ownerId,
       trackerIds: trackerIds,
     );
     await save(col);

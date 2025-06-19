@@ -1,132 +1,76 @@
-// File: lib/services/omni_note_service.dart
-
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-
+import 'package:hive/hive.dart';
 import '../models/omni_note.dart';
-import '../models/attachment.dart';
-import '../models/task.dart';
-import '../models/goal.dart';
-import '../models/event.dart';
 
 class OmniNoteService extends ChangeNotifier {
-  OmniNoteService._();
-  static final OmniNoteService instance = OmniNoteService._();
+  OmniNoteService._internal();
+  static final OmniNoteService instance = OmniNoteService._internal();
 
-  static const String _boxName = 'notes';
+  static const String _boxName = 'omni_notes';
   late Box<OmniNote> _box;
 
+  /// Call once at app startup.
   Future<void> init() async {
     if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
       Hive.registerAdapter(OmniNoteAdapter());
-    }
-    if (!Hive.isAdapterRegistered(ZoneThemeAdapter().typeId)) {
       Hive.registerAdapter(ZoneThemeAdapter());
+      // register other adapters as needed...
     }
-    if (!Hive.isAdapterRegistered(AttachmentAdapter().typeId)) {
-      Hive.registerAdapter(AttachmentAdapter());
-    }
-    if (!Hive.isAdapterRegistered(TaskAdapter().typeId)) {
-      Hive.registerAdapter(TaskAdapter());
-    }
-    if (!Hive.isAdapterRegistered(GoalAdapter().typeId)) {
-      Hive.registerAdapter(GoalAdapter());
-    }
-    if (!Hive.isAdapterRegistered(EventAdapter().typeId)) {
-      Hive.registerAdapter(EventAdapter());
-    }
-
     _box = await Hive.openBox<OmniNote>(_boxName);
     notifyListeners();
-  }
-
-  Future<void> _ensureInit() async {
-    if (!Hive.isBoxOpen(_boxName)) {
-      await init();
-    }
   }
 
   /// All non-trashed notes.
   List<OmniNote> get notes =>
       _box.values.where((n) => !n.isTrashed).toList();
 
-  /// All trashed notes.
+  /// Soft-deleted notes.
   List<OmniNote> get trashedNotes =>
       _box.values.where((n) => n.isTrashed).toList();
 
-  /// Reload (no-op for Hive, but triggers listeners).
-  Future<void> loadAllNotes() async {
-    await _ensureInit();
-    notifyListeners();
-  }
+  /// Look up one note.
+  OmniNote? getNoteById(String id) => _box.get(id);
 
-  /// Search over non-trashed notes.
-  Future<List<OmniNote>> searchNotes(String query) async {
-    await _ensureInit();
-    final q = query.toLowerCase();
-    return _box.values
-        .where((n) => !n.isTrashed)
-        .where((n) =>
-            n.title.toLowerCase().contains(q) ||
-            n.content.toLowerCase().contains(q) ||
-            n.tags.toLowerCase().contains(q))
-        .toList();
-  }
-
-  /// Get a note by its id (or null if missing).
-  OmniNote? getNoteById(String id) {
-    if (!_box.isOpen) return null;
-    return _box.get(id);
-  }
+  /// **Alias** so UI code (getById) continues to work unchanged.
+  OmniNote? getById(String id) => getNoteById(id);
 
   /// Create or update.
   Future<void> saveNote(OmniNote note) async {
-    await _ensureInit();
     await _box.put(note.id, note);
     notifyListeners();
   }
 
-  /// Hard‐delete by id.
-  Future<void> deleteNoteById(String id) async {
-    await _ensureInit();
+  /// Soft-trash one note.
+  Future<void> trashNote(String id) async {
+    final note = _box.get(id);
+    if (note != null && !note.isTrashed) {
+      note.isTrashed = true;
+      await note.save();
+      notifyListeners();
+    }
+  }
+
+  /// Restore one soft-deleted note.
+  Future<void> restoreNote(String id) async {
+    final note = _box.get(id);
+    if (note != null && note.isTrashed) {
+      note.isTrashed = false;
+      await note.save();
+      notifyListeners();
+    }
+  }
+
+  /// Permanently delete one note.
+  Future<void> deleteNote(String id) async {
     await _box.delete(id);
     notifyListeners();
   }
 
-  /// Mark notes trashed.
-  Future<void> trashNotes(List<String> ids) async {
-    await _ensureInit();
-    for (final id in ids) {
-      final n = _box.get(id);
-      if (n != null && !n.isTrashed) {
-        n.isTrashed = true;
-        await n.save();
-      }
-    }
-    notifyListeners();
-  }
-
-  /// Restore trashed notes.
-  Future<void> restoreNotes(List<String> ids) async {
-    await _ensureInit();
-    for (final id in ids) {
-      final n = _box.get(id);
-      if (n != null && n.isTrashed) {
-        n.isTrashed = false;
-        await n.save();
-      }
-    }
-    notifyListeners();
-  }
-
-  /// Permanently delete a batch of notes.
+  /// Permanently delete multiple notes.
   Future<void> deletePermanent(List<String> ids) async {
-    await _ensureInit();
     for (final id in ids) {
       await _box.delete(id);
     }
     notifyListeners();
   }
-
-  // — attachment helpers omitted —
 }

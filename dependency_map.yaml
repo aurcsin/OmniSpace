@@ -25,7 +25,7 @@ services:
       - User              # lib/models/user.dart
       - Session           # lib/models/session.dart
 
-    cloud_sync_service:
+  cloud_sync_service:
     path: lib/services/cloud_sync_service.dart
     description: Manage sync across cloud providers
     models:

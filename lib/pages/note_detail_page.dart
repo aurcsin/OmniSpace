@@ -3,16 +3,17 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/omni_note.dart';
-import '../services/omni_note_service.dart';
-import '../services/secure_storage_service.dart';
-import '../widgets/main_menu_drawer.dart';
-import '../widgets/object_card.dart';
+import '../models/project.dart';
+import '../models/tracker.dart';
 import '../widgets/omni_tracker_selector.dart';
+import '../services/omni_note_service.dart';
+import '../services/project_service.dart';
+import '../widgets/main_menu_drawer.dart';
 import '../utils/id_generator.dart';
 
-/// Modes for different entry types — still available if you want to
-/// switch between text/voice/image/video creation.
+/// Modes for different entry types
 enum NoteMode { text, voice, image, video }
 
 class NoteDetailPage extends StatefulWidget {
@@ -25,48 +26,29 @@ class NoteDetailPage extends StatefulWidget {
 
 class _NoteDetailPageState extends State<NoteDetailPage> {
   late OmniNote _note;
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleCtl,
-      _subtitleCtl,
-      _tagsCtl,
-      _contentCtl;
-  late ZoneTheme _zone;
-  bool _lockToggle = false;
-  String? _password;
+  late TextEditingController _titleCtl, _subtitleCtl, _tagsCtl, _contentCtl;
+  Project? _selectedProject;
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    // If editing existing, use it; otherwise create a fresh one.
-    _note = widget.omniNote ??
-        OmniNote(
-          id: generateId(),
-          title: '',
-          subtitle: '',
-          content: '',
-          zone: ZoneTheme.Fusion,
-          tags: '',
-          colorValue: 0xFFFFFFFF,
-          createdAt: DateTime.now(),
-          lastUpdated: DateTime.now(),
-        );
-
+    _note = widget.omniNote ?? OmniNote(
+      id: generateId(),
+      title: '',
+      subtitle: '',
+      content: '',
+      tags: '',
+      createdAt: DateTime.now(),
+      lastUpdated: DateTime.now(),
+    );
     _titleCtl = TextEditingController(text: _note.title);
     _subtitleCtl = TextEditingController(text: _note.subtitle);
     _tagsCtl = TextEditingController(text: _note.tags);
     _contentCtl = TextEditingController(text: _note.content);
-    _zone = _note.zone;
-
-    _initLockState();
-  }
-
-  Future<void> _initLockState() async {
-    final pwd =
-        await SecureStorageService.instance.read('lock_${_note.id}');
-    setState(() {
-      _lockToggle = pwd != null;
-      _password = pwd;
-    });
+    if (_note.projectId != null) {
+      _selectedProject = ProjectService.instance.getById(_note.projectId!);
+    }
   }
 
   @override
@@ -79,104 +61,84 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   }
 
   Future<void> _saveNote() async {
-    if (!_formKey.currentState!.validate()) return;
-
+    setState(() => _loading = true);
     _note
-      ..title = _titleCtl.text
+      ..title = _titleCtl.text.trim()
       ..subtitle = _subtitleCtl.text
       ..tags = _tagsCtl.text
       ..content = _contentCtl.text
-      ..zone = _zone
-      ..lastUpdated = DateTime.now();
+      ..lastUpdated = DateTime.now()
+      ..projectId = _selectedProject?.id;
 
     await OmniNoteService.instance.saveNote(_note);
-
-    // Persist or clear the lock password
-    final key = 'lock_${_note.id}';
-    if (_lockToggle && _password?.isNotEmpty == true) {
-      await SecureStorageService.instance.write(key, _password!);
-    } else {
-      await SecureStorageService.instance.delete(key);
-    }
-
+    setState(() => _loading = false);
     Navigator.pop(context);
   }
 
-  Future<void> _onLockToggle(bool on) async {
-    if (on) {
-      final ctrl = TextEditingController();
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Set Lock Password'),
-          content: TextField(
-            controller: ctrl,
-            decoration: const InputDecoration(labelText: 'Password'),
-            obscureText: true,
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel')),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('OK')),
-          ],
-        ),
-      );
-      if (ok == true && ctrl.text.isNotEmpty) {
-        setState(() {
-          _lockToggle = true;
-          _password = ctrl.text;
-        });
-      }
-    } else {
-      setState(() {
-        _lockToggle = false;
-        _password = null;
-      });
-    }
-  }
-
-  Future<void> _promptUnlock() async {
-    final ctrl = TextEditingController();
-    final correct =
-        await SecureStorageService.instance.read('lock_${_note.id}') ?? '';
-    final ok = await showDialog<bool>(
+  Future<void> _selectProject() async {
+    final proj = await showDialog<Project?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Unlock Note'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(labelText: 'Password'),
-          obscureText: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Unlock')),
-        ],
-      ),
+      builder: (_) {
+        final all = ProjectService.instance.all;
+        return AlertDialog(
+          title: const Text('Select Project'),
+          content: SizedBox(
+            width: 300,
+            height: 400,
+            child: ListView(
+              children: [
+                ...all.map((p) => ListTile(
+                      title: Text(p.title),
+                      selected: p.id == _selectedProject?.id,
+                      onTap: () => Navigator.pop(context, p),
+                    )),
+                ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('New Project'),
+                  onTap: () async {
+                    final nameCtl = TextEditingController();
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('New Project'),
+                        content: TextField(
+                          controller: nameCtl,
+                          decoration: const InputDecoration(labelText: 'Name'),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(_, false),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(_, true),
+                            child: const Text('Create'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true && nameCtl.text.trim().isNotEmpty) {
+                      final p = Project(id: generateId(), title: nameCtl.text.trim());
+                      await ProjectService.instance.save(p);
+                      Navigator.pop(context, p);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
-    if (ok == true && ctrl.text == correct) {
-      await SecureStorageService.instance
-          .delete('lock_${_note.id}');
-      setState(() => _lockToggle = false);
-    } else if (ok == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wrong password')));
-    }
+    if (proj != null) setState(() => _selectedProject = proj);
   }
 
-  Future<void> _editCheck() async {
-    if (_lockToggle) {
-      await _promptUnlock();
-      if (_lockToggle) return;
-    }
-    // Nothing else: form is in-line
+  Future<void> _manageTrackers() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => OmniTrackerSelector(ownerId: _note.id),
+    );
   }
 
   @override
@@ -184,109 +146,54 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title:
-            Text(widget.omniNote == null ? 'New Note' : 'Edit Note'),
+        title: Text(widget.omniNote == null ? 'New Note' : 'Edit Note'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveNote,
-          ),
+          IconButton(icon: const Icon(Icons.folder), tooltip: 'Project', onPressed: _selectProject),
+          IconButton(icon: const Icon(Icons.track_changes), tooltip: 'Trackers', onPressed: _manageTrackers),
+          IconButton(icon: const Icon(Icons.save), onPressed: _saveNote),
         ],
       ),
-      body: _lockToggle
-          ? const Center(
-              child: Text('🔒 Note is Locked',
-                  style: TextStyle(fontSize: 24)),
-            )
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _titleCtl,
-                          decoration:
-                              const InputDecoration(labelText: 'Title'),
-                          validator: (v) => (v == null ||
-                                  v.isEmpty)
-                              ? 'Required'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _subtitleCtl,
-                          decoration: const InputDecoration(
-                              labelText: 'Subtitle'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _tagsCtl,
-                          decoration: const InputDecoration(
-                            labelText: 'Tags (comma-separated)',
-                            prefixText: '#',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _contentCtl,
-                          decoration:
-                              const InputDecoration(labelText: 'Content'),
-                          maxLines: 6,
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<ZoneTheme>(
-                          value: _zone,
-                          decoration:
-                              const InputDecoration(labelText: 'Zone'),
-                          items: ZoneTheme.values
-                              .map((z) => DropdownMenuItem(
-                                  value: z, child: Text(z.name)))
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _zone = v!),
-                        ),
-                        const SizedBox(height: 16),
-                        SwitchListTile(
-                          title: const Text('Password-Lock'),
-                          subtitle: Text(
-                              _lockToggle ? 'Locked' : 'Unlocked'),
-                          value: _lockToggle,
-                          onChanged: _onLockToggle,
-                        ),
-                      ],
+                  if (_selectedProject != null)
+                    Container(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      padding: const EdgeInsets.all(8),
+                      child: Text('Project: ${_selectedProject!.title}'),
                     ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _titleCtl,
+                    decoration: const InputDecoration(labelText: 'Title', hintText: 'Untitled'),
+                    onTap: () { if (_titleCtl.text.isEmpty) _titleCtl.clear(); },
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // — NEW: Manage all trackers/collections for this note —
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.track_changes),
-                    label: const Text('Manage Trackers & Collections'),
-                    onPressed: () async {
-                      // open the shared OmniTrackerSelector,
-                      // scoped to this note’s ID
-                      await showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (_) => OmniTrackerSelector(
-                            ownerId: _note.id),
-                      );
-                      // no need to pop; the selector writes straight into the links,
-                      // so just rebuild to reflect any new badges, etc.
-                      setState(() {});
-                    },
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _subtitleCtl,
+                    decoration: const InputDecoration(labelText: 'Subtitle'),
                   ),
-
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _tagsCtl,
+                    decoration: const InputDecoration(labelText: 'Tags'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _contentCtl,
+                    decoration: const InputDecoration(labelText: 'Content'),
+                    maxLines: 6,
+                  ),
                   const SizedBox(height: 24),
-
-                  // Read-only preview of the note’s current content/attachments
-                  ObjectCard(note: _note),
+                  Text(
+                    'Created: ${DateFormat.yMMMd().add_jm().format(_note.createdAt)}   ' 
+                    'Updated: ${DateFormat.yMMMd().add_jm().format(_note.lastUpdated)}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ],
               ),
             ),

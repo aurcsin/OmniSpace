@@ -1,3 +1,5 @@
+// File: lib/pages/project_view_page.dart
+
 import 'package:flutter/material.dart';
 import '../models/project.dart';
 import '../services/project_service.dart';
@@ -28,8 +30,11 @@ class _ProjectViewPageState extends State<ProjectViewPage> {
         builder: (_) => ProjectForgePage(project: _project),
       ),
     );
-    final reloaded = ProjectService.instance.byId(_project.id);
-    if (reloaded != null) setState(() => _project = reloaded);
+    // Use getById (not byId) to match ProjectService
+    final reloaded = ProjectService.instance.getById(_project.id);
+    if (reloaded != null) {
+      setState(() => _project = reloaded);
+    }
   }
 
   @override
@@ -38,7 +43,9 @@ class _ProjectViewPageState extends State<ProjectViewPage> {
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
         title: Text(
-          _project.title.isNotEmpty ? _project.title : '(Untitled Project)',
+          _project.title.isNotEmpty
+              ? _project.title
+              : '(Untitled Project)',
         ),
         actions: [
           IconButton(icon: const Icon(Icons.edit), onPressed: _edit),

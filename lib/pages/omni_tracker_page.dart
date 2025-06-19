@@ -136,8 +136,11 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
           ElevatedButton(
             onPressed: () async {
               if (nameCtl.text.trim().isNotEmpty) {
-                await TrackerCollectionService.instance
-                    .create(nameCtl.text.trim(), selected.toList());
+                await TrackerCollectionService.instance.create(
+                  name: nameCtl.text.trim(),
+                  ownerId: '', // global collection
+                  trackerIds: selected.toList(),
+                );
               }
               Navigator.pop(context);
             },

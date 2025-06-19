@@ -1,3 +1,5 @@
+// File: lib/pages/calendar_overview_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -28,21 +30,22 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   @override
   void initState() {
     super.initState();
-    _loadNotes();
+    // Ensure tracker data is available (we assume omniNoteService was init'd in main)
+    TrackerService.instance.init().then((_) => _refresh());
   }
 
-  Future<void> _loadNotes() async {
+  Future<void> _refresh() async {
     setState(() => _loading = true);
-    await OmniNoteService.instance.loadAllNotes();
     _filterNotes();
     setState(() => _loading = false);
   }
 
   void _filterNotes() {
-    final all = OmniNoteService.instance.notes;
-    final eventsAll = TrackerService.instance.all
+    final allNotes = OmniNoteService.instance.notes;
+    final allEvents = TrackerService.instance.all
         .where((t) => t.type == TrackerType.event && t.start != null)
         .toList();
+
     DateTime start, end;
     switch (_view) {
       case CalView.day:
@@ -62,12 +65,13 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = DateTime(_focusDate.year + 1, 1, 1);
         break;
     }
-    _notes = all
+
+    _notes = allNotes
         .where((n) => n.createdAt.isAfter(start) && n.createdAt.isBefore(end))
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    _events = eventsAll
+    _events = allEvents
         .where((e) => e.start!.isAfter(start) && e.start!.isBefore(end))
         .toList()
       ..sort((a, b) => a.start!.compareTo(b.start!));
@@ -83,12 +87,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = _focusDate.subtract(const Duration(days: 7));
           break;
         case CalView.month:
-          _focusDate =
-              DateTime(_focusDate.year, _focusDate.month - 1, _focusDate.day);
+          _focusDate = DateTime(_focusDate.year, _focusDate.month - 1, _focusDate.day);
           break;
         case CalView.year:
-          _focusDate =
-              DateTime(_focusDate.year - 1, _focusDate.month, _focusDate.day);
+          _focusDate = DateTime(_focusDate.year - 1, _focusDate.month, _focusDate.day);
           break;
       }
       _filterNotes();
@@ -105,12 +107,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = _focusDate.add(const Duration(days: 7));
           break;
         case CalView.month:
-          _focusDate =
-              DateTime(_focusDate.year, _focusDate.month + 1, _focusDate.day);
+          _focusDate = DateTime(_focusDate.year, _focusDate.month + 1, _focusDate.day);
           break;
         case CalView.year:
-          _focusDate =
-              DateTime(_focusDate.year + 1, _focusDate.month, _focusDate.day);
+          _focusDate = DateTime(_focusDate.year + 1, _focusDate.month, _focusDate.day);
           break;
       }
       _filterNotes();
@@ -185,7 +185,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             child: ToggleButtons(
               isSelected: CalView.values.map((v) => v == _view).toList(),
               onPressed: (i) {
-                setState(() { _view = CalView.values[i]; _filterNotes(); });
+                setState(() {
+                  _view = CalView.values[i];
+                  _filterNotes();
+                });
               },
               children: const [
                 Padding(padding: EdgeInsets.all(8), child: Text('Day')),
@@ -207,7 +210,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           SwitchListTile(
             title: const Text('Show Events'),
             value: _showEvents,
-            onChanged: (v) => setState(() { _showEvents = v; _filterNotes(); }),
+            onChanged: (v) => setState(() {
+              _showEvents = v;
+              _filterNotes();
+            }),
           ),
           Expanded(
             child: _loading
@@ -221,7 +227,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
                                 subtitle: Text(DateFormat.jm().format(note.createdAt)),
                                 onTap: () => Navigator.of(context)
                                     .push(MaterialPageRoute(builder: (_) => NoteViewPage(note: note)))
-                                    .then((_) => _loadNotes()),
+                                    .then((_) => _refresh()),
                               )),
                           if (_showEvents)
                             ..._events.map((e) => ListTile(
