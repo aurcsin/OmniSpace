@@ -5,28 +5,56 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/tracker.dart';
 import 'navigator_service.dart';
-// ← point at your existing helper file
-import 'timezone_helper.dart';
+import 'timezone_helper_service.dart';
 import 'tracker_service.dart';
 
+/// Exception for notification errors.
+class NotificationException implements Exception {
+  final String message;
+  NotificationException(this.message);
+  @override
+  String toString() => 'NotificationException: $message';
+}
+
+/// Handles scheduling and handling of local notifications for trackers.
 class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
+  NotificationService._(this._client);
+  static final NotificationService instance = NotificationService._(
+    FlutterLocalNotificationsPlugin(),
+  );
 
-  final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _client;
 
+  /// Call once at app startup.
   Future<void> init() async {
-    // Ensure the IANA time zone database is initialized
-    TimezoneHelperService.instance;
+    // Initialize TZ database
+    await TimezoneHelperService.instance.init();
 
-    // Android initialization
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    // iOS initialization
-    const iosInit = DarwinInitializationSettings();
+    // Request iOS/macOS permissions
+    await _client
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+    await _client
+        .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    await _plugin.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
+    // Initialization settings
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const darwinSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+
+    await _client.initialize(
+      const InitializationSettings(
+        android: androidSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
+      ),
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
@@ -42,30 +70,30 @@ class NotificationService {
   }
 
   Future<void> scheduleForTracker(Tracker t) async {
-    // Cancel any existing notification for this tracker
-    await _plugin.cancel(t.id.hashCode);
+    final id = t.id.hashCode;
+    // Cancel any existing
+    await _client.cancel(id);
 
-    // Only schedule if there's a start date
     if (t.start == null) return;
-
-    // Convert to TZ-aware time
-    final tz.TZDateTime scheduled = tz.TZDateTime.from(t.start!, tz.local);
+    final tz.TZDateTime scheduled =
+        tz.TZDateTime.from(t.start!, tz.local);
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'omnispace_trackers',
         'Tracker Reminders',
-        channelDescription: 'Reminders for your goals, tasks, events',
+        channelDescription: 'Reminders for your trackers',
         importance: Importance.max,
         priority: Priority.high,
+        ticker: 'ticker',
       ),
-      iOS: DarwinNotificationDetails(),
+      iOS: const DarwinNotificationDetails(),
     );
 
-    if (t.frequency == null) {
-      // One-off reminder
-      await _plugin.zonedSchedule(
-        t.id.hashCode,
+    if (t.frequency == null || t.frequency!.isEmpty) {
+      // One-shot
+      await _client.zonedSchedule(
+        id,
         t.title,
         'Tap to view details',
         scheduled,
@@ -76,17 +104,20 @@ class NotificationService {
         androidAllowWhileIdle: true,
       );
     } else {
-      // Recurring reminder
-      final matchComponent = _mapFrequencyToComponent(t.frequency!);
-      await _plugin.zonedSchedule(
-        t.id.hashCode,
+      final match = _mapFrequencyToComponent(t.frequency!);
+      if (match == null) {
+        throw NotificationException(
+            'Unsupported frequency: ${t.frequency}');
+      }
+      await _client.zonedSchedule(
+        id,
         t.title,
         'Recurring reminder',
         scheduled,
         details,
         payload: t.id,
         androidAllowWhileIdle: true,
-        matchDateTimeComponents: matchComponent,
+        matchDateTimeComponents: match,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
@@ -94,12 +125,12 @@ class NotificationService {
   }
 
   Future<void> cancelForTracker(Tracker t) async {
-    await _plugin.cancel(t.id.hashCode);
+    await _client.cancel(t.id.hashCode);
   }
 
-  Future<void> rescheduleAll(List<Tracker> all) async {
-    await _plugin.cancelAll();
-    for (final t in all) {
+  Future<void> rescheduleAll() async {
+    await _client.cancelAll();
+    for (final t in TrackerService.instance.all) {
       await scheduleForTracker(t);
     }
   }

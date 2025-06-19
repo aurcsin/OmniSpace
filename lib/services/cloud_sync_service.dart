@@ -5,31 +5,39 @@ import 'package:http/http.dart' as http;
 
 import '../models/omni_note.dart';
 import 'secure_storage_service.dart';
+import 'auth_service.dart';
 
-/// Lightweight cloud sync stub that authenticates using a stored token.
+/// Exception thrown when cloud sync operations fail.
+class CloudSyncException implements Exception {
+  final String message;
+  CloudSyncException(this.message);
+  @override
+  String toString() => 'CloudSyncException: $message';
+}
+
+/// A service for synchronizing notes with a remote server.
 class CloudSyncService {
-  CloudSyncService._internal();
+  CloudSyncService._internal([http.Client? client]) : _client = client ?? http.Client();
   static final CloudSyncService instance = CloudSyncService._internal();
 
-  /// Endpoint base URL (placeholder).
-  final String _baseUrl = 'https://api.example.com';
+  final http.Client _client;
+  static const String _baseUrl = 'https://api.example.com';
 
-  /// Reads auth token from secure storage.
-  Future<String?> get _token async =>
-      SecureStorageService.instance.read('auth_token');
-
-  /// Pushes a note to the cloud.
-  ///
-  /// If no auth token is stored, an [Exception] is thrown. The note is
-  /// serialized to JSON and sent via a POST request to `$_baseUrl/notes`.
-  Future<void> pushNote(OmniNote note) async {
-    final token = await _token;
+  /// Retrieves the stored auth token.
+  Future<String> _getToken() async {
+    final token = await SecureStorageService.instance.read('auth_token');
     if (token == null) {
-      throw Exception('No auth token found');
+      throw CloudSyncException('No auth token found. Please log in.');
     }
+    return token;
+  }
 
-    final response = await http.post(
-      Uri.parse('$_baseUrl/notes'),
+  /// Pushes (creates or updates) a note to the cloud.
+  Future<void> pushNote(OmniNote note) async {
+    final token = await _getToken();
+    final url = Uri.parse('$_baseUrl/notes/${note.id}');
+    final response = await _client.put(
+      url,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -38,7 +46,38 @@ class CloudSyncService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception('Failed to push note: ${response.body}');
+      throw CloudSyncException('Failed to push note: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  /// Fetches all notes for the current user from the cloud.
+  Future<List<OmniNote>> fetchNotes() async {
+    final token = await _getToken();
+    final url = Uri.parse('$_baseUrl/notes');
+    final response = await _client.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> list = jsonDecode(response.body);
+      return list.map((json) => OmniNote.fromJson(json)).toList();
+    } else {
+      throw CloudSyncException('Failed to fetch notes: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  /// Deletes a note from the cloud.
+  Future<void> deleteNote(String id) async {
+    final token = await _getToken();
+    final url = Uri.parse('$_baseUrl/notes/$id');
+    final response = await _client.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 204) {
+      throw CloudSyncException('Failed to delete note: ${response.statusCode} ${response.body}');
     }
   }
 }

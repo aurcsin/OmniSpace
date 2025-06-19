@@ -1,20 +1,18 @@
 // File: lib/pages/note_detail_page.dart
 
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_quill/flutter_quill.dart' hide Text;
+
 import '../models/omni_note.dart';
 import '../models/project.dart';
-import '../models/tracker.dart';
-import '../widgets/omni_tracker_selector.dart';
 import '../services/omni_note_service.dart';
 import '../services/project_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import '../widgets/omni_tracker_selector.dart';
 import '../utils/id_generator.dart';
-
-/// Modes for different entry types
-enum NoteMode { text, voice, image, video }
 
 class NoteDetailPage extends StatefulWidget {
   final OmniNote? omniNote;
@@ -26,28 +24,54 @@ class NoteDetailPage extends StatefulWidget {
 
 class _NoteDetailPageState extends State<NoteDetailPage> {
   late OmniNote _note;
-  late TextEditingController _titleCtl, _subtitleCtl, _tagsCtl, _contentCtl;
+  late TextEditingController _titleCtl;
+  late TextEditingController _subtitleCtl;
+  late TextEditingController _tagsCtl;
+  late QuillController _quillCtl;
   Project? _selectedProject;
   bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _note = widget.omniNote ?? OmniNote(
-      id: generateId(),
-      title: '',
-      subtitle: '',
-      content: '',
-      tags: '',
-      createdAt: DateTime.now(),
-      lastUpdated: DateTime.now(),
-    );
+
+    // Initialize or create note
+    _note = widget.omniNote ??
+        OmniNote(
+          id: generateId(),
+          title: '',
+          subtitle: '',
+          content: '',
+          tags: '',
+          createdAt: DateTime.now(),
+          lastUpdated: DateTime.now(),
+        );
+
     _titleCtl = TextEditingController(text: _note.title);
     _subtitleCtl = TextEditingController(text: _note.subtitle);
     _tagsCtl = TextEditingController(text: _note.tags);
-    _contentCtl = TextEditingController(text: _note.content);
+
+    // Prepare rich-text controller
+    Delta delta;
+    if (_note.content.trim().isEmpty) {
+      delta = Delta()..insert('\n');
+    } else {
+      try {
+        final List<dynamic> json = jsonDecode(_note.content);
+        delta = Delta.fromJson(json);
+      } catch (_) {
+        delta = Delta()..insert(_note.content + '\n');
+      }
+    }
+    _quillCtl = QuillController(
+      document: Document.fromDelta(delta),
+      selection: const TextSelection.collapsed(offset: 0),
+    );
+
+    // Load project if assigned
     if (_note.projectId != null) {
-      _selectedProject = ProjectService.instance.getById(_note.projectId!);
+      _selectedProject =
+          ProjectService.instance.getById(_note.projectId!);
     }
   }
 
@@ -56,21 +80,26 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     _titleCtl.dispose();
     _subtitleCtl.dispose();
     _tagsCtl.dispose();
-    _contentCtl.dispose();
+    _quillCtl.dispose();
     super.dispose();
   }
 
   Future<void> _saveNote() async {
     setState(() => _loading = true);
+
+    final contentJson =
+        jsonEncode(_quillCtl.document.toDelta().toJson());
+
     _note
       ..title = _titleCtl.text.trim()
       ..subtitle = _subtitleCtl.text
       ..tags = _tagsCtl.text
-      ..content = _contentCtl.text
+      ..content = contentJson
       ..lastUpdated = DateTime.now()
       ..projectId = _selectedProject?.id;
 
     await OmniNoteService.instance.saveNote(_note);
+
     setState(() => _loading = false);
     Navigator.pop(context);
   }
@@ -78,7 +107,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   Future<void> _selectProject() async {
     final proj = await showDialog<Project?>(
       context: context,
-      builder: (_) {
+      builder: (ctx) {
         final all = ProjectService.instance.all;
         return AlertDialog(
           title: const Text('Select Project'),
@@ -90,37 +119,43 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 ...all.map((p) => ListTile(
                       title: Text(p.title),
                       selected: p.id == _selectedProject?.id,
-                      onTap: () => Navigator.pop(context, p),
+                      onTap: () => Navigator.pop(ctx, p),
                     )),
                 ListTile(
                   leading: const Icon(Icons.add),
                   title: const Text('New Project'),
                   onTap: () async {
-                    final nameCtl = TextEditingController();
+                    final ctrl = TextEditingController();
                     final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
+                      context: ctx,
+                      builder: (ctx2) => AlertDialog(
                         title: const Text('New Project'),
                         content: TextField(
-                          controller: nameCtl,
-                          decoration: const InputDecoration(labelText: 'Name'),
+                          controller: ctrl,
+                          decoration:
+                              const InputDecoration(labelText: 'Name'),
                         ),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(_, false),
-                            child: const Text('Cancel'),
-                          ),
+                              onPressed: () =>
+                                  Navigator.pop(ctx2, false),
+                              child: const Text('Cancel')),
                           ElevatedButton(
-                            onPressed: () => Navigator.pop(_, true),
-                            child: const Text('Create'),
-                          ),
+                              onPressed: () =>
+                                  Navigator.pop(ctx2, true),
+                              child: const Text('Create')),
                         ],
                       ),
                     );
-                    if (ok == true && nameCtl.text.trim().isNotEmpty) {
-                      final p = Project(id: generateId(), title: nameCtl.text.trim());
+                    if (ok == true &&
+                        ctrl.text.trim().isNotEmpty) {
+                      final p = Project(
+                        id: generateId(),
+                        title: ctrl.text.trim(),
+                        noteIds: [],
+                      );
                       await ProjectService.instance.save(p);
-                      Navigator.pop(context, p);
+                      Navigator.pop(ctx, p);
                     }
                   },
                 ),
@@ -130,7 +165,9 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
         );
       },
     );
-    if (proj != null) setState(() => _selectedProject = proj);
+    if (proj != null) {
+      setState(() => _selectedProject = proj);
+    }
   }
 
   Future<void> _manageTrackers() async {
@@ -146,56 +183,95 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(widget.omniNote == null ? 'New Note' : 'Edit Note'),
+        title:
+            Text(widget.omniNote == null ? 'New Note' : 'Edit Note'),
         actions: [
-          IconButton(icon: const Icon(Icons.folder), tooltip: 'Project', onPressed: _selectProject),
-          IconButton(icon: const Icon(Icons.track_changes), tooltip: 'Trackers', onPressed: _manageTrackers),
-          IconButton(icon: const Icon(Icons.save), onPressed: _saveNote),
+          IconButton(
+            icon: const Icon(Icons.folder_open),
+            tooltip: 'Assign Project',
+            onPressed: _selectProject,
+          ),
+          IconButton(
+            icon: const Icon(Icons.track_changes),
+            tooltip: 'Manage Trackers',
+            onPressed: _manageTrackers,
+          ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: 'Save',
+            onPressed: _saveNote,
+          ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_selectedProject != null)
-                    Container(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      padding: const EdgeInsets.all(8),
-                      child: Text('Project: ${_selectedProject!.title}'),
-                    ),
-                  const SizedBox(height: 8),
-                  TextFormField(
+          : Column(
+              children: [
+                if (_selectedProject != null)
+                  Container(
+                    width: double.infinity,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withOpacity(0.1),
+                    padding: const EdgeInsets.all(8),
+                    child:
+                        Text('Project: ${_selectedProject!.title}'),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextFormField(
                     controller: _titleCtl,
-                    decoration: const InputDecoration(labelText: 'Title', hintText: 'Untitled'),
-                    onTap: () { if (_titleCtl.text.isEmpty) _titleCtl.clear(); },
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'Untitled',
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: TextFormField(
                     controller: _subtitleCtl,
-                    decoration: const InputDecoration(labelText: 'Subtitle'),
+                    decoration: const InputDecoration(
+                        labelText: 'Subtitle'),
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: TextFormField(
                     controller: _tagsCtl,
-                    decoration: const InputDecoration(labelText: 'Tags'),
+                    decoration: const InputDecoration(
+                        labelText: 'Tags'),
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _contentCtl,
-                    decoration: const InputDecoration(labelText: 'Content'),
-                    maxLines: 6,
+                ),
+                QuillToolbar.basic(controller: _quillCtl),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: QuillEditor(
+                      controller: _quillCtl,
+                      scrollController: ScrollController(),
+                      scrollable: true,
+                      focusNode: FocusNode(),
+                      autoFocus: false,
+                      readOnly: false,
+                      expands: false,
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Created: ${DateFormat.yMMMd().add_jm().format(_note.createdAt)}   ' 
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    'Created: ${DateFormat.yMMMd().add_jm().format(_note.createdAt)}\n'
                     'Updated: ${DateFormat.yMMMd().add_jm().format(_note.lastUpdated)}',
                     style: const TextStyle(fontSize: 12),
+                    textAlign: TextAlign.center,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
     );
   }

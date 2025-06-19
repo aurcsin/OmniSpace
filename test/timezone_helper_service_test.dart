@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:omnispace/services/timezone_helper.dart';
+import 'package:omnispace/services/timezone_helper_service.dart';
 
 void main() {
   final tzHelper = TimezoneHelperService.instance;
