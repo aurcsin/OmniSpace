@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
-
-import '../models/omni_note.dart';
+import '../models/zone_theme.dart';
 
 extension ZoneThemeColor on ZoneTheme {
-  /// Primary color associated with each zone theme.
+  /// Returns a distinct color for each zone.
   Color get color {
     switch (this) {
       case ZoneTheme.Air:
-        return Colors.lightBlue;
+        return Colors.lightBlueAccent;
       case ZoneTheme.Earth:
         return Colors.brown;
       case ZoneTheme.Fire:
-        return Colors.red;
+        return Colors.redAccent;
       case ZoneTheme.Water:
         return Colors.blueAccent;
       case ZoneTheme.Void:
         return Colors.grey;
       case ZoneTheme.Fusion:
-        return Colors.purple;
+        return Colors.purpleAccent;
     }
   }
 }

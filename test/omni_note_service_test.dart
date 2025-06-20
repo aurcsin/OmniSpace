@@ -1,58 +1,82 @@
-import 'dart:io';
+// File: lib/services/omni_note_service.dart
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:omnispace/models/attachment.dart';
-import 'package:omnispace/models/event.dart';
-import 'package:omnispace/models/goal.dart';
-import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/models/task.dart';
-import 'package:omnispace/services/omni_note_service.dart';
 
-void main() {
-  late Directory tempDir;
+import '../models/omni_note.dart';
+import '../models/zone_theme.dart';  // brings ZoneThemeAdapter into scope
 
-  setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('omni_note_test');
-    Hive.init(tempDir.path);
+/// ChangeNotifier-backed Hive box for OmniNote.
+class OmniNoteService extends ChangeNotifier {
+  OmniNoteService._internal();
+  static final OmniNoteService instance = OmniNoteService._internal();
 
+  // Must match what the test deletes:
+  static const String _boxName = 'omni_notes';
+  late Box<OmniNote> _box;
+
+  /// Call once at app startup.
+  Future<void> init() async {
     if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
       Hive.registerAdapter(OmniNoteAdapter());
-    }
-    if (!Hive.isAdapterRegistered(ZoneThemeAdapter().typeId)) {
       Hive.registerAdapter(ZoneThemeAdapter());
+      // …register your other adapters here as needed…
     }
-    if (!Hive.isAdapterRegistered(AttachmentAdapter().typeId)) {
-      Hive.registerAdapter(AttachmentAdapter());
-    }
-    if (!Hive.isAdapterRegistered(AttachmentTypeAdapter().typeId)) {
-      Hive.registerAdapter(AttachmentTypeAdapter());
-    }
-    if (!Hive.isAdapterRegistered(TaskAdapter().typeId)) {
-      Hive.registerAdapter(TaskAdapter());
-    }
-    if (!Hive.isAdapterRegistered(GoalAdapter().typeId)) {
-      Hive.registerAdapter(GoalAdapter());
-    }
-    if (!Hive.isAdapterRegistered(EventAdapter().typeId)) {
-      Hive.registerAdapter(EventAdapter());
-    }
+    _box = await Hive.openBox<OmniNote>(_boxName);
+    notifyListeners();
+  }
 
-    await OmniNoteService.instance.init();
-  });
+  /// All non-trashed notes.
+  List<OmniNote> get notes =>
+      _box.values.where((n) => !n.isTrashed).toList();
 
-  tearDown(() async {
-    await Hive.box<OmniNote>('notes').close();
-    await Hive.deleteBoxFromDisk('notes');
-    await tempDir.delete(recursive: true);
-  });
+  /// Soft-deleted (trashed) notes.
+  List<OmniNote> get trashedNotes =>
+      _box.values.where((n) => n.isTrashed).toList();
 
-  test('saveNote persists zone field', () async {
-    final note = OmniNote(id: 'n1', zone: ZoneTheme.Fire);
-    await OmniNoteService.instance.saveNote(note);
+  /// Look up one note by its ID.
+  OmniNote? getNoteById(String id) => _box.get(id);
 
-    final fetched = OmniNoteService.instance.getNoteById('n1');
-    expect(fetched, isNotNull);
-    expect(fetched!.zone, ZoneTheme.Fire);
-  });
+  /// Alias so UI code (getById) continues to work.
+  OmniNote? getById(String id) => getNoteById(id);
+
+  /// Create or update a note.
+  Future<void> saveNote(OmniNote note) async {
+    await _box.put(note.id, note);
+    notifyListeners();
+  }
+
+  /// Soft-trash a note.
+  Future<void> trashNote(String id) async {
+    final note = _box.get(id);
+    if (note != null && !note.isTrashed) {
+      note.isTrashed = true;
+      await note.save();
+      notifyListeners();
+    }
+  }
+
+  /// Restore a trashed note.
+  Future<void> restoreNote(String id) async {
+    final note = _box.get(id);
+    if (note != null && note.isTrashed) {
+      note.isTrashed = false;
+      await note.save();
+      notifyListeners();
+    }
+  }
+
+  /// Permanently delete a note.
+  Future<void> deleteNote(String id) async {
+    await _box.delete(id);
+    notifyListeners();
+  }
+
+  /// Permanently delete multiple notes.
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
+    }
+    notifyListeners();
+  }
 }

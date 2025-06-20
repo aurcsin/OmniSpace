@@ -2,17 +2,20 @@ import 'package:hive/hive.dart';
 
 part 'tracker_type.g.dart';
 
-@HiveType(typeId: 14) // changed from 7 → 14
+@HiveType(typeId: 11) // choose an unused typeId
 enum TrackerType {
   @HiveField(0)
   goal,
 
   @HiveField(1)
-  task,
+  task,    // ← added back
 
   @HiveField(2)
   event,
 
   @HiveField(3)
+  routine,
+
+  @HiveField(4)
   series,
 }

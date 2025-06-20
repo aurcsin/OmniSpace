@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 
@@ -12,26 +13,28 @@ class TrackerService extends ChangeNotifier {
   static const String _boxName = 'trackers';
   late Box<Tracker> _box;
 
-  /// In-memory map: ownerId → list of trackerIds
+  /// In‐memory owner→tracker map (notes, projects, etc).
   final Map<String, List<String>> _ownerLinks = {};
 
-  /// Call once at app startup.
+  /// Call this once at app startup.
   Future<void> init() async {
-    // Register adapters if not already done
+    // Register adapters only once
     if (!Hive.isAdapterRegistered(TrackerAdapter().typeId)) {
       Hive.registerAdapter(TrackerAdapter());
+    }
+    if (!Hive.isAdapterRegistered(TrackerTypeAdapter().typeId)) {
       Hive.registerAdapter(TrackerTypeAdapter());
     }
-    // Open the box
+
     _box = await Hive.openBox<Tracker>(_boxName);
     notifyListeners();
   }
 
-  /// All non-deleted trackers.
+  /// All non‐trashed trackers.
   List<Tracker> get all =>
       _box.values.where((t) => !t.isTrashed).toList();
 
-  /// Soft-deleted trackers.
+  /// Soft‐deleted trackers.
   List<Tracker> get trashed =>
       _box.values.where((t) => t.isTrashed).toList();
 
@@ -44,28 +47,8 @@ class TrackerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// **New**: Alias for tests that expect a `.create(...)` method
+  /// Alias so tests using `.create(...)` still pass.
   Future<void> create(Tracker tracker) => save(tracker);
-
-  /// Soft-trash one tracker.
-  Future<void> trashTracker(String id) async {
-    final t = _box.get(id);
-    if (t != null && !t.isTrashed) {
-      t.isTrashed = true;
-      await t.save();
-      notifyListeners();
-    }
-  }
-
-  /// Restore one soft-deleted tracker.
-  Future<void> restoreTracker(String id) async {
-    final t = _box.get(id);
-    if (t != null && t.isTrashed) {
-      t.isTrashed = false;
-      await t.save();
-      notifyListeners();
-    }
-  }
 
   /// Permanently delete one tracker.
   Future<void> deleteTracker(String id) async {
@@ -81,15 +64,35 @@ class TrackerService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// **New**: Return all trackers of a given type, for tests using `.ofType(...)`
+  /// Soft‐trash one tracker.
+  Future<void> trashTracker(String id) async {
+    final t = _box.get(id);
+    if (t != null && !t.isTrashed) {
+      t.isTrashed = true;
+      await t.save();
+      notifyListeners();
+    }
+  }
+
+  /// Restore one soft‐deleted tracker.
+  Future<void> restoreTracker(String id) async {
+    final t = _box.get(id);
+    if (t != null && t.isTrashed) {
+      t.isTrashed = false;
+      await t.save();
+      notifyListeners();
+    }
+  }
+
+  /// Return all trackers of a given type (for tests using `.ofType(...)`).
   List<Tracker> ofType(TrackerType type) =>
       all.where((t) => t.type == type).toList();
 
   // --------------------------------------------------------------------
-  // Owner–linking map (notes, projects, etc.)
+  // Owner–linking (notes, projects, etc.)
   // --------------------------------------------------------------------
 
-  /// Link a tracker under a given owner (note, collection, etc).
+  /// Link a tracker under a given owner (note, project, etc).
   Future<void> linkOwner(String trackerId, String ownerId) async {
     _ownerLinks.putIfAbsent(ownerId, () => []);
     if (!_ownerLinks[ownerId]!.contains(trackerId)) {
@@ -98,17 +101,16 @@ class TrackerService extends ChangeNotifier {
     }
   }
 
-  /// Convenience alias for linking trackers to notes.
-  Future<void> linkNote(String trackerId, String noteId) =>
-      linkOwner(trackerId, noteId);
-
   /// Unlink a tracker from that owner.
   Future<void> unlinkOwner(String trackerId, String ownerId) async {
     _ownerLinks[ownerId]?.remove(trackerId);
     notifyListeners();
   }
 
-  /// Convenience alias for unlinking trackers from notes.
+  /// Convenience aliases for notes:
+  Future<void> linkNote(String trackerId, String noteId) =>
+      linkOwner(trackerId, noteId);
+
   Future<void> unlinkNote(String trackerId, String noteId) =>
       unlinkOwner(trackerId, noteId);
 
@@ -117,5 +119,6 @@ class TrackerService extends ChangeNotifier {
       List.unmodifiable(_ownerLinks[ownerId] ?? []);
 
   /// Alias used by UI code.
-  List<String> linkedTo(String noteId) => trackerIdsForOwner(noteId);
+  List<String> linkedTo(String ownerId) =>
+      trackerIdsForOwner(ownerId);
 }

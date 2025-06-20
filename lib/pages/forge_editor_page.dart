@@ -1,4 +1,8 @@
+// File: lib/pages/forge_editor_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // ← Added for DateFormat
+
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
@@ -6,10 +10,10 @@ import '../utils/id_generator.dart';
 import '../widgets/main_menu_drawer.dart';
 
 /// Page for creating or editing a [Tracker].
+/// Accepts either a Tracker instance, a TrackerType, or a String id.
 class ForgeEditorPage extends StatefulWidget {
-  /// Argument passed via Navigator. Can be [Tracker], [TrackerType] or tracker id [String].
   final dynamic argument;
-  const ForgeEditorPage({super.key, this.argument});
+  const ForgeEditorPage({Key? key, this.argument}) : super(key: key);
 
   @override
   State<ForgeEditorPage> createState() => _ForgeEditorPageState();
@@ -19,6 +23,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
   final _formKey = GlobalKey<FormState>();
   Tracker? _tracker;
   TrackerType? _type;
+
   late TextEditingController _titleCtl;
   late TextEditingController _progressCtl;
   late TextEditingController _frequencyCtl;
@@ -27,6 +32,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
   @override
   void initState() {
     super.initState();
+
     final arg = widget.argument;
     if (arg is Tracker) {
       _tracker = arg;
@@ -34,15 +40,16 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
     } else if (arg is TrackerType) {
       _type = arg;
     } else if (arg is String) {
-      try {
-        _tracker = TrackerService.instance.all.firstWhere((t) => t.id == arg);
-        _type = _tracker!.type;
-      } catch (_) {}
+      _tracker = TrackerService.instance.byId(arg);
+      _type = _tracker?.type;
     }
+
     _titleCtl = TextEditingController(text: _tracker?.title ?? '');
     _progressCtl = TextEditingController(
-        text: _tracker?.progress != null ? _tracker!.progress.toString() : '');
-    _frequencyCtl = TextEditingController(text: _tracker?.frequency ?? '');
+      text: _tracker?.progress?.toString() ?? '',
+    );
+    _frequencyCtl =
+        TextEditingController(text: _tracker?.frequency ?? '');
     _start = _tracker?.start;
   }
 
@@ -61,27 +68,28 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (date != null) {
-      setState(() => _start = date);
-    }
+    if (date != null) setState(() => _start = date);
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _type == null) return;
-    final tracker =
-        _tracker ?? Tracker(id: generateId(), type: _type!, title: '');
-    tracker
-      ..title = _titleCtl.text
+
+    final t = _tracker ??
+        Tracker(id: generateId(), type: _type!, title: '');
+    t
+      ..title = _titleCtl.text.trim()
       ..type = _type!;
+
     if (_type == TrackerType.goal) {
-      tracker.progress = double.tryParse(_progressCtl.text) ?? 0;
-    } else if (_type == TrackerType.task) {
-      tracker.frequency = _frequencyCtl.text;
+      t.progress = double.tryParse(_progressCtl.text) ?? 0;
+    } else if (_type == TrackerType.routine) {
+      t.frequency = _frequencyCtl.text.trim();
     } else if (_type == TrackerType.event) {
-      tracker.start = _start;
+      t.start = _start;
     }
-    await TrackerService.instance.save(tracker);
-    Navigator.pop(context, tracker);
+
+    await TrackerService.instance.save(t);
+    Navigator.of(context).pop(t);
   }
 
   Widget _buildTypeFields() {
@@ -89,72 +97,98 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
       case TrackerType.goal:
         return TextFormField(
           controller: _progressCtl,
-          decoration: const InputDecoration(labelText: 'Progress (0-1)'),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration:
+              const InputDecoration(labelText: 'Progress (0–1)'),
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+          validator: (v) {
+            final x = double.tryParse(v ?? '');
+            if (x == null || x < 0 || x > 1) {
+              return 'Enter a value between 0 and 1';
+            }
+            return null;
+          },
         );
-      case TrackerType.task:
+
+      case TrackerType.routine:
         return TextFormField(
           controller: _frequencyCtl,
-          decoration: const InputDecoration(labelText: 'Frequency'),
+          decoration: const InputDecoration(
+              labelText: 'Recurrence (e.g. daily)'),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Required' : null,
         );
+
       case TrackerType.event:
         return Row(
           children: [
             Expanded(
               child: Text(
                 _start != null
-                    ? _start!.toLocal().toString()
+                    ? 'On: ${DateFormat.yMMMd().format(_start!)}'
                     : 'No date selected',
               ),
             ),
             TextButton(
               onPressed: _pickDate,
-              child: const Text('Select Date'),
+              child: const Text('Pick Date'),
             ),
           ],
         );
+
       case TrackerType.series:
-      case null:
+      default:
         return const SizedBox.shrink();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = _tracker == null ? 'New Tracker' : 'Edit Tracker';
+    final isNew = _tracker == null;
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(title),
+        title: Text(isNew ? 'New Tracker' : 'Edit Tracker'),
         actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _save),
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _save,
+          ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
           child: Column(
             children: [
               DropdownButtonFormField<TrackerType>(
                 value: _type,
-                decoration: const InputDecoration(labelText: 'Type'),
+                decoration:
+                    const InputDecoration(labelText: 'Type'),
                 items: TrackerType.values
                     .map((t) => DropdownMenuItem(
                           value: t,
-                          child: Text(t.name),
+                          child: Text(
+                            t.name[0].toUpperCase() +
+                                t.name.substring(1),
+                          ),
                         ))
                     .toList(),
                 onChanged: (t) => setState(() => _type = t),
+                validator: (v) =>
+                    v == null ? 'Please select a type' : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _titleCtl,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (val) =>
-                    (val == null || val.isEmpty) ? 'Required' : null,
+                decoration:
+                    const InputDecoration(labelText: 'Title'),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Enter a title'
+                    : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildTypeFields(),
             ],
           ),

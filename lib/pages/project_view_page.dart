@@ -1,11 +1,12 @@
 // File: lib/pages/project_view_page.dart
 
 import 'package:flutter/material.dart';
+
 import '../models/project.dart';
 import '../services/project_service.dart';
-import 'project_forge_page.dart';
 import '../widgets/main_menu_drawer.dart';
 import '../widgets/object_card.dart';
+import 'project_forge_page.dart'; // ensure this file exists in lib/pages/
 
 class ProjectViewPage extends StatefulWidget {
   final Project project;
@@ -25,15 +26,17 @@ class _ProjectViewPageState extends State<ProjectViewPage> {
   }
 
   Future<void> _edit() async {
-    await Navigator.of(context).push(
+    final edited = await Navigator.of(context).push<Project>(
       MaterialPageRoute(
         builder: (_) => ProjectForgePage(project: _project),
       ),
     );
-    // Use getById (not byId) to match ProjectService
-    final reloaded = ProjectService.instance.getById(_project.id);
-    if (reloaded != null) {
-      setState(() => _project = reloaded);
+    if (edited != null) {
+      // reload from service in case it's updated
+      final reloaded = ProjectService.instance.getById(edited.id);
+      if (reloaded != null) {
+        setState(() => _project = reloaded);
+      }
     }
   }
 
@@ -43,9 +46,7 @@ class _ProjectViewPageState extends State<ProjectViewPage> {
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
         title: Text(
-          _project.title.isNotEmpty
-              ? _project.title
-              : '(Untitled Project)',
+          _project.title.isNotEmpty ? _project.title : '(Untitled Project)',
         ),
         actions: [
           IconButton(icon: const Icon(Icons.edit), onPressed: _edit),

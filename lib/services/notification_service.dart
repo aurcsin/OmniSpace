@@ -27,10 +27,10 @@ class NotificationService {
 
   /// Call once at app startup.
   Future<void> init() async {
-    // Initialize TZ database
-    await TimezoneHelperService.instance.init();
+    // Ensure the TZ database is loaded.
+    TimezoneHelperService.instance; // constructor seeds time zones
 
-    // Request iOS/macOS permissions
+    // iOS/macOS permissions
     await _client
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>()
@@ -69,14 +69,13 @@ class NotificationService {
     }
   }
 
+  /// Schedule (or reschedule) a notification for [t].
   Future<void> scheduleForTracker(Tracker t) async {
     final id = t.id.hashCode;
-    // Cancel any existing
     await _client.cancel(id);
 
     if (t.start == null) return;
-    final tz.TZDateTime scheduled =
-        tz.TZDateTime.from(t.start!, tz.local);
+    final tz.TZDateTime scheduled = tz.TZDateTime.from(t.start!, tz.local);
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -85,13 +84,13 @@ class NotificationService {
         channelDescription: 'Reminders for your trackers',
         importance: Importance.max,
         priority: Priority.high,
-        ticker: 'ticker',
+        ticker: 'tracker_ticker',
       ),
       iOS: const DarwinNotificationDetails(),
     );
 
     if (t.frequency == null || t.frequency!.isEmpty) {
-      // One-shot
+      // One-time reminder
       await _client.zonedSchedule(
         id,
         t.title,
@@ -99,15 +98,12 @@ class NotificationService {
         scheduled,
         details,
         payload: t.id,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        androidAllowWhileIdle: true,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
     } else {
       final match = _mapFrequencyToComponent(t.frequency!);
       if (match == null) {
-        throw NotificationException(
-            'Unsupported frequency: ${t.frequency}');
+        throw NotificationException('Unsupported frequency: ${t.frequency}');
       }
       await _client.zonedSchedule(
         id,
@@ -116,18 +112,18 @@ class NotificationService {
         scheduled,
         details,
         payload: t.id,
-        androidAllowWhileIdle: true,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: match,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     }
   }
 
+  /// Cancel any scheduled notification for [t].
   Future<void> cancelForTracker(Tracker t) async {
     await _client.cancel(t.id.hashCode);
   }
 
+  /// Cancel & reschedule all trackers (e.g. on startup).
   Future<void> rescheduleAll() async {
     await _client.cancelAll();
     for (final t in TrackerService.instance.all) {

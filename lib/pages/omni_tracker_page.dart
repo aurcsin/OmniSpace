@@ -1,15 +1,13 @@
 // File: lib/pages/omni_tracker_page.dart
 
 import 'package:flutter/material.dart';
-
 import '../models/tracker.dart';
-import '../models/tracker_collection.dart';
 import '../models/tracker_type.dart';
+import '../models/tracker_collection.dart';
 import '../services/tracker_service.dart';
 import '../services/tracker_collection_service.dart';
-import '../widgets/search_filter_bar.dart';
-import '../services/search_filter_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import 'tracker_forge_page.dart';
 import 'tracker_view_page.dart';
 
 class OmniTrackerPage extends StatefulWidget {
@@ -20,111 +18,75 @@ class OmniTrackerPage extends StatefulWidget {
 }
 
 class _OmniTrackerPageState extends State<OmniTrackerPage> {
-  final _filter = SearchFilterService.instance;
+  bool _selectionMode = false;
+  final Set<String> _selected = {};
   bool _gridMode = true;
-  Set<String> _selectedTrackerIds = {};
 
-  @override
-  void initState() {
-    super.initState();
-    TrackerService.instance.init().then((_) => setState(() {}));
-    TrackerCollectionService.instance.init().then((_) => setState(() {}));
-    _filter.addListener(() => setState(() {}));
+  List<Tracker> get _all => TrackerService.instance.all;
+  List<TrackerCollection> get _cols => TrackerCollectionService.instance.all;
+
+  IconData _iconFor(TrackerType t) {
+    switch (t) {
+      case TrackerType.goal:
+        return Icons.flag;
+      case TrackerType.task:
+        return Icons.check_box;
+      case TrackerType.event:
+        return Icons.event;
+      case TrackerType.routine:
+        return Icons.repeat;
+      case TrackerType.series:
+        return Icons.link;
+    }
   }
 
-  void _toggleTrackerSelect(String id) {
+  void _enterSelect(String id) {
     setState(() {
-      if (!_selectedTrackerIds.remove(id)) _selectedTrackerIds.add(id);
+      _selectionMode = true;
+      _selected.add(id);
+    });
+  }
+
+  void _toggleSelect(String id) {
+    setState(() {
+      if (!_selected.remove(id)) _selected.add(id);
+      if (_selected.isEmpty) _selectionMode = false;
     });
   }
 
   Future<void> _batchAddToCollection() async {
-    final colId = await showModalBottomSheet<String>(
+    // TODO: prompt existing/new collection and add all _selected IDs
+  }
+
+  void _showAddMenu() {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (_) {
-        final all = TrackerCollectionService.instance.all;
-        return ListView(
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ...all.map((c) => ListTile(
-                  title: Text(c.name),
-                  onTap: () => Navigator.pop(context, c.id),
-                )),
             ListTile(
               leading: const Icon(Icons.add),
+              title: const Text('New Tracker'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => TrackerForgePage()))
+                    .then((_) => setState(() {}));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_special),
               title: const Text('New Collection'),
-              onTap: () async {
-                final ctrl = TextEditingController();
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('New Collection'),
-                    content: TextField(
-                        controller: ctrl,
-                        decoration:
-                            const InputDecoration(labelText: 'Name')),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(_, false),
-                          child: const Text('Cancel')),
-                      ElevatedButton(
-                          onPressed: () => Navigator.pop(_, true),
-                          child: const Text('Create')),
-                    ],
-                  ),
-                );
-                if (ok == true && ctrl.text.trim().isNotEmpty) {
-                  await TrackerCollectionService.instance.create(
-                    name: ctrl.text.trim(),
-                    ownerId: '',
-                    trackerIds: [],
-                  );
-                  final newCol =
-                      TrackerCollectionService.instance.all.last;
-                  Navigator.pop(context, newCol.id);
-                }
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: open create-collection UI
               },
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
-    if (colId != null) {
-      await TrackerCollectionService.instance
-          .addTrackersToCollection(colId, _selectedTrackerIds.toList());
-      setState(() => _selectedTrackerIds.clear());
-    }
-  }
-
-  List<Tracker> get _all => TrackerService.instance.all;
-  List<TrackerCollection> get _collections =>
-      TrackerCollectionService.instance.all;
-
-  List<Tracker> get _filtered {
-    final q = _filter.query.toLowerCase();
-    return _all.where((t) {
-      if (q.isNotEmpty && !t.title.toLowerCase().contains(q)) {
-        return false;
-      }
-      if (t.start != null) {
-        final date = t.start!;
-        final f = _filter.focusDate;
-        switch (_filter.viewMode) {
-          case ViewMode.day:
-            return date.year == f.year &&
-                date.month == f.month &&
-                date.day == f.day;
-          case ViewMode.week:
-            final st = f.subtract(const Duration(days: 3));
-            final en = f.add(const Duration(days: 3));
-            return date.isAfter(st) && date.isBefore(en);
-          case ViewMode.month:
-            return date.year == f.year && date.month == f.month;
-          case ViewMode.year:
-            return date.year == f.year;
-        }
-      }
-      return true;
-    }).toList();
   }
 
   @override
@@ -132,74 +94,62 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: _selectedTrackerIds.isEmpty
-            ? const Text('OmniTracker')
-            : Text('${_selectedTrackerIds.length} selected'),
-        leading: _selectedTrackerIds.isEmpty
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () =>
-                    setState(() => _selectedTrackerIds.clear()),
-              ),
+        title: Text(
+          _selectionMode
+              ? '${_selected.length} selected'
+              : 'OmniTracker',
+        ),
         actions: [
-          if (_selectedTrackerIds.isNotEmpty)
+          if (!_selectionMode)
             IconButton(
-              icon: const Icon(Icons.playlist_add),
+              icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
+              onPressed: () => setState(() => _gridMode = !_gridMode),
+            ),
+          if (_selectionMode)
+            IconButton(
+              icon: const Icon(Icons.folder_special),
               tooltip: 'Add to Collection',
               onPressed: _batchAddToCollection,
             ),
-          if (_selectedTrackerIds.isEmpty)
-            IconButton(
-              icon:
-                  Icon(_gridMode ? Icons.list : Icons.grid_view),
-              onPressed: () =>
-                  setState(() => _gridMode = !_gridMode),
-            ),
         ],
       ),
-      body: Column(
-        children: [
-          const SearchFilterBar(),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child:
-                  _gridMode ? _buildGrid() : _buildList(),
-            ),
-          ),
-        ],
+      body: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _gridMode ? _buildGrid() : _buildList(),
       ),
-      floatingActionButton: _selectedTrackerIds.isEmpty
-          ? FloatingActionButton(
-              child: const Icon(Icons.add),
-              onPressed: _showAddMenu,
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (_selectionMode) {
+            setState(() {
+              _selectionMode = false;
+              _selected.clear();
+            });
+          } else {
+            _showAddMenu();
+          }
+        },
+        child: Icon(_selectionMode ? Icons.close : Icons.add),
+      ),
     );
   }
 
   Widget _buildGrid() {
     return ListView(
       children: [
-        ..._collections.map((col) {
-          final members = _filtered
-              .where((t) => col.trackerIds.contains(t.id))
-              .toList();
+        ..._cols.map((col) {
+          final members =
+              _all.where((t) => col.trackerIds.contains(t.id)).toList();
           return ExpansionTile(
             title: Text('${col.name} (${members.length})'),
-            children:
-                members.map(_buildTrackerTile).toList(),
+            children: members.map(_tileFor).toList(),
           );
         }),
         const Divider(),
         ExpansionTile(
           title: const Text('Ungrouped Trackers'),
-          initiallyExpanded: true,
-          children: _filtered
-              .where((t) => _collections
-                  .every((c) => !c.trackerIds.contains(t.id)))
-              .map(_buildTrackerTile)
+          children: _all
+              .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
+              .map(_tileFor)
               .toList(),
         ),
       ],
@@ -209,20 +159,16 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
   Widget _buildList() {
     return ListView(
       children: [
-        ..._filtered
-            .where((t) =>
-                _collections.every((c) => !c.trackerIds.contains(t.id)))
-            .map(_buildTrackerTile)
-            .toList(),
+        ..._all
+            .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
+            .map(_tileFor),
         const Divider(),
-        ..._collections.map((col) {
-          final members = _filtered
-              .where((t) => col.trackerIds.contains(t.id))
-              .toList();
+        ..._cols.map((col) {
           return ExpansionTile(
             title: Text(col.name),
-            children: members
-                .map(_buildTrackerTile)
+            children: _all
+                .where((t) => col.trackerIds.contains(t.id))
+                .map(_tileFor)
                 .toList(),
           );
         }),
@@ -230,45 +176,22 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
     );
   }
 
-  Widget _buildTrackerTile(Tracker t) {
-    final selected =
-        _selectedTrackerIds.contains(t.id);
-    return InkWell(
-      onLongPress: () => _toggleTrackerSelect(t.id),
-      onTap: selected
-          ? () => _toggleTrackerSelect(t.id)
-          : () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) =>
-                        TrackerViewPage(tracker: t)),
-              ),
-      child: ListTile(
-        leading: _selectedTrackerIds.isEmpty
-            ? Icon(_iconFor(t.type))
-            : Checkbox(
-                value: selected,
-                onChanged: (_) =>
-                    _toggleTrackerSelect(t.id),
-              ),
-        title: Text(t.title),
-      ),
+  Widget _tileFor(Tracker t) {
+    final selected = _selected.contains(t.id);
+    return ListTile(
+      leading: _selectionMode
+          ? Checkbox(
+              value: selected,
+              onChanged: (_) => _toggleSelect(t.id),
+            )
+          : Icon(_iconFor(t.type)),
+      title: Text(t.title),
+      onLongPress: () => _enterSelect(t.id),
+      onTap: _selectionMode
+          ? () => _toggleSelect(t.id)
+          : () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
+              .then((_) => setState(() {})),
     );
-  }
-
-  void _showAddMenu() {
-    // existing implementation...
-  }
-
-  IconData _iconFor(TrackerType type) {
-    switch (type) {
-      case TrackerType.goal:
-        return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
-      case TrackerType.event:
-        return Icons.event;
-      case TrackerType.series:
-        return Icons.link;
-    }
   }
 }

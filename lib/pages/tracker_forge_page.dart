@@ -10,15 +10,11 @@ import '../services/tracker_service.dart';
 import '../services/omni_note_service.dart';
 import '../utils/id_generator.dart';
 
-/// Extended Tracker Forge allowing:
-///  • recurrence for tasks
-///  • select notes to attach to this tracker
-///  • create multiple trackers in a batch
 class TrackerForgePage extends StatefulWidget {
   final Tracker? tracker;
   final TrackerType? type;
 
-  const TrackerForgePage({super.key, this.tracker, this.type});
+  const TrackerForgePage({Key? key, this.tracker, this.type}) : super(key: key);
 
   @override
   _TrackerForgePageState createState() => _TrackerForgePageState();
@@ -31,14 +27,12 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
   late TextEditingController _frequencyCtl;
   DateTime? _taskTime;
 
-  // Notes to assimilate
   List<OmniNote> _allNotes = [];
   final Set<String> _selectedNoteIds = {};
 
   @override
   void initState() {
     super.initState();
-    // Listen for notes changes
     OmniNoteService.instance.addListener(_onNotesChanged);
     _allNotes = OmniNoteService.instance.notes;
 
@@ -46,8 +40,6 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
     _titleCtl = TextEditingController(text: widget.tracker?.title ?? '');
     _frequencyCtl = TextEditingController(text: widget.tracker?.frequency ?? '');
 
-    // Initial note list
-    _allNotes = OmniNoteService.instance.notes;
     if (widget.tracker != null && widget.tracker!.tags.isNotEmpty) {
       _selectedNoteIds.addAll(widget.tracker!.tags.split(','));
     }
@@ -92,12 +84,15 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final t = widget.tracker ?? Tracker(id: generateId(), type: _type, title: '');
+    final t = widget.tracker ??
+        Tracker(id: generateId(), type: _type, title: '');
     t
       ..title = _titleCtl.text.trim()
       ..type = _type
-      ..frequency = _type == TrackerType.task ? _frequencyCtl.text.trim() : null
-      ..start = _type == TrackerType.event ? _taskTime : null
+      ..frequency = (_type == TrackerType.task || _type == TrackerType.routine)
+          ? _frequencyCtl.text.trim()
+          : null
+      ..start = (_type == TrackerType.event) ? _taskTime : null
       ..tags = _selectedNoteIds.join(',');
 
     await TrackerService.instance.save(t);
@@ -112,6 +107,8 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
         return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
+      case TrackerType.routine:
+        return Icons.repeat;
       case TrackerType.series:
         return Icons.link;
     }
@@ -119,75 +116,114 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 
   @override
   Widget build(BuildContext context) {
-    final typeName = _type.name[0].toUpperCase() + _type.name.substring(1);
+    final typeName =
+        _type.name[0].toUpperCase() + _type.name.substring(1);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.tracker == null ? 'New $typeName' : 'Edit $typeName'),
+        title: Text(widget.tracker == null
+            ? 'New $typeName'
+            : 'Edit $typeName'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _save,
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (widget.tracker == null)
+              if (widget.tracker == null) ...[
                 DropdownButtonFormField<TrackerType>(
                   value: _type,
-                  decoration: const InputDecoration(labelText: 'Type'),
+                  decoration:
+                      const InputDecoration(labelText: 'Type'),
                   items: TrackerType.values.map((tt) {
-                    return DropdownMenuItem(
+                    return DropdownMenuItem<TrackerType>(
                       value: tt,
                       child: Row(
-                        children: [Icon(_iconFor(tt)), const SizedBox(width: 8), Text(tt.name)],
+                        children: [
+                          Icon(_iconFor(tt)),
+                          const SizedBox(width: 8),
+                          Text(tt.name[0].toUpperCase() +
+                              tt.name.substring(1)),
+                        ],
                       ),
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => _type = v!),
                 ),
-
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _titleCtl,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                decoration:
+                    const InputDecoration(labelText: 'Title'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Required' : null,
               ),
-
-              if (_type == TrackerType.task) ...[
+              if (_type == TrackerType.task ||
+                  _type == TrackerType.routine) ...[
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _frequencyCtl,
                   decoration: const InputDecoration(
-                      labelText: 'Recurrence (e.g. daily, weekly)'),
+                      labelText: 'Recurrence (e.g. daily)'),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Required';
+                    }
+                    return null;
+                  },
                 ),
+              ],
+              if (_type == TrackerType.event) ...[
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: Text(_taskTime == null
                           ? 'No time chosen'
-                          : DateFormat.jm().format(_taskTime!)),
+                          : DateFormat.jm()
+                              .format(_taskTime!)),
                     ),
                     TextButton(
-                        onPressed: _pickTime, child: const Text('Pick Time')),
+                      onPressed: _pickTime,
+                      child: const Text('Pick Time'),
+                    ),
                   ],
                 ),
               ],
-
               const SizedBox(height: 24),
-              Text('Attach Notes', style: Theme.of(context).textTheme.titleMedium),
+              Text('Attach Notes',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium),
               const SizedBox(height: 8),
-              ..._allNotes.map((n) {
-                return CheckboxListTile(
-                  value: _selectedNoteIds.contains(n.id),
-                  onChanged: (_) => _toggleNoteSelection(n.id),
-                  title: Text(n.title.isEmpty ? '(no title)' : n.title),
-                  secondary: const Icon(Icons.note),
-                );
-              }),
-
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: _save, child: const Text('Save')),
+              // Constrain height so the Save button stays visible.
+              SizedBox(
+                height: 200,
+                child: Scrollbar(
+                  child: ListView(
+                    children: _allNotes.map((n) {
+                      return CheckboxListTile(
+                        value: _selectedNoteIds.contains(n.id),
+                        onChanged: (_) =>
+                            _toggleNoteSelection(n.id),
+                        title: Text(n.title.isEmpty
+                            ? '(no title)'
+                            : n.title),
+                        secondary: const Icon(Icons.note),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

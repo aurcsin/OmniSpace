@@ -14,8 +14,7 @@ class OmniTrackerSelector extends StatefulWidget {
   /// ID of the object (note, project, etc.) you’re linking trackers into.
   final String ownerId;
 
-  const OmniTrackerSelector({Key? key, required this.ownerId})
-      : super(key: key);
+  const OmniTrackerSelector({Key? key, required this.ownerId}) : super(key: key);
 
   @override
   _OmniTrackerSelectorState createState() => _OmniTrackerSelectorState();
@@ -33,18 +32,9 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
   }
 
   Future<void> _reload() async {
-    // Ensure services are initialized
-    await TrackerService.instance.init();
-    await TrackerCollectionService.instance.init();
-
     _allTrackers = TrackerService.instance.all;
     _allCollections = TrackerCollectionService.instance.all;
-
-    // **Use the existing linkedTo(...) method here, not trackerIdsForOwner**
-    final linkedList =
-        TrackerService.instance.linkedTo(widget.ownerId);
-    _linkedIds = linkedList.toSet();
-
+    _linkedIds = TrackerService.instance.linkedTo(widget.ownerId).toSet();
     setState(() {});
   }
 
@@ -56,6 +46,8 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
         return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
+      case TrackerType.routine:
+        return Icons.repeat;
       case TrackerType.series:
         return Icons.link;
     }
@@ -79,13 +71,14 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
           children: TrackerType.values.map((t) {
             return ListTile(
               leading: Icon(_iconFor(t)),
-              title: Text(t.name),
+              title: Text(t.name[0].toUpperCase() + t.name.substring(1)),
               onTap: () => Navigator.pop(context, t),
             );
           }).toList(),
         ),
       ),
     );
+
     if (type != null) {
       final created = await Navigator.of(context).push<Tracker>(
         MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)),
@@ -111,8 +104,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
             children: [
               TextField(
                 controller: nameCtl,
-                decoration:
-                    const InputDecoration(labelText: 'Collection Name'),
+                decoration: const InputDecoration(labelText: 'Collection Name'),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -138,9 +130,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
           );
         }),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final name = nameCtl.text.trim();
@@ -184,7 +174,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
 
           const Divider(),
 
-          // Collections
+          // Existing Collections
           ..._allCollections.map((col) {
             final members = _allTrackers
                 .where((t) => col.trackerIds.contains(t.id))
@@ -213,8 +203,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
             title: const Text('Ungrouped Trackers'),
             initiallyExpanded: true,
             children: _allTrackers
-                .where((t) =>
-                    _allCollections.every((c) => !c.trackerIds.contains(t.id)))
+                .where((t) => _allCollections.every((c) => !c.trackerIds.contains(t.id)))
                 .map((t) {
                   final linked = _linkedIds.contains(t.id);
                   return CheckboxListTile(

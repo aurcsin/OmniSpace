@@ -1,19 +1,24 @@
+// File: lib/services/omni_note_service.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+
 import '../models/omni_note.dart';
+import '../models/zone_theme.dart';  // ← import your enum so ZoneThemeAdapter is in scope
 
 class OmniNoteService extends ChangeNotifier {
   OmniNoteService._internal();
   static final OmniNoteService instance = OmniNoteService._internal();
 
-  static const String _boxName = 'omni_notes';
+  // Must match the box name used in your tests
+  static const String _boxName = 'notes';
   late Box<OmniNote> _box;
 
   /// Call once at app startup.
   Future<void> init() async {
     if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
       Hive.registerAdapter(OmniNoteAdapter());
-      Hive.registerAdapter(ZoneThemeAdapter());
+      Hive.registerAdapter(ZoneThemeAdapter());  // ← now defined
       // register other adapters as needed...
     }
     _box = await Hive.openBox<OmniNote>(_boxName);

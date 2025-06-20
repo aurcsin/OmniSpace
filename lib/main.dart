@@ -1,54 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-// Models
+// Models & Adapters
 import 'models/omni_note.dart';
+import 'models/zone_theme.dart';
 import 'models/attachment.dart';
 import 'models/tracker_type.dart';
 import 'models/tracker.dart';
 import 'models/tracker_collection.dart';
-// ... (other model imports)
+// … other @HiveType models …
 
 // Services
+import 'services/notification_service.dart';
 import 'services/omni_note_service.dart';
 import 'services/tracker_service.dart';
 import 'services/tracker_collection_service.dart';
-import 'services/notification_service.dart';
 import 'services/navigator_service.dart';
+// … other services …
 
 // Pages
 import 'pages/journal_page.dart';
 import 'pages/note_detail_page.dart';
 import 'pages/note_view_page.dart';
-// ... (other page imports)
+// … other pages …
 
+// Themes / Utilities
 import 'themes/theme_loader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
   await Hive.initFlutter();
 
-  // Register ALL adapters before opening boxes:
+  // Register EVERY adapter before opening any boxes:
   Hive.registerAdapter(OmniNoteAdapter());
   Hive.registerAdapter(ZoneThemeAdapter());
   Hive.registerAdapter(AttachmentAdapter());
   Hive.registerAdapter(TrackerTypeAdapter());
   Hive.registerAdapter(TrackerAdapter());
   Hive.registerAdapter(TrackerCollectionAdapter());
-  // ... (any other adapters)
+  // … register other generated adapters …
 
-  // Initialize services (and open boxes)
+  // Initialize services (they open their Hive boxes internally)
   await NotificationService.instance.init();
   await OmniNoteService.instance.init();
   await TrackerService.instance.init();
   await TrackerCollectionService.instance.init();
-  // ... (other service inits)
+  // … other service inits …
 
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -66,7 +72,7 @@ class MyApp extends StatelessWidget {
           final note = ModalRoute.of(ctx)!.settings.arguments as OmniNote;
           return NoteViewPage(note: note);
         },
-        // ... (other routes)
+        // Add additional routes here…
       },
     );
   }

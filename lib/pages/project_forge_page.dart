@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/project.dart';
 import '../models/omni_note.dart';
 import '../models/tracker.dart';
-import '../models/tracker_type.dart';          // ← add this
+import '../models/tracker_type.dart';
 import '../services/project_service.dart';
 import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
@@ -14,23 +14,24 @@ import '../widgets/main_menu_drawer.dart';
 import 'note_detail_page.dart';
 import 'tracker_forge_page.dart';
 
-enum ForgeSort { chronoDesc, chronoAsc, alphaAsc, alphaDesc }
-
+/// Allows creating or editing a Project, by picking notes & trackers.
 class ProjectForgePage extends StatefulWidget {
   final Project? project;
   final List<String>? preselectedNotes;
   final List<String>? preselectedTrackers;
 
   const ProjectForgePage({
-    super.key,
+    Key? key,
     this.project,
     this.preselectedNotes,
     this.preselectedTrackers,
-  });
+  }) : super(key: key);
 
   @override
   State<ProjectForgePage> createState() => _ProjectForgePageState();
 }
+
+enum ForgeSort { chronoDesc, chronoAsc, alphaAsc, alphaDesc }
 
 class _ProjectForgePageState extends State<ProjectForgePage> {
   final _formKey = GlobalKey<FormState>();
@@ -67,15 +68,15 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
     super.dispose();
   }
 
-  void _save() async {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final project = widget.project ?? Project(id: generateId());
     project
-      ..title = _titleCtl.text
+      ..title = _titleCtl.text.trim()
       ..noteIds = _noteIds.toList()
       ..trackerIds = _trackerIds.toList();
     await ProjectService.instance.save(project);
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(project);
   }
 
   List<OmniNote> get _filteredNotes {
@@ -107,13 +108,16 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
     final all = TrackerService.instance.all;
     final q = _trackerQuery.toLowerCase();
     var list = all.where((t) => t.title.toLowerCase().contains(q)).toList();
-    int parseId(Tracker t) => int.tryParse(t.id) ?? 0;
+
+    // use numeric value of ID as a stand-in for creation time
+    int idValue(String id) => int.tryParse(id) ?? 0;
+
     switch (_trackerSort) {
       case ForgeSort.chronoDesc:
-        list.sort((a, b) => parseId(b).compareTo(parseId(a)));
+        list.sort((a, b) => idValue(b.id).compareTo(idValue(a.id)));
         break;
       case ForgeSort.chronoAsc:
-        list.sort((a, b) => parseId(a).compareTo(parseId(b)));
+        list.sort((a, b) => idValue(a.id).compareTo(idValue(b.id)));
         break;
       case ForgeSort.alphaAsc:
         list.sort((a, b) => a.title.compareTo(b.title));
@@ -133,6 +137,8 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
         return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
+      case TrackerType.routine:
+        return Icons.repeat;
       case TrackerType.series:
         return Icons.link;
     }
@@ -147,22 +153,22 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
           children: TrackerType.values.map((type) {
             return ListTile(
               leading: Icon(_iconFor(type)),
-              title: Text('${type.name[0].toUpperCase()}${type.name.substring(1)}'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context)
-                    .push<Tracker>(MaterialPageRoute(
-                  builder: (_) => TrackerForgePage(type: type),
-                ))
-                    .then((t) {
-                  if (t != null) setState(() {});
-                });
-              },
+              title: Text(type.name[0].toUpperCase() + type.name.substring(1)),
+              onTap: () => Navigator.pop(context, type),
             );
           }).toList(),
         ),
       ),
-    );
+    ).then((type) {
+      if (type != null) {
+        Navigator.of(context)
+            .push<Tracker>(MaterialPageRoute(
+                builder: (_) => TrackerForgePage(type: type)))
+            .then((t) {
+          if (t != null) setState(() => _trackerIds.add(t.id));
+        });
+      }
+    });
   }
 
   @override
@@ -182,7 +188,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title field
+              // Title
               TextFormField(
                 controller: _titleCtl,
                 decoration: const InputDecoration(labelText: 'Title'),
@@ -190,7 +196,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
               ),
               const SizedBox(height: 24),
 
-              // Notes section header
+              // Notes
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -199,14 +205,12 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                     icon: const Icon(Icons.add),
                     onPressed: () => Navigator.of(context)
                         .push(MaterialPageRoute(
-                          builder: (_) => const NoteDetailPage(omniNote: null),
-                        ))
+                            builder: (_) => const NoteDetailPage()))
                         .then((_) => setState(() {})),
                   ),
                 ],
               ),
-
-              // Notes search & sort
+              // filter & sort
               Row(
                 children: [
                   Expanded(
@@ -230,19 +234,16 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   ),
                 ],
               ),
-
-              // Notes checkbox list
               ..._filteredNotes.map((n) {
                 return CheckboxListTile(
                   value: _noteIds.contains(n.id),
                   title: Text(n.title.isNotEmpty ? n.title : '(No Title)'),
                   onChanged: (v) {
                     setState(() {
-                      if (v == true) {
+                      if (v == true)
                         _noteIds.add(n.id);
-                      } else {
+                      else
                         _noteIds.remove(n.id);
-                      }
                     });
                   },
                 );
@@ -250,7 +251,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
 
               const SizedBox(height: 32),
 
-              // Trackers section header
+              // Trackers
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -258,8 +259,6 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   IconButton(icon: const Icon(Icons.add), onPressed: _createNewTracker),
                 ],
               ),
-
-              // Trackers search & sort
               Row(
                 children: [
                   Expanded(
@@ -283,8 +282,6 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   ),
                 ],
               ),
-
-              // Trackers checkbox list
               ..._filteredTrackers.map((t) {
                 return CheckboxListTile(
                   value: _trackerIds.contains(t.id),
@@ -292,11 +289,10 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   subtitle: Text(t.type.name),
                   onChanged: (v) {
                     setState(() {
-                      if (v == true) {
+                      if (v == true)
                         _trackerIds.add(t.id);
-                      } else {
+                      else
                         _trackerIds.remove(t.id);
-                      }
                     });
                   },
                 );

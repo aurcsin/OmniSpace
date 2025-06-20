@@ -1,5 +1,3 @@
-// File: lib/pages/time_group_journal_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -23,9 +21,8 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
   @override
   void initState() {
     super.initState();
-    _loadNotes();
-    // Listen for note changes so grouping updates automatically
     OmniNoteService.instance.addListener(_loadNotes);
+    _loadNotes();
   }
 
   @override
@@ -37,11 +34,9 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
   Future<void> _loadNotes() async {
     setState(() => _isLoading = true);
 
-    // Grab and sort notes
     final notes = OmniNoteService.instance.notes;
     notes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Group by yyyy-MM-dd
     final Map<String, List<OmniNote>> grouped = {};
     for (var n in notes) {
       final key = DateFormat('yyyy-MM-dd').format(n.createdAt);
@@ -53,8 +48,6 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
       _isLoading = false;
     });
   }
-
-  String _formatZone(ZoneTheme zone) => zone.name;
 
   @override
   Widget build(BuildContext context) {
@@ -85,27 +78,24 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                             title: Text(
                                 note.title.isNotEmpty ? note.title : '(No Title)'),
                             subtitle: Text(note.subtitle),
-                            trailing: Text(_formatZone(note.zone)),
+                            trailing: Text(note.zone.name),
                             onTap: () => Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (_) => NoteViewPage(note: note),
-                                  ),
-                                )
+                                .push(MaterialPageRoute(
+                                  builder: (_) => NoteViewPage(note: note),
+                                ))
                                 .then((_) => _loadNotes()),
                           );
-                        }),
+                        }).toList(),
+                        const Divider(),
                       ],
                     );
                   }).toList(),
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.of(context)
-            .push(
-              MaterialPageRoute(
-                builder: (_) => const NoteDetailPage(omniNote: null),
-              ),
-            )
+            .push(MaterialPageRoute(
+              builder: (_) => const NoteDetailPage(),
+            ))
             .then((_) => _loadNotes()),
         child: const Icon(Icons.add),
       ),

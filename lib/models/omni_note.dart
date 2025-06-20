@@ -1,56 +1,87 @@
+// File: lib/models/omni_note.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+
 import 'attachment.dart';
 import 'task.dart';
 import 'goal.dart';
 import 'event.dart';
+import 'zone_theme.dart';
 
 part 'omni_note.g.dart';
-
-/// The six “zones” of your OmniSpace world.
-@HiveType(typeId: 10)
-enum ZoneTheme {
-  @HiveField(0)
-  Air,
-  @HiveField(1)
-  Earth,
-  @HiveField(2)
-  Fire,
-  @HiveField(3)
-  Water,
-  @HiveField(4)
-  Void,
-  @HiveField(5)
-  Fusion,
-}
 
 /// Your core note model.
 @HiveType(typeId: 0)
 class OmniNote extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) String title;
-  @HiveField(2) String subtitle;
-  @HiveField(3) String content;
-  @HiveField(4) ZoneTheme zone;
-  @HiveField(5) String tags;
-  @HiveField(6) int colorValue;
-  @HiveField(7) String? mood;
-  @HiveField(8) String? direction;
-  @HiveField(9) String? projectId;
-  @HiveField(10) String? recommendedTag;
-  @HiveField(11) String? seriesId;
-  @HiveField(12) List<Attachment> attachments;
-  @HiveField(13) List<Task>? tasks;
-  @HiveField(14) List<Goal>? goals;
-  @HiveField(15) List<Event>? events;
-  @HiveField(16) DateTime createdAt;
-  @HiveField(17) DateTime lastUpdated;
-  @HiveField(18) bool isPinned;
-  @HiveField(19) bool isStarred;
+  @HiveField(0)
+  String id;
 
-  // NEW FIELDS
-  @HiveField(20) bool isArchived;
-  @HiveField(21) bool isTrashed;
+  @HiveField(1)
+  String title;
+
+  @HiveField(2)
+  String subtitle;
+
+  @HiveField(3)
+  String content;
+
+  @HiveField(4)
+  ZoneTheme zone;
+
+  @HiveField(5)
+  String tags;
+
+  @HiveField(6)
+  int colorValue;
+
+  @HiveField(7)
+  String? mood;
+
+  @HiveField(8)
+  String? direction;
+
+  @HiveField(9)
+  String? projectId;
+
+  @HiveField(10)
+  String? recommendedTag;
+
+  @HiveField(11)
+  String? seriesId;
+
+  @HiveField(12)
+  List<Attachment> attachments;
+
+  @HiveField(13)
+  List<Task>? tasks;
+
+  @HiveField(14)
+  List<Goal>? goals;
+
+  @HiveField(15)
+  List<Event>? events;
+
+  @HiveField(16)
+  DateTime createdAt;
+
+  @HiveField(17)
+  DateTime lastUpdated;
+
+  @HiveField(18)
+  bool isPinned;
+
+  @HiveField(19)
+  bool isStarred;
+
+  @HiveField(20)
+  bool isArchived;
+
+  @HiveField(21)
+  bool isTrashed;
+
+  @HiveField(22)
+  bool isLocked;
 
   OmniNote({
     required this.id,
@@ -75,6 +106,7 @@ class OmniNote extends HiveObject {
     this.isStarred = false,
     this.isArchived = false,
     this.isTrashed = false,
+    this.isLocked = false,
   })  : attachments = attachments ?? [],
         createdAt = createdAt ?? DateTime.now(),
         lastUpdated = lastUpdated ?? createdAt ?? DateTime.now();
@@ -102,6 +134,7 @@ class OmniNote extends HiveObject {
         'isStarred': isStarred,
         'isArchived': isArchived,
         'isTrashed': isTrashed,
+        'isLocked': isLocked,
       };
 
   factory OmniNote.fromJson(Map<String, dynamic> json) => OmniNote(
@@ -118,9 +151,10 @@ class OmniNote extends HiveObject {
         projectId: json['projectId'] as String?,
         recommendedTag: json['recommendedTag'] as String?,
         seriesId: json['seriesId'] as String?,
-        attachments: (json['attachments'] as List<dynamic>)
-            .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
-            .toList(),
+        attachments: (json['attachments'] as List<dynamic>?)
+                ?.map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+                .toList() ??
+            [],
         tasks: (json['tasks'] as List<dynamic>?)
             ?.map((t) => Task.fromJson(t as Map<String, dynamic>))
             .toList(),
@@ -132,9 +166,10 @@ class OmniNote extends HiveObject {
             .toList(),
         createdAt: DateTime.parse(json['createdAt'] as String),
         lastUpdated: DateTime.parse(json['lastUpdated'] as String),
-        isPinned: json['isPinned'] as bool,
+        isPinned: json['isPinned'] as bool? ?? false,
         isStarred: json['isStarred'] as bool? ?? false,
         isArchived: json['isArchived'] as bool? ?? false,
         isTrashed: json['isTrashed'] as bool? ?? false,
+        isLocked: json['isLocked'] as bool? ?? false,
       );
 }
