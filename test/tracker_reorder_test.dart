@@ -1,3 +1,4 @@
+// @TestOn('vm')
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:omnispace/models/tracker.dart';
 import 'package:omnispace/models/tracker_type.dart';
-import 'package:omnispace/pages/tracker_page.dart';
+import 'package:omnispace/pages/omni_tracker_page.dart';
 import 'package:omnispace/services/tracker_service.dart';
 
 Future<void> longPressDrag(
@@ -31,16 +32,19 @@ void main() {
     Hive.registerAdapter(TrackerTypeAdapter());
 
     await TrackerService.instance.init();
-    await TrackerService.instance.create(
+    await TrackerService.instance.save(
       Tracker(id: '1', type: TrackerType.goal, title: 'A'),
     );
-    await TrackerService.instance.create(
+    await TrackerService.instance.save(
       Tracker(id: '2', type: TrackerType.goal, title: 'B'),
     );
 
-    await tester.pumpWidget(const MaterialApp(home: TrackerPage()));
+    await tester.pumpWidget(const MaterialApp(home: OmniTrackerPage()));
     expect(find.text('A'), findsOneWidget);
-    expect(TrackerService.instance.ofType(TrackerType.goal).first.title, 'A');
+    expect(
+      TrackerService.instance.ofType(TrackerType.goal).first.title,
+      'A',
+    );
 
     await longPressDrag(tester, find.text('A'), const Offset(0, 80));
     await tester.pumpAndSettle();

@@ -133,14 +133,12 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
     switch (type) {
       case TrackerType.goal:
         return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
       case TrackerType.routine:
         return Icons.repeat;
       case TrackerType.series:
-        return Icons.link;
+        return Icons.collections;
     }
   }
 
@@ -153,7 +151,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
           children: TrackerType.values.map((type) {
             return ListTile(
               leading: Icon(_iconFor(type)),
-              title: Text(type.name[0].toUpperCase() + type.name.substring(1)),
+              title: Text('${type.name[0].toUpperCase()}${type.name.substring(1)}'),
               onTap: () => Navigator.pop(context, type),
             );
           }).toList(),
@@ -162,10 +160,11 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
     ).then((type) {
       if (type != null) {
         Navigator.of(context)
-            .push<Tracker>(MaterialPageRoute(
-                builder: (_) => TrackerForgePage(type: type)))
+            .push<Tracker>(MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)))
             .then((t) {
-          if (t != null) setState(() => _trackerIds.add(t.id));
+          if (t != null) {
+            setState(() => _trackerIds.add(t.id));
+          }
         });
       }
     });
@@ -196,7 +195,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
               ),
               const SizedBox(height: 24),
 
-              // Notes
+              // Notes section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -204,13 +203,12 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   IconButton(
                     icon: const Icon(Icons.add),
                     onPressed: () => Navigator.of(context)
-                        .push(MaterialPageRoute(
-                            builder: (_) => const NoteDetailPage()))
+                        .push(MaterialPageRoute(builder: (_) => const NoteDetailPage()))
                         .then((_) => setState(() {})),
                   ),
                 ],
               ),
-              // filter & sort
+              // filter & sort notes
               Row(
                 children: [
                   Expanded(
@@ -240,10 +238,11 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   title: Text(n.title.isNotEmpty ? n.title : '(No Title)'),
                   onChanged: (v) {
                     setState(() {
-                      if (v == true)
+                      if (v == true) {
                         _noteIds.add(n.id);
-                      else
+                      } else {
                         _noteIds.remove(n.id);
+                      }
                     });
                   },
                 );
@@ -251,7 +250,7 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
 
               const SizedBox(height: 32),
 
-              // Trackers
+              // Trackers section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -289,10 +288,11 @@ class _ProjectForgePageState extends State<ProjectForgePage> {
                   subtitle: Text(t.type.name),
                   onChanged: (v) {
                     setState(() {
-                      if (v == true)
+                      if (v == true) {
                         _trackerIds.add(t.id);
-                      else
+                      } else {
                         _trackerIds.remove(t.id);
+                      }
                     });
                   },
                 );

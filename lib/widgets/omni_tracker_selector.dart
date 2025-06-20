@@ -34,24 +34,23 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
 
   Future<void> _reload() async {
     _allTrackers = TrackerService.instance.all;
-    _allCollections = TrackerCollectionService.instance.all;
+    _allCollections = await TrackerCollectionService.instance.all;
     _linkedIds = TrackerService.instance.linkedTo(widget.ownerId).toSet();
     setState(() {});
   }
 
   IconData _iconFor(TrackerType type) {
-    switch (type) {
-      case TrackerType.goal:
-        return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
-      case TrackerType.event:
-        return Icons.event;
-      case TrackerType.routine:
-        return Icons.repeat;
-      case TrackerType.series:
-        return Icons.link;
+    if (type == TrackerType.goal) {
+      return Icons.flag;
+    } else if (type == TrackerType.event) {
+      return Icons.event;
+    } else if (type == TrackerType.routine) {
+      return Icons.repeat;
+    } else if (type == TrackerType.series) {
+      return Icons.link;
     }
+    // default / catch-all (e.g. if you have "todo" or another type)
+    return Icons.check_box;
   }
 
   Future<void> _toggleLink(String tid) async {
@@ -132,16 +131,22 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
           );
         }),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final name = nameCtl.text.trim();
               if (name.isNotEmpty) {
-                await TrackerCollectionService.instance.create(
+                // build a new collection object and save it
+                final newCol = TrackerCollection(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
                   name: name,
                   ownerId: widget.ownerId,
                   trackerIds: selected.toList(),
                 );
+                await TrackerCollectionService.instance.save(newCol);
               }
               Navigator.pop(ctx);
               await _reload();
@@ -196,7 +201,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
                       );
                     }).toList(),
             );
-          }),
+          }).toList(),
 
           const Divider(),
 
@@ -215,7 +220,8 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
                     secondary: Icon(_iconFor(t.type)),
                     title: Text(t.title),
                   );
-                }).toList(),
+                })
+                .toList(),
           ),
         ],
       ),

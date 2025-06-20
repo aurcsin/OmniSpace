@@ -1,11 +1,13 @@
 // File: lib/pages/omni_tracker_page.dart
 
 import 'package:flutter/material.dart';
+
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../models/tracker_collection.dart';
 import '../services/tracker_service.dart';
 import '../services/tracker_collection_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/main_menu_drawer.dart';
 import 'tracker_forge_page.dart';
 import 'tracker_view_page.dart';
@@ -23,20 +25,21 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
   bool _gridMode = true;
 
   List<Tracker> get _all => TrackerService.instance.all;
-  List<TrackerCollection> get _cols => TrackerCollectionService.instance.all;
+  Future<List<TrackerCollection>> get _cols =>
+      TrackerCollectionService.instance.all;
 
   IconData _iconFor(TrackerType t) {
     switch (t) {
       case TrackerType.goal:
         return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
       case TrackerType.routine:
         return Icons.repeat;
       case TrackerType.series:
-        return Icons.link;
+        return Icons.collections;
+      default:
+        return Icons.check_box;
     }
   }
 
@@ -55,24 +58,140 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
   }
 
   Future<void> _batchAddToCollection() async {
-    // TODO: prompt existing/new collection and add all _selected IDs
+    final nameCtl = TextEditingController();
+
+    final picked = await showDialog<TrackerCollection>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add to Collection'),
+        content: SizedBox(
+          width: 300,
+          height: 400,
+          child: Column(
+            children: [
+              Expanded(
+                child: FutureBuilder<List<TrackerCollection>>(
+                  future: _cols,
+                  builder: (c, snap) {
+                    final cols = snap.data ?? [];
+                    return ListView(
+                      children: [
+                        for (final c in cols)
+                          ListTile(
+                            title: Text(c.name),
+                            onTap: () => Navigator.pop(ctx, c),
+                          ),
+                        const Divider(),
+                        ListTile(
+                          leading: const Icon(Icons.add),
+                          title: const Text('New Collection'),
+                          onTap: () {
+                            showDialog<bool>(
+                              context: ctx,
+                              builder: (ctx2) => AlertDialog(
+                                title: const Text('New Collection'),
+                                content: TextField(
+                                  controller: nameCtl,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Name',
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(ctx2, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () =>
+                                        Navigator.pop(ctx2, true),
+                                    child: const Text('Create'),
+                                  ),
+                                ],
+                              ),
+                            ) // <- closes showDialog<bool>(
+                            .then((ok) async {
+                              if (ok == true &&
+                                  nameCtl.text.trim().isNotEmpty) {
+                                final ownerId =
+                                    AuthService.instance.currentUserId;
+                                final newCol = TrackerCollection(
+                                  id: DateTime.now()
+                                      .millisecondsSinceEpoch
+                                      .toString(),
+                                  name: nameCtl.text.trim(),
+                                  ownerId: ownerId,
+                                  trackerIds: [],
+                                );
+                                await TrackerCollectionService.instance
+                                    .save(newCol);
+                                Navigator.pop(ctx, newCol);
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (picked != null) {
+      for (var id in _selected) {
+        if (!picked.trackerIds.contains(id)) {
+          picked.trackerIds.add(id);
+        }
+      }
+      await TrackerCollectionService.instance.save(picked);
+      setState(() {
+        _selectionMode = false;
+        _selected.clear();
+      });
+    }
+  }
+
+  Future<void> _showNewTrackerTypePicker() async {
+    final type = await showModalBottomSheet<TrackerType>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: TrackerType.values.map((t) {
+            return ListTile(
+              leading: Icon(_iconFor(t)),
+              title: Text('${t.name[0].toUpperCase()}${t.name.substring(1)}'),
+              onTap: () => Navigator.pop(context, t),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+    if (type != null) {
+      await Navigator.of(context)
+          .push<Tracker>(
+            MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)),
+          )
+          .then((_) => setState(() {}));
+    }
   }
 
   void _showAddMenu() {
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Wrap(
           children: [
             ListTile(
               leading: const Icon(Icons.add),
               title: const Text('New Tracker'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => TrackerForgePage()))
-                    .then((_) => setState(() {}));
+                _showNewTrackerTypePicker();
               },
             ),
             ListTile(
@@ -80,7 +199,7 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
               title: const Text('New Collection'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: open create-collection UI
+                _batchAddToCollection();
               },
             ),
           ],
@@ -94,11 +213,8 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(
-          _selectionMode
-              ? '${_selected.length} selected'
-              : 'OmniTracker',
-        ),
+        title:
+            Text(_selectionMode ? '${_selected.length} selected' : 'Trackers'),
         actions: [
           if (!_selectionMode)
             IconButton(
@@ -108,7 +224,6 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
           if (_selectionMode)
             IconButton(
               icon: const Icon(Icons.folder_special),
-              tooltip: 'Add to Collection',
               onPressed: _batchAddToCollection,
             ),
         ],
@@ -134,45 +249,67 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
   }
 
   Widget _buildGrid() {
-    return ListView(
-      children: [
-        ..._cols.map((col) {
-          final members =
-              _all.where((t) => col.trackerIds.contains(t.id)).toList();
-          return ExpansionTile(
-            title: Text('${col.name} (${members.length})'),
-            children: members.map(_tileFor).toList(),
-          );
-        }),
-        const Divider(),
-        ExpansionTile(
-          title: const Text('Ungrouped Trackers'),
-          children: _all
-              .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
-              .map(_tileFor)
-              .toList(),
-        ),
-      ],
+    return FutureBuilder<List<TrackerCollection>>(
+      future: _cols,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final cols = snap.data ?? [];
+        return ListView(
+          children: [
+            for (final col in cols) ...[
+              ExpansionTile(
+                title: Text('${col.name} (${col.trackerIds.length})'),
+                children: [
+                  for (final t
+                      in _all.where((t) => col.trackerIds.contains(t.id)))
+                    _tileFor(t),
+                ],
+              ),
+            ],
+            const Divider(),
+            ExpansionTile(
+              title: const Text('Ungrouped'),
+              children: [
+                for (final t in _all.where((t) =>
+                    cols.every((c) => !c.trackerIds.contains(t.id))))
+                  _tileFor(t),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildList() {
-    return ListView(
-      children: [
-        ..._all
-            .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
-            .map(_tileFor),
-        const Divider(),
-        ..._cols.map((col) {
-          return ExpansionTile(
-            title: Text(col.name),
-            children: _all
-                .where((t) => col.trackerIds.contains(t.id))
-                .map(_tileFor)
-                .toList(),
-          );
-        }),
-      ],
+    return FutureBuilder<List<TrackerCollection>>(
+      future: _cols,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final cols = snap.data ?? [];
+        return ListView(
+          children: [
+            for (final t in _all
+                .where((t) => cols.every((c) => !c.trackerIds.contains(t.id))))
+              _tileFor(t),
+            const Divider(),
+            for (final col in cols) ...[
+              ExpansionTile(
+                title: Text(col.name),
+                children: [
+                  for (final t
+                      in _all.where((t) => col.trackerIds.contains(t.id)))
+                    _tileFor(t),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -180,17 +317,16 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
     final selected = _selected.contains(t.id);
     return ListTile(
       leading: _selectionMode
-          ? Checkbox(
-              value: selected,
-              onChanged: (_) => _toggleSelect(t.id),
-            )
+          ? Checkbox(value: selected, onChanged: (_) => _toggleSelect(t.id))
           : Icon(_iconFor(t.type)),
       title: Text(t.title),
       onLongPress: () => _enterSelect(t.id),
       onTap: _selectionMode
           ? () => _toggleSelect(t.id)
           : () => Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
+              .push(
+                MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)),
+              )
               .then((_) => setState(() {})),
     );
   }

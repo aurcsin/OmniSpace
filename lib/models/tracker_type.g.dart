@@ -1,14 +1,11 @@
+// lib/models/tracker_type.g.dart
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'tracker_type.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
   @override
-  final int typeId = 11;
+  final int typeId = 3; // ← make sure this matches your @HiveType(typeId: X)
 
   @override
   TrackerType read(BinaryReader reader) {
@@ -16,12 +13,10 @@ class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
       case 0:
         return TrackerType.goal;
       case 1:
-        return TrackerType.task;
-      case 2:
         return TrackerType.event;
-      case 3:
+      case 2:
         return TrackerType.routine;
-      case 4:
+      case 3:
         return TrackerType.series;
       default:
         return TrackerType.goal;
@@ -34,17 +29,14 @@ class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
       case TrackerType.goal:
         writer.writeByte(0);
         break;
-      case TrackerType.task:
+      case TrackerType.event:
         writer.writeByte(1);
         break;
-      case TrackerType.event:
+      case TrackerType.routine:
         writer.writeByte(2);
         break;
-      case TrackerType.routine:
-        writer.writeByte(3);
-        break;
       case TrackerType.series:
-        writer.writeByte(4);
+        writer.writeByte(3);
         break;
     }
   }

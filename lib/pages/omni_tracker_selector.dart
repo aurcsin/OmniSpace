@@ -32,8 +32,9 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
   }
 
   Future<void> _reload() async {
+    // TrackerService.all is synchronous; collections comes back as a Future
     _allTrackers = TrackerService.instance.all;
-    _allCollections = TrackerCollectionService.instance.all;
+    _allCollections = await TrackerCollectionService.instance.all;
     _linkedIds = TrackerService.instance.linkedTo(widget.ownerId).toSet();
     setState(() {});
   }
@@ -42,14 +43,12 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
     switch (type) {
       case TrackerType.goal:
         return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
       case TrackerType.event:
         return Icons.event;
       case TrackerType.routine:
         return Icons.repeat;
       case TrackerType.series:
-        return Icons.link;
+        return Icons.collections;
     }
   }
 
@@ -63,6 +62,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
   }
 
   Future<void> _createNewTracker() async {
+    // Pick a tracker type
     final type = await showModalBottomSheet<TrackerType>(
       context: context,
       builder: (_) => SafeArea(
@@ -71,7 +71,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
           children: TrackerType.values.map((t) {
             return ListTile(
               leading: Icon(_iconFor(t)),
-              title: Text(t.name[0].toUpperCase() + t.name.substring(1)),
+              title: Text('${t.name[0].toUpperCase()}${t.name.substring(1)}'),
               onTap: () => Navigator.pop(context, t),
             );
           }).toList(),
@@ -80,10 +80,12 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
     );
 
     if (type != null) {
+      // Forge a new tracker
       final created = await Navigator.of(context).push<Tracker>(
         MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)),
       );
       if (created != null) {
+        // Link it immediately
         await TrackerService.instance.linkNote(created.id, widget.ownerId);
         await _reload();
       }
@@ -92,54 +94,59 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
 
   Future<void> _createNewCollection() async {
     final nameCtl = TextEditingController();
-    final selected = _linkedIds.toSet();
+    final selectedForNew = Set<String>.from(_linkedIds);
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('New Tracker Collection'),
-        content: StatefulBuilder(builder: (ctx2, setSt) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtl,
-                decoration: const InputDecoration(labelText: 'Collection Name'),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                width: double.maxFinite,
-                child: ListView(
-                  children: _allTrackers.map((t) {
-                    return CheckboxListTile(
-                      value: selected.contains(t.id),
-                      title: Text(t.title),
-                      secondary: Icon(_iconFor(t.type)),
-                      onChanged: (_) => setSt(() {
-                        if (selected.contains(t.id))
-                          selected.remove(t.id);
-                        else
-                          selected.add(t.id);
-                      }),
-                    );
-                  }).toList(),
+        content: StatefulBuilder(
+          builder: (ctx2, setSt) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtl,
+                  decoration: const InputDecoration(labelText: 'Collection Name'),
                 ),
-              ),
-            ],
-          );
-        }),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 200,
+                  width: double.maxFinite,
+                  child: ListView(
+                    children: _allTrackers.map((t) {
+                      final isChecked = selectedForNew.contains(t.id);
+                      return CheckboxListTile(
+                        value: isChecked,
+                        secondary: Icon(_iconFor(t.type)),
+                        title: Text(t.title),
+                        onChanged: (_) => setSt(() {
+                          if (isChecked)
+                            selectedForNew.remove(t.id);
+                          else
+                            selectedForNew.add(t.id);
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final name = nameCtl.text.trim();
               if (name.isNotEmpty) {
-                await TrackerCollectionService.instance.create(
+                final newCol = TrackerCollection(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
                   name: name,
                   ownerId: widget.ownerId,
-                  trackerIds: selected.toList(),
+                  trackerIds: selectedForNew.toList(),
                 );
+                await TrackerCollectionService.instance.save(newCol);
               }
               Navigator.pop(ctx);
               await _reload();
@@ -176,9 +183,7 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
 
           // Existing Collections
           ..._allCollections.map((col) {
-            final members = _allTrackers
-                .where((t) => col.trackerIds.contains(t.id))
-                .toList();
+            final members = _allTrackers.where((t) => col.trackerIds.contains(t.id)).toList();
             return ExpansionTile(
               title: Text('${col.name} (${members.length})'),
               initiallyExpanded: true,
