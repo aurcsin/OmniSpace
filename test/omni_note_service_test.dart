@@ -1,82 +1,94 @@
-// File: lib/services/omni_note_service.dart
+// File: test/services/omni_note_service_test.dart
 
-import 'package:flutter/foundation.dart';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
-import '../models/omni_note.dart';
-import '../models/zone_theme.dart';  // brings ZoneThemeAdapter into scope
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
 
-/// ChangeNotifier-backed Hive box for OmniNote.
-class OmniNoteService extends ChangeNotifier {
-  OmniNoteService._internal();
-  static final OmniNoteService instance = OmniNoteService._internal();
+void main() {
+  group('OmniNoteService', () {
+    setUpAll(() async {
+      // Initialize Hive in a temporary directory for tests
+      final tempDir = Directory.systemTemp.createTempSync();
+      Hive.init(tempDir.path);
 
-  // Must match what the test deletes:
-  static const String _boxName = 'omni_notes';
-  late Box<OmniNote> _box;
+      // Initialize the service (registers adapters and opens the box)
+      await OmniNoteService.instance.init();
+    });
 
-  /// Call once at app startup.
-  Future<void> init() async {
-    if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
-      Hive.registerAdapter(OmniNoteAdapter());
-      Hive.registerAdapter(ZoneThemeAdapter());
-      // …register your other adapters here as needed…
-    }
-    _box = await Hive.openBox<OmniNote>(_boxName);
-    notifyListeners();
-  }
+    setUp(() async {
+      // Clear the box before each test
+      final box = Hive.box<OmniNote>('omni_notes');
+      await box.clear();
+    });
 
-  /// All non-trashed notes.
-  List<OmniNote> get notes =>
-      _box.values.where((n) => !n.isTrashed).toList();
+    test('initially has no notes', () {
+      expect(OmniNoteService.instance.notes, isEmpty);
+      expect(OmniNoteService.instance.trashedNotes, isEmpty);
+    });
 
-  /// Soft-deleted (trashed) notes.
-  List<OmniNote> get trashedNotes =>
-      _box.values.where((n) => n.isTrashed).toList();
+    test('saveNote and getById works', () async {
+      final note = OmniNote(id: '1', title: 'Test Title', subtitle: 'Sub', content: 'Content');
+      await OmniNoteService.instance.saveNote(note);
 
-  /// Look up one note by its ID.
-  OmniNote? getNoteById(String id) => _box.get(id);
+      final fetched = OmniNoteService.instance.getById('1');
+      expect(fetched, isNotNull);
+      expect(fetched!.title, equals('Test Title'));
+      expect(OmniNoteService.instance.notes.length, equals(1));
+    });
 
-  /// Alias so UI code (getById) continues to work.
-  OmniNote? getById(String id) => getNoteById(id);
+    test('trashNote moves note to trashedNotes', () async {
+      final note = OmniNote(id: '2');
+      await OmniNoteService.instance.save(note);
+      await OmniNoteService.instance.trashNote('2');
 
-  /// Create or update a note.
-  Future<void> saveNote(OmniNote note) async {
-    await _box.put(note.id, note);
-    notifyListeners();
-  }
+      expect(OmniNoteService.instance.notes, isEmpty);
+      expect(OmniNoteService.instance.trashedNotes.length, equals(1));
+    });
 
-  /// Soft-trash a note.
-  Future<void> trashNote(String id) async {
-    final note = _box.get(id);
-    if (note != null && !note.isTrashed) {
-      note.isTrashed = true;
-      await note.save();
-      notifyListeners();
-    }
-  }
+    test('restoreNote moves note back to notes', () async {
+      final note = OmniNote(id: '3');
+      await OmniNoteService.instance.save(note);
+      await OmniNoteService.instance.trashNote('3');
+      await OmniNoteService.instance.restoreNote('3');
 
-  /// Restore a trashed note.
-  Future<void> restoreNote(String id) async {
-    final note = _box.get(id);
-    if (note != null && note.isTrashed) {
-      note.isTrashed = false;
-      await note.save();
-      notifyListeners();
-    }
-  }
+      expect(OmniNoteService.instance.notes.length, equals(1));
+      expect(OmniNoteService.instance.trashedNotes, isEmpty);
+    });
 
-  /// Permanently delete a note.
-  Future<void> deleteNote(String id) async {
-    await _box.delete(id);
-    notifyListeners();
-  }
+    test('deleteNote deletes permanently', () async {
+      final note = OmniNote(id: '4');
+      await OmniNoteService.instance.save(note);
+      await OmniNoteService.instance.deleteNote('4');
 
-  /// Permanently delete multiple notes.
-  Future<void> deletePermanent(List<String> ids) async {
-    for (final id in ids) {
-      await _box.delete(id);
-    }
-    notifyListeners();
-  }
+      final fetched = OmniNoteService.instance.getById('4');
+      expect(fetched, isNull);
+      expect(OmniNoteService.instance.notes, isEmpty);
+    });
+
+    test('deletePermanent deletes multiple notes', () async {
+      final noteA = OmniNote(id: 'a');
+      final noteB = OmniNote(id: 'b');
+      await OmniNoteService.instance.save(noteA);
+      await OmniNoteService.instance.save(noteB);
+
+      expect(OmniNoteService.instance.notes.length, equals(2));
+      await OmniNoteService.instance.deletePermanent(['a', 'b']);
+      expect(OmniNoteService.instance.notes, isEmpty);
+    });
+
+    test('all async returns all notes including trashed', () async {
+      final note = OmniNote(id: 'x');
+      await OmniNoteService.instance.save(note);
+      await OmniNoteService.instance.trashNote('x');
+
+      final allNotes = await OmniNoteService.instance.all;
+      expect(allNotes.length, equals(1));
+      expect(allNotes.first.isTrashed, isTrue);
+    });
+  });
 }
