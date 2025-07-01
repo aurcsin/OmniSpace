@@ -4,17 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/omni_note.dart';
-import '../services/omni_note_service.dart';
-import '../widgets/main_menu_drawer.dart';
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
+import '../models/zone_theme.dart';
+import '../models/spirit.dart';
+import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
+import '../services/spirit_service.dart';
+import '../services/deck_service.dart';
+import '../widgets/main_menu_drawer.dart';
 import 'note_view_page.dart';
 
 enum CalView { day, week, month, year }
 
 class CalendarOverviewPage extends StatefulWidget {
-  const CalendarOverviewPage({super.key});
+  const CalendarOverviewPage({Key? key}) : super(key: key);
+
   @override
   State<CalendarOverviewPage> createState() => _CalendarOverviewPageState();
 }
@@ -22,27 +27,33 @@ class CalendarOverviewPage extends StatefulWidget {
 class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   CalView _view = CalView.day;
   DateTime _focusDate = DateTime.now();
-  List<OmniNote> _notes = [];
-  List<Tracker> _events = [];
+  ZoneTheme? _realmFilter;
   bool _showEvents = true;
   bool _loading = true;
+
+  List<OmniNote> _notes = [];
+  List<Tracker> _events = [];
+
+  final _noteSvc   = OmniNoteService.instance;
+  final _trackSvc  = TrackerService.instance;
+  final _spiritSvc = SpiritService.instance;
+  final _deckSvc   = DeckService.instance;
 
   @override
   void initState() {
     super.initState();
-    // Ensure tracker data is available (we assume omniNoteService was init'd in main)
-    TrackerService.instance.init().then((_) => _refresh());
+    _trackSvc.init().then((_) => _refresh());
   }
 
   Future<void> _refresh() async {
     setState(() => _loading = true);
-    _filterNotes();
+    _filterData();
     setState(() => _loading = false);
   }
 
-  void _filterNotes() {
-    final allNotes = OmniNoteService.instance.notes;
-    final allEvents = TrackerService.instance.all
+  void _filterData() {
+    final allNotes = _noteSvc.notes;
+    final allEvents = _trackSvc.all
         .where((t) => t.type == TrackerType.event && t.start != null)
         .toList();
 
@@ -53,8 +64,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = start.add(const Duration(days: 1));
         break;
       case CalView.week:
-        start = _focusDate.subtract(const Duration(days: 3));
-        end = _focusDate.add(const Duration(days: 4));
+        start = _focusDate.subtract(Duration(days: 3));
+        end = _focusDate.add(Duration(days: 4));
         break;
       case CalView.month:
         start = DateTime(_focusDate.year, _focusDate.month, 1);
@@ -66,15 +77,21 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         break;
     }
 
-    _notes = allNotes
-        .where((n) => n.createdAt.isAfter(start) && n.createdAt.isBefore(end))
-        .toList()
+    _notes = allNotes.where((n) {
+      final inDate = n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
+      final inRealm = _realmFilter == null || n.zone == _realmFilter;
+      return inDate && inRealm;
+    }).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    _events = allEvents
-        .where((e) => e.start!.isAfter(start) && e.start!.isBefore(end))
-        .toList()
-      ..sort((a, b) => a.start!.compareTo(b.start!));
+    _events = [];
+    if (_showEvents && (_realmFilter == null || _realmFilter == ZoneTheme.Fire)) {
+      _events = allEvents.where((e) {
+        final s = e.start!;
+        return s.isAfter(start) && s.isBefore(end);
+      }).toList()
+        ..sort((a, b) => a.start!.compareTo(b.start!));
+    }
   }
 
   void _prev() {
@@ -93,7 +110,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = DateTime(_focusDate.year - 1, _focusDate.month, _focusDate.day);
           break;
       }
-      _filterNotes();
+      _filterData();
     });
   }
 
@@ -113,7 +130,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           _focusDate = DateTime(_focusDate.year + 1, _focusDate.month, _focusDate.day);
           break;
       }
-      _filterNotes();
+      _filterData();
     });
   }
 
@@ -122,9 +139,9 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
       case CalView.day:
         return DateFormat.yMMMd().format(_focusDate);
       case CalView.week:
-        final start = _focusDate.subtract(const Duration(days: 3));
-        final end = _focusDate.add(const Duration(days: 3));
-        return '${DateFormat.MMMd().format(start)} – ${DateFormat.MMMd().format(end)}';
+        final s = _focusDate.subtract(const Duration(days: 3));
+        final e = _focusDate.add(const Duration(days: 3));
+        return '${DateFormat.MMMd().format(s)}–${DateFormat.MMMd().format(e)}';
       case CalView.month:
         return DateFormat.yMMMM().format(_focusDate);
       case CalView.year:
@@ -133,23 +150,75 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final d = await showDatePicker(
       context: context,
       initialDate: _focusDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
+    if (d != null) {
       setState(() {
-        _focusDate = picked;
-        _filterNotes();
+        _focusDate = d;
+        _filterData();
       });
     }
   }
 
+  void _onRealmSelected(ZoneTheme? realm) {
+    setState(() {
+      _realmFilter = realm;
+      _filterData();
+    });
+  }
+
+  Future<void> _drawRealmSpirit() async {
+    if (_realmFilter == null) return;
+    final s = await _deckSvc.drawFromRealm(_realmFilter!);
+    final msg = s != null
+      ? 'Drew ${s.name}!'
+      : 'All ${_realmFilter!.displayName} spirits already collected.';
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  Widget _buildRealmChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: const Text('All'),
+            selected: _realmFilter == null,
+            onSelected: (_) => _onRealmSelected(null),
+          ),
+          const SizedBox(width: 8),
+          ...ZoneTheme.values.map((realm) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Icon(realm.icon, size: 20, color: Colors.deepPurple),
+                label: Text(realm.displayName),
+                selected: _realmFilter == realm,
+                onSelected: (_) => _onRealmSelected(realm),
+                selectedColor: Colors.deepPurple.shade100,
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final masterSpirit = _realmFilter != null
+      ? _spiritSvc.getPrimary(_realmFilter!)
+      : null;
+    final reps = _realmFilter != null
+      ? _spiritSvc.forRealm(_realmFilter!).where((s) => !s.isPrimary).toList()
+      : <Spirit>[];
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
@@ -172,24 +241,55 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             onPressed: () {
               setState(() {
                 _focusDate = DateTime.now();
-                _filterNotes();
+                _filterData();
               });
             },
-          )
+          ),
         ],
       ),
       body: Column(
         children: [
+          _buildRealmChips(),
+          if (masterSpirit != null) ...[
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                leading: Icon(masterSpirit.realm.icon, size: 36, color: Colors.deepPurple),
+                title: Text(masterSpirit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(masterSpirit.description),
+              ),
+            ),
+            Wrap(
+              spacing: 8,
+              children: reps.map((s) {
+                final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
+                return ChoiceChip(
+                  avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  label: Text(s.name),
+                  selected: false,
+                  onSelected: inDeck ? null : (_) async {
+                    await _deckSvc.draw(s);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Added ${s.name} to deck!')),
+                      );
+                    }
+                  },
+                  backgroundColor: inDeck ? Colors.grey.shade300 : Colors.deepPurple,
+                  labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
+                );
+              }).toList(),
+            ),
+            const Divider(),
+          ],
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ToggleButtons(
               isSelected: CalView.values.map((v) => v == _view).toList(),
-              onPressed: (i) {
-                setState(() {
-                  _view = CalView.values[i];
-                  _filterNotes();
-                });
-              },
+              onPressed: (i) => setState(() {
+                _view = CalView.values[i];
+                _filterData();
+              }),
               children: const [
                 Padding(padding: EdgeInsets.all(8), child: Text('Day')),
                 Padding(padding: EdgeInsets.all(8), child: Text('Week')),
@@ -202,7 +302,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(icon: const Icon(Icons.chevron_left), onPressed: _prev),
-              Text(_formatFocusLabel(), style: textTheme.titleMedium),
+              Text(_formatFocusLabel(), style: Theme.of(context).textTheme.titleMedium),
               IconButton(icon: const Icon(Icons.chevron_right), onPressed: _next),
             ],
           ),
@@ -212,7 +312,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             value: _showEvents,
             onChanged: (v) => setState(() {
               _showEvents = v;
-              _filterNotes();
+              _filterData();
             }),
           ),
           Expanded(
@@ -232,7 +332,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
                           if (_showEvents)
                             ..._events.map((e) => ListTile(
                                   leading: const Icon(Icons.event),
-                                  title: Text(e.title.isNotEmpty ? e.title : 'Event'),
+                                  title: Text(e.title.isNotEmpty ? e.title : '(Event)'),
                                   subtitle: Text(DateFormat.yMMMd().add_jm().format(e.start!)),
                                 )),
                         ],
@@ -240,6 +340,13 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
           ),
         ],
       ),
+      floatingActionButton: _realmFilter != null
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.filter_alt),
+              label: Text('Draw ${_realmFilter!.displayName} Spirit'),
+              onPressed: _drawRealmSpirit,
+            )
+          : null,
     );
   }
 }

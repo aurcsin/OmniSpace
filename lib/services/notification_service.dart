@@ -1,7 +1,9 @@
 // File: lib/services/notification_service.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:hive/hive.dart';
 
 import '../models/tracker.dart';
 import 'navigator_service.dart';
@@ -16,47 +18,78 @@ class NotificationException implements Exception {
   String toString() => 'NotificationException: $message';
 }
 
-/// Handles scheduling and handling of local notifications for trackers.
+/// Handles scheduling and handling of local notifications for trackers,
+/// and persists the “enabled” setting in Hive.
 class NotificationService {
   NotificationService._(this._client);
-  static final NotificationService instance = NotificationService._(
-    FlutterLocalNotificationsPlugin(),
-  );
+  static final NotificationService instance =
+      NotificationService._(FlutterLocalNotificationsPlugin());
 
   final FlutterLocalNotificationsPlugin _client;
 
+  late final Box _settingsBox;
+  static const _settingsBoxName = 'settings';
+  static const _enabledKey = 'notificationsEnabled';
+
   /// Call once at app startup.
   Future<void> init() async {
+    // Open settings box
+    _settingsBox = await Hive.openBox(_settingsBoxName);
+
     // Ensure the TZ database is loaded.
-    TimezoneHelperService.instance; // constructor seeds time zones
+    TimezoneHelperService.instance;
 
-    // iOS/macOS permissions
-    await _client
-        .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
-    await _client
-        .resolvePlatformSpecificImplementation<
-            MacOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
+    if (!kIsWeb) {
+      // Request permissions and initialize native plugin
+      await _client
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      await _client
+          .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    // Initialization settings
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwinSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const darwinSettings = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
 
-    await _client.initialize(
-      const InitializationSettings(
-        android: androidSettings,
-        iOS: darwinSettings,
-        macOS: darwinSettings,
-      ),
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
+      await _client.initialize(
+        const InitializationSettings(
+          android: androidSettings,
+          iOS: darwinSettings,
+          macOS: darwinSettings,
+        ),
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
+    }
+
+    // **Ensure trackers are loaded before scheduling**  
+    await TrackerService.instance.init();
+
+    // If enabled, schedule all reminders now
+    if (await getEnabled()) {
+      await rescheduleAll();
+    }
+  }
+
+  /// Returns whether reminders are enabled.
+  Future<bool> getEnabled() async {
+    return _settingsBox.get(_enabledKey, defaultValue: true) as bool;
+  }
+
+  /// Toggle reminders on/off. When enabling, reschedule all; when disabling, cancel all.
+  Future<void> setEnabled(bool enabled) async {
+    await _settingsBox.put(_enabledKey, enabled);
+    if (enabled) {
+      await rescheduleAll();
+    } else if (!kIsWeb) {
+      await _client.cancelAll();
+    }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
@@ -69,14 +102,13 @@ class NotificationService {
     }
   }
 
-  /// Schedule (or reschedule) a notification for [t].
   Future<void> scheduleForTracker(Tracker t) async {
+    if (kIsWeb) return;
     final id = t.id.hashCode;
     await _client.cancel(id);
-
     if (t.start == null) return;
-    final tz.TZDateTime scheduled = tz.TZDateTime.from(t.start!, tz.local);
 
+    final scheduled = tz.TZDateTime.from(t.start!, tz.local);
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'omnispace_trackers',
@@ -90,7 +122,6 @@ class NotificationService {
     );
 
     if (t.frequency == null || t.frequency!.isEmpty) {
-      // One-time reminder
       await _client.zonedSchedule(
         id,
         t.title,
@@ -118,14 +149,15 @@ class NotificationService {
     }
   }
 
-  /// Cancel any scheduled notification for [t].
   Future<void> cancelForTracker(Tracker t) async {
+    if (kIsWeb) return;
     await _client.cancel(t.id.hashCode);
   }
 
-  /// Cancel & reschedule all trackers (e.g. on startup).
   Future<void> rescheduleAll() async {
-    await _client.cancelAll();
+    if (!kIsWeb) {
+      await _client.cancelAll();
+    }
     for (final t in TrackerService.instance.all) {
       await scheduleForTracker(t);
     }
