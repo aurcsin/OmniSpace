@@ -1,33 +1,75 @@
-import 'package:flutter/material.dart';
-import '../services/omni_note_service.dart';
-import '../widgets/main_menu_drawer.dart';
-import '../extensions/zone_theme_extensions.dart';
+// File: lib/pages/garden_forest_page.dart
 
+import 'package:flutter/material.dart';
+
+import '../models/omni_note.dart';
+import '../models/zone_theme.dart';
+import '../services/omni_note_service.dart';
+import 'multi_pane_editor_page.dart';
 
 class GardenForestPage extends StatelessWidget {
-  const GardenForestPage({super.key});
+  const GardenForestPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final notes = OmniNoteService.instance.notes;
     return Scaffold(
-      appBar: AppBar(title: const Text('Garden / Forest')),
-      drawer: const MainMenuDrawer(),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemCount: notes.length,
-        itemBuilder: (_, i) {
-          final n = notes[i];
-          // Use the extension to fetch the zone color:
-          return Icon(
-            Icons.local_florist,
-            color: n.zone.color,
-            size: 32,
+      appBar: AppBar(
+        title: const Text('Garden • Forest'),
+      ),
+      body: FutureBuilder<List<OmniNote>>(
+        future: OmniNoteService.instance.all,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final notes = snap.data!
+              .where((n) =>
+                  n.zone == ZoneTheme.Earth &&
+                  !n.isTrashed &&
+                  !n.isArchived)
+              .toList();
+
+          if (notes.isEmpty) {
+            return const Center(child: Text('No "Earth/Forest" notes yet.'));
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(8),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: notes.length,
+              itemBuilder: (context, i) {
+                final n = notes[i];
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)),
+                  ),
+                  child: Card(
+                    elevation: 4,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.local_florist,
+                          size: 48,
+                          color: Color(n.colorValue),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          n.title.isEmpty ? '(No title)' : n.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           );
         },
       ),

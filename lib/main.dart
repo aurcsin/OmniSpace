@@ -1,3 +1,5 @@
+// File: lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -8,21 +10,24 @@ import 'models/attachment.dart';
 import 'models/tracker_type.dart';
 import 'models/tracker.dart';
 import 'models/tracker_collection.dart';
-// … other @HiveType models …
+import 'models/project.dart';
+// … any other @HiveType models …
 
 // Services
 import 'services/notification_service.dart';
 import 'services/omni_note_service.dart';
+import 'services/project_service.dart';
 import 'services/tracker_service.dart';
 import 'services/tracker_collection_service.dart';
 import 'services/navigator_service.dart';
-// … other services …
+// … any other services …
 
 // Pages
 import 'pages/journal_page.dart';
 import 'pages/note_detail_page.dart';
 import 'pages/note_view_page.dart';
-// … other pages …
+import 'pages/projects_page.dart';
+// … any other pages …
 
 // Themes / Utilities
 import 'themes/theme_loader.dart';
@@ -40,14 +45,16 @@ Future<void> main() async {
   Hive.registerAdapter(TrackerTypeAdapter());
   Hive.registerAdapter(TrackerAdapter());
   Hive.registerAdapter(TrackerCollectionAdapter());
-  // … register other generated adapters …
+  Hive.registerAdapter(ProjectAdapter());
+  // … register any other generated adapters …
 
   // Initialize services (they open their Hive boxes internally)
   await NotificationService.instance.init();
   await OmniNoteService.instance.init();
+  await ProjectService.instance.init();
   await TrackerService.instance.init();
   await TrackerCollectionService.instance.init();
-  // … other service inits …
+  // … initialize any other services …
 
   runApp(const MyApp());
 }
@@ -72,7 +79,13 @@ class MyApp extends StatelessWidget {
           final note = ModalRoute.of(ctx)!.settings.arguments as OmniNote;
           return NoteViewPage(note: note);
         },
-        // Add additional routes here…
+        '/projects': (_) => const ProjectsPage(),
+        // … additional named routes …
+      },
+      // Fallback for any routes not in the above map
+      onGenerateRoute: (settings) {
+        // handle dynamic or parameterized routes here if needed
+        return null;
       },
     );
   }
