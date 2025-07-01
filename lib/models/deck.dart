@@ -1,31 +1,15 @@
 // File: lib/models/deck.dart
 
-import 'block.dart';
+import 'package:hive/hive.dart';
 
-/// Collection of reusable blocks or cards that can be inserted into notes.
-class Deck {
-  /// Unique id for the deck.
-  final String id;
+part 'deck.g.dart';
 
-  /// Display title of the deck.
-  final String title;
+/// A user’s personal Spirit Deck, storing references to collected spirits.
+@HiveType(typeId: 51)
+class Deck extends HiveObject {
+  /// IDs of the Spirits in this deck.
+  @HiveField(0)
+  List<String> spiritIds;
 
-  /// Blocks contained within this deck.
-  final List<Block> blocks;
-
-  Deck({required this.id, required this.title, this.blocks = const []});
-
-  factory Deck.fromJson(Map<String, dynamic> json) => Deck(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        blocks: (json['blocks'] as List<dynamic>? ?? [])
-            .map((e) => Block.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'blocks': blocks.map((b) => b.toJson()).toList(),
-      };
+  Deck({List<String>? spiritIds}) : spiritIds = spiritIds ?? [];
 }
