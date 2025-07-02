@@ -1,17 +1,16 @@
 // File: lib/pages/journal_page.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_heatmap_calendar/flutter_heatmap_calendar.dart';
 
 import '../models/omni_note.dart';
 import '../models/project.dart';
-import '../models/zone_theme.dart';
 import '../models/spirit.dart';
+import '../models/zone_theme.dart';
 import '../services/omni_note_service.dart';
 import '../services/project_service.dart';
 import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
 import '../widgets/main_menu_drawer.dart';
 import 'note_detail_page.dart';
 
@@ -28,14 +27,8 @@ class _JournalPageState extends State<JournalPage> {
   final Set<String> _selectedIds = {};
   String _searchQuery = '';
   DateRangeFilter _dateFilter = DateRangeFilter.all;
-  ZoneTheme? _realmFilter;
 
-  final _noteSvc   = OmniNoteService.instance;
-  final _projSvc   = ProjectService.instance;
-  final _spiritSvc = SpiritService.instance;
-  final _deckSvc   = DeckService.instance;
-
-  List<OmniNote> get _notes => _noteSvc.notes;
+  List<OmniNote> get _notes => OmniNoteService.instance.notes;
 
   List<OmniNote> get _filteredNotes {
     final now = DateTime.now();
@@ -57,14 +50,24 @@ class _JournalPageState extends State<JournalPage> {
       default:
         start = DateTime.fromMillisecondsSinceEpoch(0);
     }
-    final end = {
-      DateRangeFilter.day:   start.add(const Duration(days: 1)),
-      DateRangeFilter.week:  start.add(const Duration(days: 7)),
-      DateRangeFilter.month: DateTime(start.year, start.month + 1, 1),
-      DateRangeFilter.year:  DateTime(start.year + 1, 1, 1),
-      DateRangeFilter.all:   DateTime.now().add(const Duration(days: 36500)),
-    }[_dateFilter]!;
-
+    DateTime end;
+    switch (_dateFilter) {
+      case DateRangeFilter.day:
+        end = start.add(const Duration(days: 1));
+        break;
+      case DateRangeFilter.week:
+        end = start.add(const Duration(days: 7));
+        break;
+      case DateRangeFilter.month:
+        end = DateTime(start.year, start.month + 1, 1);
+        break;
+      case DateRangeFilter.year:
+        end = DateTime(start.year + 1, 1, 1);
+        break;
+      case DateRangeFilter.all:
+      default:
+        end = DateTime.now().add(const Duration(days: 36500));
+    }
     final q = _searchQuery.toLowerCase();
     return _notes.where((n) {
       final inDate = _dateFilter == DateRangeFilter.all ||
@@ -72,9 +75,17 @@ class _JournalPageState extends State<JournalPage> {
       final inSearch = q.isEmpty ||
           n.title.toLowerCase().contains(q) ||
           n.content.toLowerCase().contains(q);
-      final inRealm = _realmFilter == null || n.zone == _realmFilter;
-      return inDate && inSearch && inRealm;
+      return inDate && inSearch;
     }).toList();
+  }
+
+  Map<DateTime, int> get _heatMapData {
+    final counts = <DateTime, int>{};
+    for (var n in _filteredNotes) {
+      final day = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      counts[day] = (counts[day] ?? 0) + 1;
+    }
+    return counts;
   }
 
   void _toggleSelect(String id) {
@@ -102,7 +113,7 @@ class _JournalPageState extends State<JournalPage> {
     final proj = await showDialog<Project?>(
       context: context,
       builder: (ctx) {
-        final projects = _projSvc.all;
+        final allProjects = ProjectService.instance.all;
         return AlertDialog(
           title: const Text('Add to Project'),
           content: SizedBox(
@@ -110,7 +121,7 @@ class _JournalPageState extends State<JournalPage> {
             height: 400,
             child: ListView(
               children: [
-                ...projects.map((p) => ListTile(
+                ...allProjects.map((p) => ListTile(
                       title: Text(p.title),
                       onTap: () => Navigator.pop(ctx, p),
                     )),
@@ -126,8 +137,7 @@ class _JournalPageState extends State<JournalPage> {
                         title: const Text('New Project'),
                         content: TextField(
                           controller: nameCtl,
-                          decoration:
-                              const InputDecoration(labelText: 'Name'),
+                          decoration: const InputDecoration(labelText: 'Name'),
                         ),
                         actions: [
                           TextButton(
@@ -141,13 +151,11 @@ class _JournalPageState extends State<JournalPage> {
                     );
                     if (ok == true && nameCtl.text.trim().isNotEmpty) {
                       final newProj = Project(
-                        id: DateTime.now()
-                            .millisecondsSinceEpoch
-                            .toString(),
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
                         title: nameCtl.text.trim(),
                         noteIds: [],
                       );
-                      await _projSvc.save(newProj);
+                      await ProjectService.instance.save(newProj);
                       Navigator.pop(ctx, newProj);
                     }
                   },
@@ -161,77 +169,19 @@ class _JournalPageState extends State<JournalPage> {
 
     if (proj != null) {
       for (var id in _selectedIds) {
-        final note = _noteSvc.getNoteById(id);
+        final note = OmniNoteService.instance.getNoteById(id);
         if (note != null) {
           note.projectId = proj.id;
-          await _noteSvc.saveNote(note);
+          await OmniNoteService.instance.saveNote(note);
         }
       }
     }
     _exitSelection();
   }
 
-  void _onRealmSelected(ZoneTheme? realm) {
-    setState(() {
-      _realmFilter = realm;
-    });
-  }
-
-  Future<void> _drawRealmSpirit() async {
-    if (_realmFilter == null) return;
-    final s = await _deckSvc.drawFromRealm(_realmFilter!);
-    final msg = s != null
-        ? 'Drew ${s.name}!'
-        : 'All ${_realmFilter!.displayName} spirits already in deck.';
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
-    }
-  }
-
-  Widget _buildRealmChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding:
-          const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      child: Row(
-        children: [
-          ChoiceChip(
-            label: const Text('All'),
-            selected: _realmFilter == null,
-            onSelected: (_) => _onRealmSelected(null),
-          ),
-          const SizedBox(width: 8),
-          ...ZoneTheme.values.map((realm) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                avatar: Icon(realm.icon,
-                    size: 20, color: Colors.deepPurple),
-                label: Text(realm.displayName),
-                selected: _realmFilter == realm,
-                onSelected: (_) => _onRealmSelected(realm),
-                selectedColor: Colors.deepPurple.shade100,
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final masterSpirit = _realmFilter != null
-        ? _spiritSvc.getPrimary(_realmFilter!)
-        : null;
-    final reps = _realmFilter != null
-        ? _spiritSvc
-            .forRealm(_realmFilter!)
-            .where((s) => !s.isPrimary)
-            .toList()
-        : <Spirit>[];
-
+    final masterSpirit = SpiritService.instance.getPrimary(ZoneTheme.Fusion);
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
@@ -255,206 +205,139 @@ class _JournalPageState extends State<JournalPage> {
       ),
       body: Column(
         children: [
-          _buildRealmChips(),
-          if (masterSpirit != null) ...[
-            Card(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          if (masterSpirit != null) Padding(
+            padding: const EdgeInsets.all(8),
+            child: Card(
               child: ListTile(
-                leading: Icon(masterSpirit.realm.icon,
-                    size: 36, color: Colors.deepPurple),
-                title: Text(masterSpirit.name,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(masterSpirit.description),
+                leading: Icon(masterSpirit.realm.icon, color: Colors.deepPurple),
+                title: Text(
+                  masterSpirit.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(masterSpirit.mythos),
               ),
             ),
-            Wrap(
-              spacing: 8,
-              children: reps.map((s) {
-                final inDeck =
-                    _deckSvc.deck.spiritIds.contains(s.id);
-                return ChoiceChip(
-                  avatar: Icon(s.realm.icon,
-                      size: 20,
-                      color: inDeck ? Colors.grey : Colors.white),
-                  label: Text(s.name),
-                  selected: false,
-                  onSelected: inDeck
-                      ? null
-                      : (_) async {
-                          await _deckSvc.draw(s);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(
-                                    content:
-                                        Text('Added ${s.name}')));
-                          }
-                        },
-                  backgroundColor: inDeck
-                      ? Colors.grey.shade300
-                      : Colors.deepPurple,
-                  labelStyle: TextStyle(
-                      color:
-                          inDeck ? Colors.black : Colors.white),
-                );
-              }).toList(),
-            ),
-            const Divider(),
-          ],
-          // Search bar
+          ),
+
+          // Heatmap
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8.0),
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: HeatMapCalendar(
+              colorsets: const {
+                1: Colors.green,
+                3: Colors.greenAccent,
+                5: Colors.lightGreen,
+              },
+              colorMode: ColorMode.opacity,
+              datasets: _heatMapData,
+              initDate: DateTime.now(),
+              size: 40,
+            ),
+          ),
+
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Search notes…',
               ),
-              onChanged: (v) =>
-                  setState(() => _searchQuery = v),
+              onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
+
           // Date-range toggles
           Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 4.0),
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: ToggleButtons(
               isSelected: DateRangeFilter.values
                   .map((f) => f == _dateFilter)
                   .toList(),
-              onPressed: (i) => setState(() =>
-                  _dateFilter = DateRangeFilter.values[i]),
+              onPressed: (i) =>
+                  setState(() => _dateFilter = DateRangeFilter.values[i]),
               children: const [
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('All')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Day')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Week')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Month')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Year')),
+                Padding(padding: EdgeInsets.all(8), child: Text('All')),
+                Padding(padding: EdgeInsets.all(8), child: Text('Day')),
+                Padding(padding: EdgeInsets.all(8), child: Text('Week')),
+                Padding(padding: EdgeInsets.all(8), child: Text('Month')),
+                Padding(padding: EdgeInsets.all(8), child: Text('Year')),
               ],
             ),
           ),
+
           const Divider(),
+
+          // Filtered List
           Expanded(
             child: _filteredNotes.isEmpty
-                ? const Center(
-                    child:
-                        Text('No matching notes.'),
-                  )
+                ? const Center(child: Text('No matching notes.'))
                 : ListView.builder(
                     itemCount: _filteredNotes.length,
                     itemBuilder: (_, i) {
-                      final note =
-                          _filteredNotes[i];
-                      final selected =
-                          _selectedIds.contains(
-                              note.id);
-                      final proj = note.projectId !=
-                              null
-                          ? _projSvc.getById(
-                              note.projectId!)
+                      final note = _filteredNotes[i];
+                      final selected = _selectedIds.contains(note.id);
+                      final proj = note.projectId != null
+                          ? ProjectService.instance.getById(note.projectId!)
                           : null;
                       return ListTile(
-                        selected: selected,
-                        selectedTileColor:
-                            Colors.deepPurple.shade50,
                         leading: _selectionMode
                             ? Checkbox(
                                 value: selected,
-                                onChanged: (_) =>
-                                    _toggleSelect(
-                                        note.id),
+                                onChanged: (_) => _toggleSelect(note.id),
                               )
                             : null,
-                        title: Text(note.title.isEmpty
-                            ? '(No Title)'
-                            : note.title),
+                        title: Text(
+                            note.title.isEmpty ? '(No Title)' : note.title),
                         subtitle: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               note.content,
                               maxLines: 1,
-                              overflow:
-                                  TextOverflow
-                                      .ellipsis,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             if (proj != null)
                               Text(
                                 'Project: ${proj.title}',
-                                style:
-                                    const TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
-                                  fontStyle:
-                                      FontStyle
-                                          .italic,
+                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
                             Text(
                               DateFormat.yMMMd()
                                   .add_jm()
-                                  .format(note
-                                      .lastUpdated),
-                              style: const TextStyle(
-                                  fontSize: 10),
+                                  .format(note.lastUpdated),
+                              style: const TextStyle(fontSize: 10),
                             ),
                           ],
                         ),
-                        onLongPress: () =>
-                            _enterSelection(
-                                note.id),
+                        onLongPress: () => _enterSelection(note.id),
                         onTap: _selectionMode
-                            ? () =>
-                                _toggleSelect(
-                                    note.id)
-                            : () =>
-                                Navigator.of(context)
-                                    .push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            NoteDetailPage(
-                                                omniNote:
-                                                    note),
-                                      ),
-                                    )
-                                    .then((_) =>
-                                        setState(() {})),
+                            ? () => _toggleSelect(note.id)
+                            : () => Navigator.of(context)
+                                .push(MaterialPageRoute(
+                                  builder: (_) =>
+                                      NoteDetailPage(omniNote: note),
+                                ))
+                                .then((_) => setState(() {})),
                       );
                     },
                   ),
           ),
         ],
       ),
-      floatingActionButton: _realmFilter != null
-          ? FloatingActionButton.extended(
-              icon: const Icon(Icons.filter_alt),
-              label: Text(
-                  'Draw ${_realmFilter!.displayName} Spirit'),
-              onPressed: _drawRealmSpirit,
-            )
-          : _selectionMode
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => Navigator.of(context)
-                      .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(),
-                      ))
-                      .then((_) => setState(() {})),
-                  child: const Icon(Icons.add),
-                ),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(
+                    builder: (_) => const NoteDetailPage(),
+                  ))
+                  .then((_) => setState(() {})),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 }

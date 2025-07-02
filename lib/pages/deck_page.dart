@@ -60,7 +60,7 @@ class _DeckPageState extends State<DeckPage> {
                               : Colors.teal,
                     ),
                     title: Text(s.name),
-                    subtitle: Text(s.description),
+                    subtitle: Text(s.mythos),  // use `mythos` instead of `description`
                     trailing: Text(s.realm.displayName),
                   ),
                 );

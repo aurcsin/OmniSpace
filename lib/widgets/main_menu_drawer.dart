@@ -1,20 +1,24 @@
+// File: lib/widgets/main_menu_drawer.dart
+
 import 'package:flutter/material.dart';
-import '../models/zone_theme.dart';
 
 // Elemental pages
 import '../pages/sky_space_page.dart';
 import '../pages/garden_forest_page.dart';
 import '../pages/workshop_forge_page.dart';
 import '../pages/studio_underwater_page.dart';
-import '../pages/root_cave_page.dart';
+import '../pages/root_cave_page.dart';           // now exports RootCavePage
+
 // User logs
 import '../pages/journal_page.dart';
 import '../pages/omni_tracker_page.dart';
 import '../pages/projects_page.dart';
-import '../pages/calendar_overview_page.dart';
+import '../pages/calendar_overview_page.dart';   // only this file defines CalendarOverviewPage
+
 // Spirits & Deck
 import '../pages/spirit_page.dart';
 import '../pages/deck_page.dart';
+
 // Misc
 import '../pages/collections_page.dart';
 import '../pages/options_page.dart';
@@ -31,8 +35,10 @@ class MainMenuDrawer extends StatelessWidget {
         child: ListView(padding: EdgeInsets.zero, children: [
           const DrawerHeader(
             decoration: BoxDecoration(color: Colors.deepPurple),
-            child: Text('OmniSpace',
-                style: TextStyle(color: Colors.white, fontSize: 24)),
+            child: Text(
+              'OmniSpace',
+              style: TextStyle(color: Colors.white, fontSize: 24),
+            ),
           ),
 
           ExpansionTile(
@@ -77,10 +83,10 @@ class MainMenuDrawer extends StatelessWidget {
     );
   }
 
-  Widget _tile(BuildContext ctx, String title, IconData icon, Widget page) {
+  Widget _tile(BuildContext ctx, String label, IconData icon, Widget page) {
     return ListTile(
       leading: Icon(icon, color: Colors.deepPurple),
-      title: Text(title),
+      title: Text(label),
       onTap: () {
         Navigator.of(ctx).pop();
         Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => page));

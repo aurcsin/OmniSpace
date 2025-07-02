@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'settings.g.dart';
 
 /// User-configurable settings for the application.
-@HiveType(typeId: 11)
+@HiveType(typeId: 14)
 class Settings extends HiveObject {
   @HiveField(0)
   bool darkMode;

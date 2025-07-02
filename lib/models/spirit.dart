@@ -1,39 +1,33 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'zone_theme.dart';
+import 'package:omnispace/models/zone_theme.dart';
 
-part 'spirit.g.dart';
+part 'spirit.g.dart';  // ← make sure this matches the generated file
 
-@HiveType(typeId: 50)
+@HiveType(typeId: 11)
 class Spirit extends HiveObject {
-  @HiveField(0)
-  String id;
-
-  @HiveField(1)
-  String name;
-
-  @HiveField(2)
-  String description;
-
-  @HiveField(3)
-  ZoneTheme realm;         // which elemental zone it belongs to
-
-  @HiveField(4)
-  bool isPrimary;          // the Master Spirit of the realm
-
-  @HiveField(5)
-  bool isNPC;              // static NPC guide vs collectible
-
-  @HiveField(6)
-  bool isCollectible;      // emergent life forms you can collect
+  @HiveField(0) final String id;
+  @HiveField(1) final String name;
+  @HiveField(2) final String mythos;
+  @HiveField(3) final String purpose;
+  @HiveField(4) final String useInApp;
+  @HiveField(5) final ZoneTheme realm;
+  @HiveField(6) final bool isPrimary;
+  @HiveField(7) final bool isNPC;
+  @HiveField(8) final bool isCollectible;
+  @HiveField(9) final String archetype;
+  @HiveField(10) final int xpValue;
 
   Spirit({
     required this.id,
     required this.name,
-    required this.description,
+    required this.mythos,
+    required this.purpose,
+    required this.useInApp,
     required this.realm,
     this.isPrimary = false,
-    this.isNPC    = false,
-    this.isCollectible = false,
+    this.isNPC = false,
+    this.isCollectible = true,
+    this.archetype = '',
+    this.xpValue = 0,
   });
 }

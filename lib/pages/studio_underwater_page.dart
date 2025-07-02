@@ -1,4 +1,7 @@
+// File: lib/pages/studio_underwater_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../models/omni_note.dart';
 import '../models/zone_theme.dart';
@@ -34,95 +37,105 @@ class _StudioUnderwaterPageState extends State<StudioUnderwaterPage> {
   @override
   Widget build(BuildContext context) {
     final master = spiritSvc.getPrimary(ZoneTheme.Water)!;
-    final reps   = spiritSvc.forRealm(ZoneTheme.Water).where((s) => !s.isPrimary).toList();
+    final reps   = spiritSvc
+        .forRealm(ZoneTheme.Water)
+        .where((s) => !s.isPrimary)
+        .toList();
+
+    // Fetch and filter notes synchronously
+    final notes = noteSvc.notes;
+    final mediaNotes = notes
+        .where((n) => n.attachments.isNotEmpty && !n.isArchived && !n.isTrashed)
+        .toList()
+      ..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Studio • Underwater')),
-      body: FutureBuilder<List<OmniNote>>(
-        future: noteSvc.all,
-        builder: (ctx, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final notes = snap.data!;
-          final mediaNotes = notes.where((n) => n.attachments.isNotEmpty).toList();
+      body: ListView(
+        padding: const EdgeInsets.all(8),
+        children: [
+          // Master Spirit
+          Card(
+            color: Colors.blue.shade50,
+            child: ListTile(
+              leading: Icon(master.realm.icon, size: 40, color: Colors.blue),
+              title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(master.mythos), // use mythos instead of description
+            ),
+          ),
+          const SizedBox(height: 8),
 
-          return ListView(
-            padding: const EdgeInsets.all(8),
-            children: [
-              // Master Spirit
-              Card(
-                color: Colors.blue.shade50,
-                child: ListTile(
-                  leading: Icon(master.realm.icon, size: 40, color: Colors.blue),
-                  title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(master.description),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: reps.map((s) {
-                  final inDeck = deckSvc.deck.spiritIds.contains(s.id);
-                  return ActionChip(
-                    avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
-                    label: Text(s.name),
-                    backgroundColor: inDeck ? Colors.grey.shade300 : Colors.blueAccent,
-                    labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                    onPressed: inDeck ? null : () async {
-                      await deckSvc.draw(s);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Added ${s.name} to deck!')),
-                        );
-                        setState(() {});
-                      }
-                    },
+          // Representative spirits
+          Wrap(
+            spacing: 8,
+            children: reps.map((s) {
+              final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+              return ActionChip(
+                avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                label: Text(s.name),
+                backgroundColor: inDeck ? Colors.grey.shade300 : Colors.blueAccent,
+                labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
+                onPressed: inDeck
+                    ? null
+                    : () async {
+                        await deckSvc.draw(s);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Added ${s.name} to deck!')),
+                          );
+                          setState(() {});
+                        }
+                      },
+              );
+            }).toList(),
+          ),
+          const Divider(height: 32),
+
+          // Notes with media
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Notes with Media',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (mediaNotes.isEmpty)
+            const Center(child: Text('No media notes yet.'))
+          else
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: mediaNotes.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final n = mediaNotes[i];
+                  return GestureDetector(
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute(
+                          builder: (_) => MultiPaneEditorPage(n),
+                        ))
+                        .then((_) => setState(() {})),
+                    child: Container(
+                      width: 100,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image, size: 48),
+                    ),
                   );
-                }).toList(),
+                },
               ),
+            ),
+          const Divider(height: 32),
 
-              const Divider(height: 32),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Notes with Media', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              if (mediaNotes.isEmpty)
-                const Center(child: Text('No media notes yet.'))
-              else
-                SizedBox(
-                  height: 120,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: mediaNotes.length,
-                    separatorBuilder: (_,__)=>const SizedBox(width:8),
-                    itemBuilder: (_,i){
-                      final n = mediaNotes[i];
-                      return GestureDetector(
-                        onTap: ()=>Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_)=>MultiPaneEditorPage(n)),
-                        ).then((_)=>setState((){})),
-                        child: Container(
-                          width: 100,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image, size:48),
-                        ),
-                      );
-                    }
-                  ),
-                ),
-
-              const Divider(height: 32),
-              ListTile(
-                leading: const Icon(Icons.collections_bookmark),
-                title: const Text('Browse Collections'),
-                onTap: ()=>Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_)=>const CollectionsPage()),
-                ).then((_)=>setState((){})),
-              ),
-            ],
-          );
-        },
+          // Browse collections
+          ListTile(
+            leading: const Icon(Icons.collections_bookmark),
+            title: const Text('Browse Collections'),
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const CollectionsPage()))
+                .then((_) => setState(() {})),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.filter_alt),

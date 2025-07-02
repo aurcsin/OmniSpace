@@ -73,7 +73,7 @@ class _TrashPageState extends State<TrashPage> {
             child: ListTile(
               leading: Icon(master.realm.icon, size: 36, color: Colors.grey),
               title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(master.description),
+              subtitle: Text(master.mythos),  // use mythos instead of description
             ),
           ),
           const SizedBox(height: 8),

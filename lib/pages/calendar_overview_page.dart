@@ -64,8 +64,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = start.add(const Duration(days: 1));
         break;
       case CalView.week:
-        start = _focusDate.subtract(Duration(days: 3));
-        end = _focusDate.add(Duration(days: 4));
+        start = _focusDate.subtract(const Duration(days: 3));
+        end = _focusDate.add(const Duration(days: 4));
         break;
       case CalView.month:
         start = DateTime(_focusDate.year, _focusDate.month, 1);
@@ -256,7 +256,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
               child: ListTile(
                 leading: Icon(masterSpirit.realm.icon, size: 36, color: Colors.deepPurple),
                 title: Text(masterSpirit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(masterSpirit.description),
+                subtitle: Text(masterSpirit.mythos),  // was description
               ),
             ),
             Wrap(

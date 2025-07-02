@@ -1,3 +1,5 @@
+// File: lib/pages/workshop_forge_page.dart
+
 import 'package:flutter/material.dart';
 
 import '../models/tracker.dart';
@@ -35,11 +37,17 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
   @override
   Widget build(BuildContext context) {
     final master = spiritSvc.getPrimary(ZoneTheme.Fire)!;
-    final reps   = spiritSvc.forRealm(ZoneTheme.Fire).where((s) => !s.isPrimary).toList();
+    final reps   = spiritSvc
+        .forRealm(ZoneTheme.Fire)
+        .where((s) => !s.isPrimary)
+        .toList();
     final all    = svc.all;
 
     // group by type
-    final byType = { for (var t in TrackerType.values) t: all.where((tr)=>tr.type==t).toList() };
+    final byType = {
+      for (var t in TrackerType.values)
+        t: all.where((tr) => tr.type == t).toList()
+    };
 
     return Scaffold(
       appBar: AppBar(title: const Text('Workshop • Forge')),
@@ -52,7 +60,7 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
             child: ListTile(
               leading: Icon(master.realm.icon, size: 40, color: Colors.red),
               title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(master.description),
+              subtitle: Text(master.mythos),  // use mythos instead of description
             ),
           ),
 
@@ -63,19 +71,24 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
             children: reps.map((s) {
               final inDeck = deckSvc.deck.spiritIds.contains(s.id);
               return ActionChip(
-                avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                avatar: Icon(s.realm.icon,
+                    size: 20, color: inDeck ? Colors.grey : Colors.white),
                 label: Text(s.name),
-                backgroundColor: inDeck ? Colors.grey.shade300 : Colors.redAccent,
-                labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                onPressed: inDeck ? null : () async {
-                  await deckSvc.draw(s);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added ${s.name} to deck!')),
-                    );
-                    setState(() {});
-                  }
-                },
+                backgroundColor:
+                    inDeck ? Colors.grey.shade300 : Colors.redAccent,
+                labelStyle:
+                    TextStyle(color: inDeck ? Colors.black : Colors.white),
+                onPressed: inDeck
+                    ? null
+                    : () async {
+                        await deckSvc.draw(s);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Added ${s.name} to deck!')),
+                          );
+                          setState(() {});
+                        }
+                      },
               );
             }).toList(),
           ),
@@ -88,18 +101,21 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 type.name.toUpperCase(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
             if (byType[type]!.isEmpty)
               const Text('No items here.')
             else
               ...byType[type]!.map((tr) => ListTile(
-                title: Text(tr.title),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: tr)),
-                ).then((_) => setState(() {})),
-              )),
+                    title: Text(tr.title),
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute(
+                          builder: (_) => TrackerViewPage(tracker: tr),
+                        ))
+                        .then((_) => setState(() {})),
+                  )),
           ],
         ],
       ),
@@ -110,9 +126,11 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
             heroTag: 'add_tracker',
             icon: const Icon(Icons.add),
             label: const Text('New Tracker'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TrackerForgePage()),
-            ).then((_) => setState(() {})),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(
+                  builder: (_) => const TrackerForgePage(),
+                ))
+                .then((_) => setState(() {})),
           ),
           const SizedBox(height: 8),
           FloatingActionButton.extended(
