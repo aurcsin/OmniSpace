@@ -1,19 +1,15 @@
 // File: lib/pages/journal_page.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/omni_note.dart';
 import '../models/project.dart';
-import '../models/zone_theme.dart';
-import '../models/spirit.dart';
 import '../services/omni_note_service.dart';
 import '../services/project_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
+import '../services/collection_service.dart';  // new service for note collections
+import '../models/collection.dart';            // new model
 import '../widgets/main_menu_drawer.dart';
-import 'note_detail_page.dart';
 
 enum DateRangeFilter { all, day, week, month, year }
 
@@ -28,14 +24,8 @@ class _JournalPageState extends State<JournalPage> {
   final Set<String> _selectedIds = {};
   String _searchQuery = '';
   DateRangeFilter _dateFilter = DateRangeFilter.all;
-  ZoneTheme? _realmFilter;
 
-  final _noteSvc   = OmniNoteService.instance;
-  final _projSvc   = ProjectService.instance;
-  final _spiritSvc = SpiritService.instance;
-  final _deckSvc   = DeckService.instance;
-
-  List<OmniNote> get _notes => _noteSvc.notes;
+  List<OmniNote> get _notes => OmniNoteService.instance.notes;
 
   List<OmniNote> get _filteredNotes {
     final now = DateTime.now();
@@ -57,14 +47,24 @@ class _JournalPageState extends State<JournalPage> {
       default:
         start = DateTime.fromMillisecondsSinceEpoch(0);
     }
-    final end = {
-      DateRangeFilter.day:   start.add(const Duration(days: 1)),
-      DateRangeFilter.week:  start.add(const Duration(days: 7)),
-      DateRangeFilter.month: DateTime(start.year, start.month + 1, 1),
-      DateRangeFilter.year:  DateTime(start.year + 1, 1, 1),
-      DateRangeFilter.all:   DateTime.now().add(const Duration(days: 36500)),
-    }[_dateFilter]!;
-
+    DateTime end;
+    switch (_dateFilter) {
+      case DateRangeFilter.day:
+        end = start.add(const Duration(days: 1));
+        break;
+      case DateRangeFilter.week:
+        end = start.add(const Duration(days: 7));
+        break;
+      case DateRangeFilter.month:
+        end = DateTime(start.year, start.month + 1, 1);
+        break;
+      case DateRangeFilter.year:
+        end = DateTime(start.year + 1, 1, 1);
+        break;
+      case DateRangeFilter.all:
+      default:
+        end = DateTime.now().add(const Duration(days: 36500));
+    }
     final q = _searchQuery.toLowerCase();
     return _notes.where((n) {
       final inDate = _dateFilter == DateRangeFilter.all ||
@@ -72,8 +72,7 @@ class _JournalPageState extends State<JournalPage> {
       final inSearch = q.isEmpty ||
           n.title.toLowerCase().contains(q) ||
           n.content.toLowerCase().contains(q);
-      final inRealm = _realmFilter == null || n.zone == _realmFilter;
-      return inDate && inSearch && inRealm;
+      return inDate && inSearch;
     }).toList();
   }
 
@@ -98,19 +97,44 @@ class _JournalPageState extends State<JournalPage> {
     });
   }
 
+  /// Assign selected notes to a Project
   Future<void> _batchAssignProject() async {
-    final proj = await showDialog<Project?>(
+    final proj = await _pickProject();
+    if (proj != null) {
+      for (var id in _selectedIds) {
+        final note = OmniNoteService.instance.getNoteById(id);
+        if (note != null) {
+          note.projectId = proj.id;
+          await OmniNoteService.instance.saveNote(note);
+        }
+      }
+    }
+    _exitSelection();
+  }
+
+  /// Assign selected notes to a Collection
+  Future<void> _batchAssignCollection() async {
+    final coll = await _pickCollection();
+    if (coll != null) {
+      await CollectionService.instance.addNotes(coll.id, _selectedIds.toList());
+    }
+    _exitSelection();
+  }
+
+  /// Show list of projects (plus “New Project”), returns chosen or newly created
+  Future<Project?> _pickProject() async {
+    return await showDialog<Project?>(
       context: context,
       builder: (ctx) {
-        final projects = _projSvc.all;
+        final allProjects = ProjectService.instance.all;
         return AlertDialog(
-          title: const Text('Add to Project'),
+          title: const Text('Assign to Project'),
           content: SizedBox(
             width: 300,
             height: 400,
             child: ListView(
               children: [
-                ...projects.map((p) => ListTile(
+                ...allProjects.map((p) => ListTile(
                       title: Text(p.title),
                       onTap: () => Navigator.pop(ctx, p),
                     )),
@@ -118,120 +142,102 @@ class _JournalPageState extends State<JournalPage> {
                 ListTile(
                   leading: const Icon(Icons.add),
                   title: const Text('New Project'),
-                  onTap: () async {
-                    final nameCtl = TextEditingController();
-                    final ok = await showDialog<bool>(
-                      context: ctx,
-                      builder: (ctx2) => AlertDialog(
-                        title: const Text('New Project'),
-                        content: TextField(
-                          controller: nameCtl,
-                          decoration:
-                              const InputDecoration(labelText: 'Name'),
-                        ),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(ctx2, false),
-                              child: const Text('Cancel')),
-                          ElevatedButton(
-                              onPressed: () => Navigator.pop(ctx2, true),
-                              child: const Text('Create')),
-                        ],
-                      ),
-                    );
-                    if (ok == true && nameCtl.text.trim().isNotEmpty) {
-                      final newProj = Project(
-                        id: DateTime.now()
-                            .millisecondsSinceEpoch
-                            .toString(),
-                        title: nameCtl.text.trim(),
-                        noteIds: [],
-                      );
-                      await _projSvc.save(newProj);
-                      Navigator.pop(ctx, newProj);
-                    }
-                  },
+                  onTap: () => Navigator.pop(ctx, null),
                 ),
               ],
             ),
           ),
         );
       },
-    );
-
-    if (proj != null) {
-      for (var id in _selectedIds) {
-        final note = _noteSvc.getNoteById(id);
-        if (note != null) {
-          note.projectId = proj.id;
-          await _noteSvc.saveNote(note);
+    ).then((proj) async {
+      if (proj == null) {
+        // create new
+        final nameCtl = TextEditingController();
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('New Project'),
+            content: TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(_, true), child: const Text('Create')),
+            ],
+          ),
+        );
+        if (ok == true && nameCtl.text.trim().isNotEmpty) {
+          final newProj = Project(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: nameCtl.text.trim(),
+            noteIds: [],
+          );
+          await ProjectService.instance.save(newProj);
+          return newProj;
         }
+        return null;
       }
-    }
-    _exitSelection();
-  }
-
-  void _onRealmSelected(ZoneTheme? realm) {
-    setState(() {
-      _realmFilter = realm;
+      return proj;
     });
   }
 
-  Future<void> _drawRealmSpirit() async {
-    if (_realmFilter == null) return;
-    final s = await _deckSvc.drawFromRealm(_realmFilter!);
-    final msg = s != null
-        ? 'Drew ${s.name}!'
-        : 'All ${_realmFilter!.displayName} spirits already in deck.';
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
-    }
-  }
-
-  Widget _buildRealmChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding:
-          const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      child: Row(
-        children: [
-          ChoiceChip(
-            label: const Text('All'),
-            selected: _realmFilter == null,
-            onSelected: (_) => _onRealmSelected(null),
+  /// Show list of collections (plus “New Collection”), returns chosen
+  Future<NoteCollection?> _pickCollection() async {
+    return await showDialog<NoteCollection?>(
+      context: context,
+      builder: (ctx) {
+        final allCols = CollectionService.instance.all;
+        return AlertDialog(
+          title: const Text('Add to Collection'),
+          content: SizedBox(
+            width: 300,
+            height: 400,
+            child: ListView(
+              children: [
+                ...allCols.map((c) => ListTile(
+                      title: Text(c.name),
+                      onTap: () => Navigator.pop(ctx, c),
+                    )),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.create_new_folder),
+                  title: const Text('New Collection'),
+                  onTap: () => Navigator.pop(ctx, null),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 8),
-          ...ZoneTheme.values.map((realm) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                avatar: Icon(realm.icon,
-                    size: 20, color: Colors.deepPurple),
-                label: Text(realm.displayName),
-                selected: _realmFilter == realm,
-                onSelected: (_) => _onRealmSelected(realm),
-                selectedColor: Colors.deepPurple.shade100,
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
+        );
+      },
+    ).then((col) async {
+      if (col == null) {
+        final nameCtl = TextEditingController();
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('New Collection'),
+            content: TextField(controller: nameCtl, decoration: const InputDecoration(labelText: 'Name')),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(_, true), child: const Text('Create')),
+            ],
+          ),
+        );
+        if (ok == true && nameCtl.text.trim().isNotEmpty) {
+          final newCol = NoteCollection(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: nameCtl.text.trim(),
+            noteIds: [],
+          );
+          await CollectionService.instance.create(newCol);
+          return newCol;
+        }
+        return null;
+      }
+      return col;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final masterSpirit = _realmFilter != null
-        ? _spiritSvc.getPrimary(_realmFilter!)
-        : null;
-    final reps = _realmFilter != null
-        ? _spiritSvc
-            .forRealm(_realmFilter!)
-            .where((s) => !s.isPrimary)
-            .toList()
-        : <Spirit>[];
-
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
@@ -239,222 +245,133 @@ class _JournalPageState extends State<JournalPage> {
             ? Text('${_selectedIds.length} selected')
             : const Text('Journal'),
         leading: _selectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: _exitSelection,
-              )
-            : null,
+            ? IconButton(icon: const Icon(Icons.close), onPressed: _exitSelection)
+            : IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'Help',
+                onPressed: () => _showHelp(context),
+              ),
         actions: [
-          if (_selectionMode)
+          if (_selectionMode) ...[
             IconButton(
               icon: const Icon(Icons.folder_special),
               tooltip: 'Add to Project',
               onPressed: _batchAssignProject,
             ),
+            IconButton(
+              icon: const Icon(Icons.collections_bookmark),
+              tooltip: 'Add to Collection',
+              onPressed: _batchAssignCollection,
+            ),
+          ],
         ],
       ),
       body: Column(
         children: [
-          _buildRealmChips(),
-          if (masterSpirit != null) ...[
-            Card(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: ListTile(
-                leading: Icon(masterSpirit.realm.icon,
-                    size: 36, color: Colors.deepPurple),
-                title: Text(masterSpirit.name,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(masterSpirit.description),
-              ),
-            ),
-            Wrap(
-              spacing: 8,
-              children: reps.map((s) {
-                final inDeck =
-                    _deckSvc.deck.spiritIds.contains(s.id);
-                return ChoiceChip(
-                  avatar: Icon(s.realm.icon,
-                      size: 20,
-                      color: inDeck ? Colors.grey : Colors.white),
-                  label: Text(s.name),
-                  selected: false,
-                  onSelected: inDeck
-                      ? null
-                      : (_) async {
-                          await _deckSvc.draw(s);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(
-                                    content:
-                                        Text('Added ${s.name}')));
-                          }
-                        },
-                  backgroundColor: inDeck
-                      ? Colors.grey.shade300
-                      : Colors.deepPurple,
-                  labelStyle: TextStyle(
-                      color:
-                          inDeck ? Colors.black : Colors.white),
-                );
-              }).toList(),
-            ),
-            const Divider(),
-          ],
-          // Search bar
+          // Search Bar
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8.0),
+            padding: const EdgeInsets.all(8.0),
             child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search notes…',
-              ),
-              onChanged: (v) =>
-                  setState(() => _searchQuery = v),
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search notes…'),
+              onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
+
           // Date-range toggles
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 4.0),
-            child: ToggleButtons(
-              isSelected: DateRangeFilter.values
-                  .map((f) => f == _dateFilter)
-                  .toList(),
-              onPressed: (i) => setState(() =>
-                  _dateFilter = DateRangeFilter.values[i]),
-              children: const [
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('All')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Day')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Week')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Month')),
-                Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Text('Year')),
-              ],
-            ),
+          ToggleButtons(
+            isSelected: DateRangeFilter.values.map((f) => f == _dateFilter).toList(),
+            onPressed: (i) => setState(() => _dateFilter = DateRangeFilter.values[i]),
+            children: const [
+              Padding(padding: EdgeInsets.all(8), child: Text('All')),
+              Padding(padding: EdgeInsets.all(8), child: Text('Day')),
+              Padding(padding: EdgeInsets.all(8), child: Text('Week')),
+              Padding(padding: EdgeInsets.all(8), child: Text('Month')),
+              Padding(padding: EdgeInsets.all(8), child: Text('Year')),
+            ],
           ),
           const Divider(),
+
+          // Notes list
           Expanded(
             child: _filteredNotes.isEmpty
-                ? const Center(
-                    child:
-                        Text('No matching notes.'),
-                  )
+                ? const Center(child: Text('No matching notes.'))
                 : ListView.builder(
                     itemCount: _filteredNotes.length,
                     itemBuilder: (_, i) {
-                      final note =
-                          _filteredNotes[i];
-                      final selected =
-                          _selectedIds.contains(
-                              note.id);
-                      final proj = note.projectId !=
-                              null
-                          ? _projSvc.getById(
-                              note.projectId!)
+                      final note = _filteredNotes[i];
+                      final selected = _selectedIds.contains(note.id);
+                      final proj = note.projectId != null
+                          ? ProjectService.instance.getById(note.projectId!)
                           : null;
                       return ListTile(
-                        selected: selected,
-                        selectedTileColor:
-                            Colors.deepPurple.shade50,
                         leading: _selectionMode
-                            ? Checkbox(
-                                value: selected,
-                                onChanged: (_) =>
-                                    _toggleSelect(
-                                        note.id),
-                              )
+                            ? Checkbox(value: selected, onChanged: (_) => _toggleSelect(note.id))
                             : null,
-                        title: Text(note.title.isEmpty
-                            ? '(No Title)'
-                            : note.title),
-                        subtitle: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
+                        title: Row(
                           children: [
+                            if (note.isStarred)
+                              const Icon(Icons.star, color: Colors.amber, size: 18),
+                            const SizedBox(width: 4),
                             Text(
-                              note.content,
-                              maxLines: 1,
-                              overflow:
-                                  TextOverflow
-                                      .ellipsis,
-                            ),
-                            if (proj != null)
-                              Text(
-                                'Project: ${proj.title}',
-                                style:
-                                    const TextStyle(
-                                  fontSize: 12,
-                                  fontStyle:
-                                      FontStyle
-                                          .italic,
-                                ),
-                              ),
-                            Text(
-                              DateFormat.yMMMd()
-                                  .add_jm()
-                                  .format(note
-                                      .lastUpdated),
-                              style: const TextStyle(
-                                  fontSize: 10),
+                              note.title.isEmpty ? '(No Title)' : note.title,
+                              style: note.isStarred
+                                  ? const TextStyle(fontWeight: FontWeight.bold)
+                                  : null,
                             ),
                           ],
                         ),
-                        onLongPress: () =>
-                            _enterSelection(
-                                note.id),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(note.content, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            if (proj != null)
+                              Text('Project: ${proj.title}',
+                                  style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                            Text(DateFormat.yMMMd().add_jm().format(note.lastUpdated),
+                                style: const TextStyle(fontSize: 10)),
+                          ],
+                        ),
+                        onLongPress: () => _enterSelection(note.id),
                         onTap: _selectionMode
-                            ? () =>
-                                _toggleSelect(
-                                    note.id)
-                            : () =>
-                                Navigator.of(context)
-                                    .push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            NoteDetailPage(
-                                                omniNote:
-                                                    note),
-                                      ),
-                                    )
-                                    .then((_) =>
-                                        setState(() {})),
+                            ? () => _toggleSelect(note.id)
+                            : () => Navigator.of(context)
+                                .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)))
+                                .then((_) => setState(() {})),
                       );
                     },
                   ),
           ),
         ],
       ),
-      floatingActionButton: _realmFilter != null
-          ? FloatingActionButton.extended(
-              icon: const Icon(Icons.filter_alt),
-              label: Text(
-                  'Draw ${_realmFilter!.displayName} Spirit'),
-              onPressed: _drawRealmSpirit,
-            )
-          : _selectionMode
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => Navigator.of(context)
-                      .push(MaterialPageRoute(
-                        builder: (_) =>
-                            const NoteDetailPage(),
-                      ))
-                      .then((_) => setState(() {})),
-                  child: const Icon(Icons.add),
-                ),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton(
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const NoteDetailPage()))
+                  .then((_) => setState(() {})),
+              child: const Icon(Icons.add),
+            ),
+    );
+  }
+
+  void _showHelp(BuildContext ctx) {
+    showDialog<void>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Journal Help'),
+        content: const Text(
+          '• This page shows your journal entries (notes).\n'
+          '• Long-press an entry to select multiple notes for batch operations.\n'
+          '• Use the search bar or date toggles to filter entries.\n'
+          '• Tap the ✚ FAB to create a new note. In the editor you can assign a project,\n'
+          '  link an elemental spirit (for realm affinity), set a mood, and star your favorites.\n'
+          '• Starred entries appear with a ★ icon.\n'
+          '• You can group notes into Collections via the folder icon.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got it!'))
+        ],
+      ),
     );
   }
 }
