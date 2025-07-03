@@ -1,44 +1,37 @@
-// File: lib/services/omni_note_service.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
-import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/models/zone_theme.dart';
+import '../models/omni_note.dart';
 
-/// ChangeNotifier-backed Hive box for OmniNote.
+/// A ChangeNotifier-backed Hive service for managing OmniNote objects.
 class OmniNoteService extends ChangeNotifier {
   OmniNoteService._internal();
   static final OmniNoteService instance = OmniNoteService._internal();
 
+  /// Unique Hive box name for notes.
   static const String _boxName = 'omni_notes';
   late final Box<OmniNote> _box;
 
-  /// Must be called once at app startup.
+  /// Initialize the service. Must be called once at app startup,
+  /// after all Hive adapters have been registered.
   Future<void> init() async {
-    if (!Hive.isAdapterRegistered(OmniNoteAdapter().typeId)) {
-      Hive.registerAdapter(OmniNoteAdapter());
-      Hive.registerAdapter(ZoneThemeAdapter());
-      // register any other adapters...
-    }
     _box = await Hive.openBox<OmniNote>(_boxName);
     notifyListeners();
   }
 
-  /// All notes (including trashed)—useful for sync.
-  Future<List<OmniNote>> get all async => _box.values.toList();
+  /// Retrieve all notes, including trashed.
+  List<OmniNote> get all => _box.values.toList();
 
-  /// Non-trashed notes.
+  /// Only non-trashed.
   List<OmniNote> get notes =>
-      _box.values.where((n) => !n.isTrashed).toList();
+    _box.values.where((n) => !n.isTrashed).toList();
 
-  /// Trashed notes.
+  /// Only trashed.
   List<OmniNote> get trashedNotes =>
-      _box.values.where((n) => n.isTrashed).toList();
+    _box.values.where((n) => n.isTrashed).toList();
 
   /// Lookup by ID.
-  OmniNote? getNoteById(String id) => _box.get(id);
-  OmniNote? getById(String id) => getNoteById(id);
+  OmniNote? getById(String id) => _box.get(id);
 
   /// Save or update.
   Future<void> saveNote(OmniNote note) async {
@@ -46,43 +39,29 @@ class OmniNoteService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Alias for sync code.
-  Future<void> save(OmniNote note) => saveNote(note);
-
   /// Soft-trash.
   Future<void> trashNote(String id) async {
     final note = _box.get(id);
     if (note != null && !note.isTrashed) {
       note.isTrashed = true;
-      await note.save();
+      await _box.put(id, note);
       notifyListeners();
     }
   }
 
-  /// Restore from trash.
+  /// Restore.
   Future<void> restoreNote(String id) async {
     final note = _box.get(id);
     if (note != null && note.isTrashed) {
       note.isTrashed = false;
-      await note.save();
+      await _box.put(id, note);
       notifyListeners();
     }
   }
 
-  /// Permanently delete one.
+  /// Permanently delete.
   Future<void> deleteNote(String id) async {
     await _box.delete(id);
-    notifyListeners();
-  }
-
-  /// Alias for sync code.
-  Future<void> delete(String id) => deleteNote(id);
-
-  /// Permanently delete multiple.
-  Future<void> deletePermanent(List<String> ids) async {
-    for (final id in ids) {
-      await _box.delete(id);
-    }
     notifyListeners();
   }
 }

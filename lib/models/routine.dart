@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'routine.g.dart';
 
 /// A recurring habit or activity with an optional start time and recurrence pattern.
-@HiveType(typeId: 25)
+@HiveType(typeId: 9)
 class Routine extends HiveObject {
   @HiveField(0)
   String id;

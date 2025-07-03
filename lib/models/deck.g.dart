@@ -8,7 +8,7 @@ part of 'deck.dart';
 
 class DeckAdapter extends TypeAdapter<Deck> {
   @override
-  final int typeId = 51;
+  final int typeId = 2;
 
   @override
   Deck read(BinaryReader reader) {
@@ -17,15 +17,21 @@ class DeckAdapter extends TypeAdapter<Deck> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Deck(
-      spiritIds: (fields[0] as List?)?.cast<String>(),
+      id: fields[0] as String,
+      title: fields[1] as String,
+      spiritIds: (fields[2] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Deck obj) {
     writer
-      ..writeByte(1)
+      ..writeByte(3)
       ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.title)
+      ..writeByte(2)
       ..write(obj.spiritIds);
   }
 

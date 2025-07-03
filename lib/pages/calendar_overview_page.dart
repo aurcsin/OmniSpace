@@ -13,6 +13,7 @@ import '../services/tracker_service.dart';
 import '../services/spirit_service.dart';
 import '../services/deck_service.dart';
 import '../widgets/main_menu_drawer.dart';
+import '../widgets/help_button.dart';
 import 'note_view_page.dart';
 
 enum CalView { day, week, month, year }
@@ -53,9 +54,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
 
   void _filterData() {
     final allNotes = _noteSvc.notes;
-    final allEvents = _trackSvc.all
-        .where((t) => t.type == TrackerType.event && t.start != null)
-        .toList();
+    final allEvents = _trackSvc.all.where((t) =>
+      t.type == TrackerType.event && t.start != null).toList();
 
     DateTime start, end;
     switch (_view) {
@@ -64,8 +64,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         end = start.add(const Duration(days: 1));
         break;
       case CalView.week:
-        start = _focusDate.subtract(Duration(days: 3));
-        end = _focusDate.add(Duration(days: 4));
+        start = _focusDate.subtract(const Duration(days: 3));
+        end = _focusDate.add(const Duration(days: 4));
         break;
       case CalView.month:
         start = DateTime(_focusDate.year, _focusDate.month, 1);
@@ -84,13 +84,14 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
     }).toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    _events = [];
     if (_showEvents && (_realmFilter == null || _realmFilter == ZoneTheme.Fire)) {
       _events = allEvents.where((e) {
         final s = e.start!;
         return s.isAfter(start) && s.isBefore(end);
       }).toList()
         ..sort((a, b) => a.start!.compareTo(b.start!));
+    } else {
+      _events = [];
     }
   }
 
@@ -213,12 +214,17 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    final masterSpirit = _realmFilter != null
-      ? _spiritSvc.getPrimary(_realmFilter!)
-      : null;
+    // Master spirit for the active realm, if any
+    Spirit? masterSpirit;
+    if (_realmFilter != null) {
+      final primaries = _spiritSvc.getPrimaries()
+          .where((s) => s.realm == _realmFilter).toList();
+      if (primaries.isNotEmpty) masterSpirit = primaries.first;
+    }
+    // Representative (collectible) spirits for the active realm
     final reps = _realmFilter != null
-      ? _spiritSvc.forRealm(_realmFilter!).where((s) => !s.isPrimary).toList()
-      : <Spirit>[];
+        ? _spiritSvc.getCollectibles().where((s) => s.realm == _realmFilter).toList()
+        : <Spirit>[];
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
@@ -235,6 +241,14 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         ),
         centerTitle: true,
         actions: [
+          HelpButton(
+            helpTitle: 'Calendar Help',
+            helpText: '''
+• Tap the date to pick a specific day.  
+• Use the arrows or toggle to navigate Day/Week/Month/Year.  
+• Filter by realm to see only entries & spirits for that element.  
+• Toggle events on/off to include tracker events.''',
+          ),
           IconButton(
             icon: const Icon(Icons.today),
             tooltip: 'Today',
@@ -256,7 +270,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
               child: ListTile(
                 leading: Icon(masterSpirit.realm.icon, size: 36, color: Colors.deepPurple),
                 title: Text(masterSpirit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(masterSpirit.description),
+                subtitle: Text(masterSpirit.purpose),
               ),
             ),
             Wrap(

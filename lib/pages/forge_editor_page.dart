@@ -1,7 +1,7 @@
 // File: lib/pages/forge_editor_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // ← Added for DateFormat
+import 'package:intl/intl.dart';
 
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
@@ -40,7 +40,8 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
     } else if (arg is TrackerType) {
       _type = arg;
     } else if (arg is String) {
-      _tracker = TrackerService.instance.byId(arg);
+      // Use getById instead of byId
+      _tracker = TrackerService.instance.getById(arg);
       _type = _tracker?.type;
     }
 
@@ -48,8 +49,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
     _progressCtl = TextEditingController(
       text: _tracker?.progress?.toString() ?? '',
     );
-    _frequencyCtl =
-        TextEditingController(text: _tracker?.frequency ?? '');
+    _frequencyCtl = TextEditingController(text: _tracker?.frequency ?? '');
     _start = _tracker?.start;
   }
 
@@ -97,10 +97,8 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
       case TrackerType.goal:
         return TextFormField(
           controller: _progressCtl,
-          decoration:
-              const InputDecoration(labelText: 'Progress (0–1)'),
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Progress (0–1)'),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) {
             final x = double.tryParse(v ?? '');
             if (x == null || x < 0 || x > 1) {
@@ -113,8 +111,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
       case TrackerType.routine:
         return TextFormField(
           controller: _frequencyCtl,
-          decoration: const InputDecoration(
-              labelText: 'Recurrence (e.g. daily)'),
+          decoration: const InputDecoration(labelText: 'Recurrence (e.g. daily)'),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Required' : null,
         );
@@ -129,10 +126,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
                     : 'No date selected',
               ),
             ),
-            TextButton(
-              onPressed: _pickDate,
-              child: const Text('Pick Date'),
-            ),
+            TextButton(onPressed: _pickDate, child: const Text('Pick Date')),
           ],
         );
 
@@ -150,10 +144,7 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
       appBar: AppBar(
         title: Text(isNew ? 'New Tracker' : 'Edit Tracker'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _save,
-          ),
+          IconButton(icon: const Icon(Icons.save), onPressed: _save),
         ],
       ),
       body: Padding(
@@ -164,29 +155,22 @@ class _ForgeEditorPageState extends State<ForgeEditorPage> {
             children: [
               DropdownButtonFormField<TrackerType>(
                 value: _type,
-                decoration:
-                    const InputDecoration(labelText: 'Type'),
-                items: TrackerType.values
-                    .map((t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(
-                            t.name[0].toUpperCase() +
-                                t.name.substring(1),
-                          ),
-                        ))
-                    .toList(),
+                decoration: const InputDecoration(labelText: 'Type'),
+                items: TrackerType.values.map((t) {
+                  return DropdownMenuItem(
+                    value: t,
+                    child: Text(t.name[0].toUpperCase() + t.name.substring(1)),
+                  );
+                }).toList(),
                 onChanged: (t) => setState(() => _type = t),
-                validator: (v) =>
-                    v == null ? 'Please select a type' : null,
+                validator: (v) => v == null ? 'Please select a type' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleCtl,
-                decoration:
-                    const InputDecoration(labelText: 'Title'),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Enter a title'
-                    : null,
+                decoration: const InputDecoration(labelText: 'Title'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
               ),
               const SizedBox(height: 16),
               _buildTypeFields(),

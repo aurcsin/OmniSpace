@@ -6,7 +6,7 @@ import 'settings.dart';
 part 'user_profile.g.dart';
 
 /// Represents a user's profile, including personal details and settings.
-@HiveType(typeId: 12)
+@HiveType(typeId: 18)
 class UserProfile extends HiveObject {
   @HiveField(0)
   String? userId;

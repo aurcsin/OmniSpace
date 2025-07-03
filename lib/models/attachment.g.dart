@@ -45,7 +45,7 @@ class AttachmentAdapter extends TypeAdapter<Attachment> {
 
 class AttachmentTypeAdapter extends TypeAdapter<AttachmentType> {
   @override
-  final int typeId = 1;
+  final int typeId = 0;
 
   @override
   AttachmentType read(BinaryReader reader) {

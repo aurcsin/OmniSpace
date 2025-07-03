@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'tracker_type.g.dart';
 
-@HiveType(typeId: 11) // choose an unused typeId
+@HiveType(typeId: 16) // choose an unused typeId
 enum TrackerType {
   @HiveField(0)
   goal,

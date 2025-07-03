@@ -8,7 +8,7 @@ part of 'sync_metadata.dart';
 
 class SyncMetadataAdapter extends TypeAdapter<SyncMetadata> {
   @override
-  final int typeId = 9;
+  final int typeId = 13;
 
   @override
   SyncMetadata read(BinaryReader reader) {

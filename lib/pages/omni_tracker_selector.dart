@@ -1,45 +1,34 @@
-// File: lib/widgets/omni_tracker_selector.dart
+// File: lib/pages/omni_tracker_page.dart
 
 import 'package:flutter/material.dart';
+
 import '../models/tracker.dart';
-import '../models/tracker_collection.dart';
 import '../models/tracker_type.dart';
+import '../models/tracker_collection.dart';
 import '../services/tracker_service.dart';
 import '../services/tracker_collection_service.dart';
-import '../pages/tracker_forge_page.dart';
+import '../widgets/main_menu_drawer.dart';
+import '../widgets/help_button.dart';
+import 'tracker_forge_page.dart';
+import 'tracker_view_page.dart';
 
-/// A sheet for linking individual trackers or entire collections
-/// into one “owner” (e.g. a note).
-class OmniTrackerSelector extends StatefulWidget {
-  /// ID of the object (note, project, etc.) you’re linking trackers into.
-  final String ownerId;
-
-  const OmniTrackerSelector({Key? key, required this.ownerId}) : super(key: key);
+class OmniTrackerPage extends StatefulWidget {
+  const OmniTrackerPage({Key? key}) : super(key: key);
 
   @override
-  _OmniTrackerSelectorState createState() => _OmniTrackerSelectorState();
+  _OmniTrackerPageState createState() => _OmniTrackerPageState();
 }
 
-class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
-  List<Tracker> _allTrackers = [];
-  List<TrackerCollection> _allCollections = [];
-  Set<String> _linkedIds = {};
+class _OmniTrackerPageState extends State<OmniTrackerPage> {
+  bool _selectionMode = false;
+  final Set<String> _selected = {};
+  bool _gridMode = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _reload();
-  }
+  List<Tracker> get _all => TrackerService.instance.all;
+  List<TrackerCollection> get _cols => TrackerCollectionService.instance.all;
 
-  Future<void> _reload() async {
-    _allTrackers = TrackerService.instance.all;
-    _allCollections = TrackerCollectionService.instance.all;
-    _linkedIds = TrackerService.instance.linkedTo(widget.ownerId).toSet();
-    setState(() {});
-  }
-
-  IconData _iconFor(TrackerType type) {
-    switch (type) {
+  IconData _iconFor(TrackerType t) {
+    switch (t) {
       case TrackerType.goal:
         return Icons.flag;
       case TrackerType.task:
@@ -53,169 +42,228 @@ class _OmniTrackerSelectorState extends State<OmniTrackerSelector> {
     }
   }
 
-  Future<void> _toggleLink(String tid) async {
-    if (_linkedIds.contains(tid)) {
-      await TrackerService.instance.unlinkNote(tid, widget.ownerId);
-    } else {
-      await TrackerService.instance.linkNote(tid, widget.ownerId);
-    }
-    await _reload();
+  void _enterSelect(String id) {
+    setState(() {
+      _selectionMode = true;
+      _selected.add(id);
+    });
   }
 
-  Future<void> _createNewTracker() async {
-    final type = await showModalBottomSheet<TrackerType>(
+  void _toggleSelect(String id) {
+    setState(() {
+      if (!_selected.remove(id)) _selected.add(id);
+      if (_selected.isEmpty) _selectionMode = false;
+    });
+  }
+
+  /// Add the selected trackers into an existing collection
+  Future<void> _batchAddToCollection() async {
+    await showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: TrackerType.values.map((t) {
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              'Add to Collection',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ..._cols.map((col) {
             return ListTile(
-              leading: Icon(_iconFor(t)),
-              title: Text(t.name[0].toUpperCase() + t.name.substring(1)),
-              onTap: () => Navigator.pop(context, t),
+              leading: const Icon(Icons.folder),
+              title: Text(col.name),
+              onTap: () async {
+                col.trackerIds.addAll(_selected);
+                await TrackerCollectionService.instance.save(col);
+                Navigator.pop(context);
+                setState(() {
+                  _selectionMode = false;
+                  _selected.clear();
+                });
+              },
             );
-          }).toList(),
-        ),
+          }),
+          ListTile(
+            leading: const Icon(Icons.create_new_folder),
+            title: const Text('New Collection'),
+            onTap: () {
+              Navigator.pop(context);
+              _showCreateCollectionDialog();
+            },
+          ),
+        ]),
       ),
     );
+  }
 
-    if (type != null) {
-      final created = await Navigator.of(context).push<Tracker>(
-        MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)),
-      );
-      if (created != null) {
-        await TrackerService.instance.linkNote(created.id, widget.ownerId);
-        await _reload();
+  /// Prompt for a new collection name, then create it
+  Future<void> _showCreateCollectionDialog() async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Collection'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Collection Name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final name = controller.text.trim();
+      if (name.isNotEmpty) {
+        final id = DateTime.now().millisecondsSinceEpoch.toString();
+        await TrackerCollectionService.instance.create(
+          id: id,
+          name: name,
+          ownerId: 'self', // TODO: replace with real user ID
+          trackerIds: _selected.toList(),
+        );
+        setState(() {
+          _selectionMode = false;
+          _selected.clear();
+        });
       }
     }
   }
 
-  Future<void> _createNewCollection() async {
-    final nameCtl = TextEditingController();
-    final selected = _linkedIds.toSet();
-
-    await showDialog<void>(
+  void _showAddMenu() {
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New Tracker Collection'),
-        content: StatefulBuilder(builder: (ctx2, setSt) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtl,
-                decoration: const InputDecoration(labelText: 'Collection Name'),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                width: double.maxFinite,
-                child: ListView(
-                  children: _allTrackers.map((t) {
-                    return CheckboxListTile(
-                      value: selected.contains(t.id),
-                      title: Text(t.title),
-                      secondary: Icon(_iconFor(t.type)),
-                      onChanged: (_) => setSt(() {
-                        if (selected.contains(t.id))
-                          selected.remove(t.id);
-                        else
-                          selected.add(t.id);
-                      }),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          );
-        }),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameCtl.text.trim();
-              if (name.isNotEmpty) {
-                await TrackerCollectionService.instance.create(
-                  name: name,
-                  ownerId: widget.ownerId,
-                  trackerIds: selected.toList(),
-                );
-              }
-              Navigator.pop(ctx);
-              await _reload();
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            leading: const Icon(Icons.add),
+            title: const Text('New Tracker'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const TrackerForgePage()))
+                  .then((_) => setState(() {}));
             },
-            child: const Text('Create'),
           ),
-        ],
+          ListTile(
+            leading: const Icon(Icons.folder_special),
+            title: const Text('New Collection'),
+            onTap: () {
+              Navigator.pop(context);
+              _showCreateCollectionDialog();
+            },
+          ),
+        ]),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          // Create new tracker
-          ListTile(
-            leading: const Icon(Icons.add),
-            title: const Text('Create new tracker'),
-            onTap: _createNewTracker,
-          ),
-
-          // Create new collection
-          ListTile(
-            leading: const Icon(Icons.folder_special),
-            title: const Text('Create new collection'),
-            subtitle: const Text('Group multiple trackers'),
-            onTap: _createNewCollection,
-          ),
-
-          const Divider(),
-
-          // Existing Collections
-          ..._allCollections.map((col) {
-            final members = _allTrackers
-                .where((t) => col.trackerIds.contains(t.id))
-                .toList();
-            return ExpansionTile(
-              title: Text('${col.name} (${members.length})'),
-              initiallyExpanded: true,
-              children: members.isEmpty
-                  ? [const ListTile(title: Text('— none —'))]
-                  : members.map((t) {
-                      final linked = _linkedIds.contains(t.id);
-                      return CheckboxListTile(
-                        value: linked,
-                        onChanged: (_) => _toggleLink(t.id),
-                        secondary: Icon(_iconFor(t.type)),
-                        title: Text(t.title),
-                      );
-                    }).toList(),
-            );
-          }),
-
-          const Divider(),
-
-          // Ungrouped Trackers
-          ExpansionTile(
-            title: const Text('Ungrouped Trackers'),
-            initiallyExpanded: true,
-            children: _allTrackers
-                .where((t) => _allCollections.every((c) => !c.trackerIds.contains(t.id)))
-                .map((t) {
-                  final linked = _linkedIds.contains(t.id);
-                  return CheckboxListTile(
-                    value: linked,
-                    onChanged: (_) => _toggleLink(t.id),
-                    secondary: Icon(_iconFor(t.type)),
-                    title: Text(t.title),
-                  );
-                }).toList(),
-          ),
+    return Scaffold(
+      drawer: const MainMenuDrawer(),
+      appBar: AppBar(
+        title: Text(_selectionMode ? '${_selected.length} selected' : 'OmniTracker'),
+        actions: [
+          if (!_selectionMode) ...[
+            HelpButton(
+              helpTitle: 'Trackers Overview',
+              helpText: '''
+• Toggle between grid and list views with the view icon.  
+• Tap “+” to add a new tracker or collection.  
+• Long-press a tracker to enter selection mode.  
+• In selection mode, use the folder icon to batch add to collections.''',
+            ),
+            IconButton(
+              icon: Icon(_gridMode ? Icons.list : Icons.grid_view),
+              onPressed: () => setState(() => _gridMode = !_gridMode),
+            ),
+          ],
+          if (_selectionMode)
+            IconButton(
+              icon: const Icon(Icons.folder_special),
+              tooltip: 'Add to Collection',
+              onPressed: _batchAddToCollection,
+            ),
         ],
       ),
+      body: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _gridMode ? _buildGrid() : _buildList(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (_selectionMode) {
+            setState(() {
+              _selectionMode = false;
+              _selected.clear();
+            });
+          } else {
+            _showAddMenu();
+          }
+        },
+        child: Icon(_selectionMode ? Icons.close : Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildGrid() {
+    return ListView(
+      children: [
+        ..._cols.map((col) {
+          final members = _all.where((t) => col.trackerIds.contains(t.id)).toList();
+          return ExpansionTile(
+            title: Text('${col.name} (${members.length})'),
+            children: members.map(_tileFor).toList(),
+          );
+        }),
+        const Divider(),
+        ExpansionTile(
+          title: const Text('Ungrouped Trackers'),
+          children: _all
+              .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
+              .map(_tileFor)
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildList() {
+    return ListView(
+      children: [
+        ..._all
+            .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
+            .map(_tileFor),
+        const Divider(),
+        ..._cols.map((col) {
+          return ExpansionTile(
+            title: Text(col.name),
+            children: _all
+                .where((t) => col.trackerIds.contains(t.id))
+                .map(_tileFor)
+                .toList(),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _tileFor(Tracker t) {
+    final selected = _selected.contains(t.id);
+    return ListTile(
+      leading: _selectionMode
+          ? Checkbox(value: selected, onChanged: (_) => _toggleSelect(t.id))
+          : Icon(_iconFor(t.type)),
+      title: Text(t.title),
+      onLongPress: () => _enterSelect(t.id),
+      onTap: _selectionMode
+          ? () => _toggleSelect(t.id)
+          : () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
+              .then((_) => setState(() {})),
     );
   }
 }

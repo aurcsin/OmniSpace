@@ -8,7 +8,7 @@ part of 'tracker_collection.dart';
 
 class TrackerCollectionAdapter extends TypeAdapter<TrackerCollection> {
   @override
-  final int typeId = 22;
+  final int typeId = 15;
 
   @override
   TrackerCollection read(BinaryReader reader) {
@@ -20,7 +20,7 @@ class TrackerCollectionAdapter extends TypeAdapter<TrackerCollection> {
       id: fields[0] as String,
       name: fields[1] as String,
       ownerId: fields[2] as String,
-      trackerIds: (fields[3] as List).cast<String>(),
+      trackerIds: (fields[3] as List?)?.cast<String>(),
     );
   }
 

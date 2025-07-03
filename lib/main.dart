@@ -15,78 +15,64 @@ import 'models/deck.dart';
 
 import 'services/notification_service.dart';
 import 'services/omni_note_service.dart';
-import 'services/project_service.dart';
 import 'services/tracker_service.dart';
 import 'services/tracker_collection_service.dart';
+import 'services/project_service.dart';
 import 'services/spirit_service.dart';
 import 'services/deck_service.dart';
-
-import 'pages/journal_page.dart';
-import 'pages/note_detail_page.dart';
-import 'pages/note_view_page.dart';
-import 'pages/projects_page.dart';
-import 'pages/spirit_page.dart';
-import 'pages/deck_page.dart';
+import 'services/navigator_service.dart';
 
 import 'themes/theme_loader.dart';
+import 'pages/journal_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Hive
   await Hive.initFlutter();
 
-  // Register all adapters before opening any boxes
-  Hive.registerAdapter(OmniNoteAdapter());
-  Hive.registerAdapter(ZoneThemeAdapter());
-  Hive.registerAdapter(AttachmentAdapter());
-  Hive.registerAdapter(TrackerTypeAdapter());
-  Hive.registerAdapter(TrackerAdapter());
-  Hive.registerAdapter(TrackerCollectionAdapter());
-  Hive.registerAdapter(ProjectAdapter());
-  Hive.registerAdapter(SpiritAdapter());
-  Hive.registerAdapter(DeckAdapter());
+  // Nuke any old boxes so nothing is mis‐typed:
+  await Hive.deleteBoxFromDisk('omni_notes').catchError((_) {});
+  await Hive.deleteBoxFromDisk('spirits').catchError((_) {});
+  await Hive.deleteBoxFromDisk('decks').catchError((_) {});
 
-  // Initialize services (each opens its own Hive box)
+  // Register exactly one adapter per typeId:
+  final adapters = <TypeAdapter<dynamic>>[
+    OmniNoteAdapter(),
+    ZoneThemeAdapter(),
+    AttachmentAdapter(),
+    TrackerTypeAdapter(),
+    TrackerAdapter(),
+    TrackerCollectionAdapter(),
+    ProjectAdapter(),
+    SpiritAdapter(),
+    DeckAdapter(),
+  ];
+  for (final adapter in adapters) {
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter(adapter);
+    }
+  }
+
+  // Now open each box in turn (no accidental cross‐writes):
   await NotificationService.instance.init();
-  await OmniNoteService.instance.init();
-  await ProjectService.instance.init();
-  await TrackerService.instance.init();
+  await OmniNoteService.instance.init();        // opens 'omni_notes'
+  await TrackerService.instance.init();         // opens 'trackers'
   await TrackerCollectionService.instance.init();
-  await SpiritService.instance.init();
-  await DeckService.instance.init();
+  await ProjectService.instance.init();
+  await SpiritService.instance.init();          // opens 'spirits'
+  await DeckService.instance.init();            // opens 'decks'
 
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+  const MyApp({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'OmniSpace',
-      theme: ThemeLoader.load('light'),
-      initialRoute: '/journal',
-      routes: {
-        '/journal': (_) => const JournalPage(),
-        '/noteDetail': (ctx) {
-          final note = ModalRoute.of(ctx)!.settings.arguments as OmniNote?;
-          return NoteDetailPage(omniNote: note);
-        },
-        '/noteView': (ctx) {
-          final note = ModalRoute.of(ctx)!.settings.arguments as OmniNote;
-          return NoteViewPage(note: note);
-        },
-        '/projects': (_) => const ProjectsPage(),
-        '/spirits':  (_) => const SpiritPage(),
-        '/deck':     (_) => const DeckPage(),
-        // …other routes…
-      },
-      onGenerateRoute: (settings) {
-        // handle dynamic or parameterized routes here if needed
-        return null;
-      },
+      theme: ThemeLoader.load('default'),
+      home: const JournalPage(),
+      navigatorKey: NavigatorService.instance.navigatorKey,
     );
   }
 }

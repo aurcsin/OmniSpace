@@ -1,16 +1,15 @@
 // File: lib/pages/trash_page.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/omni_note.dart';
 import '../models/tracker.dart';
 import '../models/zone_theme.dart';
-import '../models/spirit.dart';
 import '../services/omni_note_service.dart';
 import '../services/tracker_service.dart';
 import '../services/spirit_service.dart';
 import '../services/deck_service.dart';
+import '../widgets/help_button.dart';
 import '../widgets/main_menu_drawer.dart';
 import 'multi_pane_editor_page.dart';
 import 'tracker_view_page.dart';
@@ -38,8 +37,8 @@ class _TrashPageState extends State<TrashPage> {
   }
 
   void _refresh() {
-    _trashedNotes    = _noteSvc.trashedNotes;
-    _trashedTrackers = _trackSvc.trashed; // assumes `trashed` getter exists
+    _trashedNotes = _noteSvc.trashedNotes;
+    _trashedTrackers = _trackSvc.all.where((t) => t.isTrashed).toList();
     setState(() {});
   }
 
@@ -47,7 +46,7 @@ class _TrashPageState extends State<TrashPage> {
     final s = await _deckSvc.drawFromRealm(ZoneTheme.Void);
     final msg = s != null
         ? 'Drew ${s.name}!'
-        : 'All Void spirits already in deck.';
+        : 'All Void spirits already in your deck.';
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
@@ -55,50 +54,62 @@ class _TrashPageState extends State<TrashPage> {
 
   @override
   Widget build(BuildContext context) {
-    final master = _spiritSvc.getPrimary(ZoneTheme.Void)!;
-    final reps   = _spiritSvc
-        .forRealm(ZoneTheme.Void)
-        .where((s) => !s.isPrimary)
-        .toList();
+    // Master Void spirit
+    final primaries = _spiritSvc.getPrimaries().where((s) => s.realm == ZoneTheme.Void);
+    final master = primaries.isNotEmpty ? primaries.first : null;
+    // Collectible Void spirits
+    final reps = _spiritSvc.getCollectibles().where((s) => s.realm == ZoneTheme.Void).toList();
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
-      appBar: AppBar(title: const Text('Trash')),
+      appBar: AppBar(
+        title: const Text('Trash'),
+        actions: [
+          HelpButton(
+            helpTitle: 'Trash Help',
+            helpText: '''
+• Restore or permanently delete notes and trackers.  
+• You can also draw Void spirits here to refill your deck.''',
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(8),
         children: [
-          // Void realm master spirit
-          Card(
-            color: Colors.grey.shade200,
-            child: ListTile(
-              leading: Icon(master.realm.icon, size: 36, color: Colors.grey),
-              title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(master.description),
+          if (master != null) ...[
+            // Void realm master spirit
+            Card(
+              color: Colors.grey.shade200,
+              child: ListTile(
+                leading: Icon(master.realm.icon, size: 36, color: Colors.grey),
+                title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(master.purpose),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          // Representative Void spirits
-          Wrap(
-            spacing: 8,
-            children: reps.map((s) {
-              final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
-              return ActionChip(
-                avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
-                label: Text(s.name),
-                backgroundColor: inDeck ? Colors.grey.shade300 : Colors.black54,
-                labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                onPressed: inDeck ? null : () async {
-                  await _deckSvc.draw(s);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Added ${s.name} to deck!')),
-                    );
-                  }
-                },
-              );
-            }).toList(),
-          ),
-          const Divider(height: 32),
+            const SizedBox(height: 8),
+            // Representative Void spirits
+            Wrap(
+              spacing: 8,
+              children: reps.map((s) {
+                final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
+                return ActionChip(
+                  avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  label: Text(s.name),
+                  backgroundColor: inDeck ? Colors.grey.shade300 : Colors.black54,
+                  labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
+                  onPressed: inDeck ? null : () async {
+                    await _deckSvc.draw(s);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Added ${s.name} to deck!')),
+                      );
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+            const Divider(height: 32),
+          ],
 
           // --- Trashed Notes ---
           if (_trashedNotes.isNotEmpty) ...[
@@ -108,8 +119,8 @@ class _TrashPageState extends State<TrashPage> {
             ),
             ..._trashedNotes.map((note) {
               return ListTile(
-                title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
                 leading: const Icon(Icons.note, color: Colors.grey),
+                title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -147,8 +158,8 @@ class _TrashPageState extends State<TrashPage> {
             ),
             ..._trashedTrackers.map((tr) {
               return ListTile(
-                title: Text(tr.title.isNotEmpty ? tr.title : '(No Title)'),
                 leading: const Icon(Icons.auto_graph, color: Colors.grey),
+                title: Text(tr.title.isNotEmpty ? tr.title : '(No Title)'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -178,11 +189,9 @@ class _TrashPageState extends State<TrashPage> {
           ],
 
           if (_trashedNotes.isEmpty && _trashedTrackers.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 32),
-                child: Text('Trash is empty.', style: TextStyle(color: Colors.grey)),
-              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 32),
+              child: Center(child: Text('Trash is empty.', style: TextStyle(color: Colors.grey))),
             ),
         ],
       ),

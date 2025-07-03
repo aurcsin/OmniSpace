@@ -8,7 +8,7 @@ part of 'day_reflection.dart';
 
 class DayReflectionAdapter extends TypeAdapter<DayReflection> {
   @override
-  final int typeId = 6;
+  final int typeId = 1;
 
   @override
   DayReflection read(BinaryReader reader) {

@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'goal.g.dart';
 
 /// A single step toward completing a goal.
-@HiveType(typeId: 20)
+@HiveType(typeId: 4)
 class GoalStep {
   @HiveField(0)
   String id;

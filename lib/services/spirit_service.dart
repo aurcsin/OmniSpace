@@ -1,167 +1,93 @@
 // File: lib/services/spirit_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import '../models/spirit.dart';
+import '../models/zone_theme.dart';
 
-import 'package:omnispace/models/spirit.dart';
-import 'package:omnispace/models/zone_theme.dart';
+class SpiritService {
+  SpiritService._();
+  static final SpiritService instance = SpiritService._();
 
-/// Manages all Spirits in the OmniSpace world.
-class SpiritService extends ChangeNotifier {
-  SpiritService._internal();
-  static final SpiritService instance = SpiritService._internal();
-
-  static const String _boxName = 'spirits';
+  static const _boxName = 'spirits';
   late final Box<Spirit> _box;
 
-  /// Initialize Hive box and seed defaults if empty.
+  /// Call once at app startup (after adapters registered).
   Future<void> init() async {
+    // Ensure adapters are registered exactly once:
     if (!Hive.isAdapterRegistered(SpiritAdapter().typeId)) {
       Hive.registerAdapter(SpiritAdapter());
     }
+    if (!Hive.isAdapterRegistered(ZoneThemeAdapter().typeId)) {
+      Hive.registerAdapter(ZoneThemeAdapter());
+    }
+
+    // Open the dedicated spirits box only—do NOT seed or clear anything here
     _box = await Hive.openBox<Spirit>(_boxName);
 
-    if (_box.isEmpty) {
-      await _seedDefaults();
-    }
-    notifyListeners();
+    // 🚫 Temporarily disabled automatic seeding to avoid cross-typing errors
+    // if (_box.isEmpty) {
+    //   await _seedSpirits();
+    // }
   }
 
-  /// All spirits.
+  /*
+/// When you’re ready to restore the “one-time seeding” behavior, re-enable this method call
+/// and uncomment this entire block:
+  Future<void> _seedSpirits() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var counter = 0;
+
+    for (final realm in ZoneTheme.values) {
+      final master = Spirit(
+        id: '$now-${realm.index}-master',
+        name: '${_capitalize(realm.name)} Guardian',
+        mythos: 'A potent spirit embodying the essence of ${realm.name}.',
+        purpose: 'Guides experienced travelers through the ${realm.name} realm.',
+        useInApp: 'Appears on the ${_capitalize(realm.name)} page to offer wisdom.',
+        realm: realm,
+        isPrimary: true,
+        isNPC: false,
+        isCollectible: false,
+        archetype: 'Guardian',
+        xpValue: 100,
+      );
+      await _box.put(master.id, master);
+
+      counter++;
+      final sprite = Spirit(
+        id: '$now-${realm.index}-sprite-$counter',
+        name: 'Young ${_capitalize(realm.name)} Sprite',
+        mythos: 'A fledgling spirit attuned to the playful side of ${realm.name}.',
+        purpose: 'Helps newcomers learn the basics of the ${realm.name} realm.',
+        useInApp: 'Reserved for your beginner deck on the ${_capitalize(realm.name)} page.',
+        realm: realm,
+        isPrimary: false,
+        isNPC: false,
+        isCollectible: true,
+        archetype: 'Sprite',
+        xpValue: 10,
+      );
+      await _box.put(sprite.id, sprite);
+    }
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? '' : s[0].toUpperCase() + s.substring(1);
+  */
+
+  /// Returns all spirits in the box.
   List<Spirit> get all => _box.values.toList();
 
-  /// All spirits belonging to [realm].
-  List<Spirit> forRealm(ZoneTheme realm) =>
+  /// Only the primary (master) spirits.
+  List<Spirit> getPrimaries() => all.where((s) => s.isPrimary).toList();
+
+  /// Only collectible spirits.
+  List<Spirit> getCollectibles() => all.where((s) => s.isCollectible).toList();
+
+  /// All spirits in a specific realm.
+  List<Spirit> getByRealm(ZoneTheme realm) =>
       all.where((s) => s.realm == realm).toList();
 
-  /// The primary (master) spirit of [realm], or the first if none marked primary.
-  Spirit? getPrimary(ZoneTheme realm) {
-    final spirits = forRealm(realm);
-    if (spirits.isEmpty) return null;
-    return spirits.firstWhere((s) => s.isPrimary, orElse: () => spirits.first);
-  }
-
-  /// Seed each realm with a master spirit, one collectable, and optional heralds.
-  Future<void> _seedDefaults() async {
-    // Air realm
-    await _box.addAll([
-      Spirit(
-        id: 'air_master',
-        name: 'Zephyr, The Whispering Wind',
-        description: 'Guardian of the Sky, offering lofty perspective.',
-        realm: ZoneTheme.Air,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'air_herald1',
-        name: 'Gale Herald',
-        description: 'A messenger spirit bringing fresh ideas.',
-        realm: ZoneTheme.Air,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'cloudling',
-        name: 'Cloudling',
-        description: 'A fluffy curiosity drifting on breezes.',
-        realm: ZoneTheme.Air,
-        isCollectible: true,
-      ),
-    ]);
-
-    // Earth realm
-    await _box.addAll([
-      Spirit(
-        id: 'earth_master',
-        name: 'Gaia, The Sustaining Mother',
-        description: 'Guardian of Earth, nurturing growth.',
-        realm: ZoneTheme.Earth,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'sproutling',
-        name: 'Sproutling',
-        description: 'A tiny seedling spirit eager to grow.',
-        realm: ZoneTheme.Earth,
-        isCollectible: true,
-      ),
-    ]);
-
-    // Fire realm
-    await _box.addAll([
-      Spirit(
-        id: 'fire_master',
-        name: 'Emberon, The Eternal Flame',
-        description: 'Guardian of Fire, igniting passion.',
-        realm: ZoneTheme.Fire,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'sparklet',
-        name: 'Sparklet',
-        description: 'A fleeting ember, full of energy.',
-        realm: ZoneTheme.Fire,
-        isCollectible: true,
-      ),
-    ]);
-
-    // Water realm
-    await _box.addAll([
-      Spirit(
-        id: 'water_master',
-        name: 'Aquara, The Flowing Tide',
-        description: 'Guardian of Water, guiding reflection.',
-        realm: ZoneTheme.Water,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'droplet',
-        name: 'Droplet',
-        description: 'A shining droplet dancing on waves.',
-        realm: ZoneTheme.Water,
-        isCollectible: true,
-      ),
-    ]);
-
-    // Void realm
-    await _box.addAll([
-      Spirit(
-        id: 'void_master',
-        name: 'Umbra, The Silent Depth',
-        description: 'Guardian of Void, keeper of secrets.',
-        realm: ZoneTheme.Void,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'echo',
-        name: 'Echo',
-        description: 'A whisper from the hidden places.',
-        realm: ZoneTheme.Void,
-        isCollectible: true,
-      ),
-    ]);
-
-    // Fusion realm
-    await _box.addAll([
-      Spirit(
-        id: 'fusion_master',
-        name: 'Synergy, The Harmonizer',
-        description: 'Guardian of Fusion, blending elements.',
-        realm: ZoneTheme.Fusion,
-        isPrimary: true,
-        isNPC: true,
-      ),
-      Spirit(
-        id: 'prismling',
-        name: 'Prismling',
-        description: 'A colorful spark combining all elements.',
-        realm: ZoneTheme.Fusion,
-        isCollectible: true,
-      ),
-    ]);
-  }
+  /// Lookup by ID.
+  Spirit? getById(String id) => _box.get(id);
 }

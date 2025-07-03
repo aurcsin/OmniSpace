@@ -12,7 +12,7 @@ import 'zone_theme.dart';
 part 'omni_note.g.dart';
 
 /// Your core note model.
-@HiveType(typeId: 0)
+@HiveType(typeId: 7)
 class OmniNote extends HiveObject {
   @HiveField(0)
   String id;
@@ -83,6 +83,9 @@ class OmniNote extends HiveObject {
   @HiveField(22)
   bool isLocked;
 
+  @HiveField(23)
+  String? linkedSpiritId;
+
   OmniNote({
     required this.id,
     this.title = '',
@@ -96,6 +99,7 @@ class OmniNote extends HiveObject {
     this.projectId,
     this.recommendedTag,
     this.seriesId,
+    this.linkedSpiritId,
     List<Attachment>? attachments,
     this.tasks,
     this.goals,
@@ -124,6 +128,7 @@ class OmniNote extends HiveObject {
         'projectId': projectId,
         'recommendedTag': recommendedTag,
         'seriesId': seriesId,
+        'linkedSpiritId': linkedSpiritId,
         'attachments': attachments.map((a) => a.toJson()).toList(),
         'tasks': tasks?.map((t) => t.toJson()).toList(),
         'goals': goals?.map((g) => g.toJson()).toList(),
@@ -151,6 +156,7 @@ class OmniNote extends HiveObject {
         projectId: json['projectId'] as String?,
         recommendedTag: json['recommendedTag'] as String?,
         seriesId: json['seriesId'] as String?,
+        linkedSpiritId: json['linkedSpiritId'] as String?,
         attachments: (json['attachments'] as List<dynamic>?)
                 ?.map((a) => Attachment.fromJson(a as Map<String, dynamic>))
                 .toList() ??

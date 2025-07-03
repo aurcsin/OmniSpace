@@ -1,15 +1,23 @@
-// File: lib/models/deck.dart
-
 import 'package:hive/hive.dart';
 
 part 'deck.g.dart';
 
-/// A user’s personal Spirit Deck, storing references to collected spirits.
-@HiveType(typeId: 51)
+/// Your personal collection of spirit IDs.
+@HiveType(typeId: 2)
 class Deck extends HiveObject {
-  /// IDs of the Spirits in this deck.
   @HiveField(0)
+  final String id;
+
+  @HiveField(1)
+  final String title;
+
+  /// The collected spirit IDs.
+  @HiveField(2)
   List<String> spiritIds;
 
-  Deck({List<String>? spiritIds}) : spiritIds = spiritIds ?? [];
+  Deck({
+    required this.id,
+    required this.title,
+    this.spiritIds = const [],
+  });
 }

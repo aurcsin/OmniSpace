@@ -1,90 +1,68 @@
-import 'package:flutter/material.dart';
-import '../models/zone_theme.dart';
+// File: lib/widgets/main_menu_drawer.dart
 
-// Elemental pages
-import '../pages/sky_space_page.dart';
-import '../pages/garden_forest_page.dart';
-import '../pages/workshop_forge_page.dart';
-import '../pages/studio_underwater_page.dart';
-import '../pages/root_cave_page.dart';
-// User logs
-import '../pages/journal_page.dart';
-import '../pages/omni_tracker_page.dart';
-import '../pages/projects_page.dart';
-import '../pages/calendar_overview_page.dart';
-// Spirits & Deck
-import '../pages/spirit_page.dart';
-import '../pages/deck_page.dart';
-// Misc
-import '../pages/collections_page.dart';
-import '../pages/options_page.dart';
-import '../pages/trash_page.dart';
-import '../pages/account_page.dart';
+import 'package:flutter/material.dart';
 
 class MainMenuDrawer extends StatelessWidget {
-  const MainMenuDrawer({super.key});
+  const MainMenuDrawer({Key? key}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: ListView(padding: EdgeInsets.zero, children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.deepPurple),
-            child: Text('OmniSpace',
-                style: TextStyle(color: Colors.white, fontSize: 24)),
-          ),
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('About OmniSpace'),
+        content: SingleChildScrollView(
+          child: Text(
+            '''Welcome to OmniSpace!
 
-          ExpansionTile(
-            leading: const Icon(Icons.public, color: Colors.deepPurple),
-            title: const Text('Elemental Realms'),
-            children: [
-              _tile(context, 'Sky / Space', Icons.cloud, const SkySpacePage()),
-              _tile(context, 'Garden / Forest', Icons.grass, const GardenForestPage()),
-              _tile(context, 'Workshop / Forge', Icons.build, const WorkshopForgePage()),
-              _tile(context, 'Studio / Underwater', Icons.water, const StudioUnderwaterPage()),
-              _tile(context, 'Root Cave / Underground', Icons.account_tree, const RootCavePage()),
-              const Divider(),
-              _tile(context, 'Realm Spirit Hall', Icons.shield, const SpiritPage()),
-            ],
-          ),
+• **Spirit World**  
+  A living ecosystem of elemental spirits—Air, Earth, Fire, Water, Void & Fusion—that guide your journey.
 
-          ExpansionTile(
-            leading: const Icon(Icons.book, color: Colors.deepPurple),
-            title: const Text('User Logs'),
-            children: [
-              _tile(context, 'Journal', Icons.book, const JournalPage()),
-              _tile(context, 'OmniTracker', Icons.auto_graph, const OmniTrackerPage()),
-              _tile(context, 'Projects', Icons.folder_open, const ProjectsPage()),
-              _tile(context, 'Calendar', Icons.calendar_today, const CalendarOverviewPage()),
-              const Divider(),
-              _tile(context, 'My Spirit Deck', Icons.style, const DeckPage()),
-            ],
-          ),
+• **Elemental Biomes**  
+  Explore the Sky, Garden, Workshop, Studio & Root Cave. Each biome responds to your moods, notes, and quests.
 
-          ExpansionTile(
-            leading: const Icon(Icons.settings, color: Colors.deepPurple),
-            title: const Text('Settings & More'),
-            children: [
-              _tile(context, 'Collections', Icons.collections, const CollectionsPage()),
-              _tile(context, 'Options', Icons.settings, const OptionsPage()),
-              _tile(context, 'Trash', Icons.delete, const TrashPage()),
-              _tile(context, 'Account', Icons.person, const AccountPage()),
-            ],
+• **Archetypes & XP**  
+  Your actions earn XP. Spirits evolve, decks grow, and new biomes unlock as you journal, create decks, and tend your garden.
+
+• **Decks & Artifacts**  
+  Collect spirits and artifacts, build decks to shape your path, and fuse spirits for deeper insights.
+
+Dive in, cultivate your inner world, and let OmniSpace be the canvas for your growth.''',
           ),
-        ]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _tile(BuildContext ctx, String title, IconData icon, Widget page) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.deepPurple),
-      title: Text(title),
-      onTap: () {
-        Navigator.of(ctx).pop();
-        Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => page));
-      },
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        children: [
+          const DrawerHeader(child: Text('OmniSpace')),
+          // … your existing menu items …
+          ExpansionTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings & More'),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('About OmniSpace'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAboutDialog(context);
+                },
+              ),
+              // … other settings entries …
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -33,14 +33,10 @@ class NotificationService {
 
   /// Call once at app startup.
   Future<void> init() async {
-    // Open settings box
     _settingsBox = await Hive.openBox(_settingsBoxName);
-
-    // Ensure the TZ database is loaded.
     TimezoneHelperService.instance;
 
     if (!kIsWeb) {
-      // Request permissions and initialize native plugin
       await _client
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
@@ -68,10 +64,9 @@ class NotificationService {
       );
     }
 
-    // **Ensure trackers are loaded before scheduling**  
+    // Ensure trackers are loaded before scheduling
     await TrackerService.instance.init();
 
-    // If enabled, schedule all reminders now
     if (await getEnabled()) {
       await rescheduleAll();
     }
@@ -82,7 +77,7 @@ class NotificationService {
     return _settingsBox.get(_enabledKey, defaultValue: true) as bool;
   }
 
-  /// Toggle reminders on/off. When enabling, reschedule all; when disabling, cancel all.
+  /// Toggle reminders on/off.
   Future<void> setEnabled(bool enabled) async {
     await _settingsBox.put(_enabledKey, enabled);
     if (enabled) {
@@ -95,7 +90,8 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     final payload = response.payload;
     if (payload != null && payload.isNotEmpty) {
-      final tracker = TrackerService.instance.byId(payload);
+      // Use getById instead of byId
+      final tracker = TrackerService.instance.getById(payload);
       if (tracker != null) {
         NavigatorService.instance.openTrackerEditor(tracker.id);
       }

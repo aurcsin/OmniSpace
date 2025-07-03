@@ -1,39 +1,57 @@
-import 'package:flutter/foundation.dart';
+// File: lib/models/spirit.dart
+
 import 'package:hive/hive.dart';
 import 'zone_theme.dart';
 
 part 'spirit.g.dart';
 
-@HiveType(typeId: 50)
+/// A creature of an Elemental Realm.
+@HiveType(typeId: 12)
 class Spirit extends HiveObject {
   @HiveField(0)
-  String id;
+  final String id;
 
   @HiveField(1)
-  String name;
+  final String name;
 
   @HiveField(2)
-  String description;
+  final String mythos;
 
   @HiveField(3)
-  ZoneTheme realm;         // which elemental zone it belongs to
+  final String purpose;
 
   @HiveField(4)
-  bool isPrimary;          // the Master Spirit of the realm
+  final String useInApp;
 
   @HiveField(5)
-  bool isNPC;              // static NPC guide vs collectible
+  final ZoneTheme realm;
 
   @HiveField(6)
-  bool isCollectible;      // emergent life forms you can collect
+  final bool isPrimary;
+
+  @HiveField(7)
+  final bool isNPC;
+
+  @HiveField(8)
+  final bool isCollectible;
+
+  @HiveField(9)
+  final String archetype;
+
+  @HiveField(10)
+  final int xpValue;
 
   Spirit({
     required this.id,
     required this.name,
-    required this.description,
+    required this.mythos,
+    required this.purpose,
+    required this.useInApp,
     required this.realm,
     this.isPrimary = false,
-    this.isNPC    = false,
-    this.isCollectible = false,
+    this.isNPC = false,
+    this.isCollectible = true,
+    required this.archetype,
+    required this.xpValue,
   });
 }

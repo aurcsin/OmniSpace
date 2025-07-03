@@ -6,7 +6,7 @@ import 'package:hive/hive.dart';
 part 'attachment.g.dart';
 
 /// Types of attachments for notes.
-@HiveType(typeId: 1)
+@HiveType(typeId: 0)
 enum AttachmentType {
   @HiveField(0)
   image,

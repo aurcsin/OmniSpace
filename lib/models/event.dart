@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'event.g.dart';
 
 /// A calendar event attached to a note.
-@HiveType(typeId: 5)
+@HiveType(typeId: 3)
 class Event extends HiveObject {
   @HiveField(0)
   String id;

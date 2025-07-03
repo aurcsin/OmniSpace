@@ -7,7 +7,7 @@ import 'package:hive/hive.dart';
 part 'zone_theme.g.dart';
 
 /// The six “zones” of your OmniSpace world.
-@HiveType(typeId: 10)
+@HiveType(typeId: 19)
 enum ZoneTheme {
   @HiveField(0)
   Air,

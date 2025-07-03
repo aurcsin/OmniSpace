@@ -2,7 +2,7 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';         // ← added for describeEnum
+import 'package:flutter/foundation.dart'; // for describeEnum
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,8 +12,7 @@ import '../services/omni_note_service.dart';
 
 class MultiPaneEditorPage extends StatefulWidget {
   final OmniNote note;
-
-  MultiPaneEditorPage(this.note, {Key? key}) : super(key: key);
+  const MultiPaneEditorPage(this.note, {Key? key}) : super(key: key);
 
   @override
   _MultiPaneEditorPageState createState() => _MultiPaneEditorPageState();
@@ -23,6 +22,7 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
   late OmniNote _note;
   late TextEditingController _titleController;
   late TextEditingController _contentController;
+  late TextEditingController _tagsController;
   Timer? _saveDebounce;
 
   @override
@@ -33,6 +33,7 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
       ..addListener(_onTitleChanged);
     _contentController = TextEditingController(text: _note.content)
       ..addListener(_onContentChanged);
+    _tagsController = TextEditingController(text: _note.tags);
   }
 
   @override
@@ -40,6 +41,7 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
     _saveDebounce?.cancel();
     _titleController.dispose();
     _contentController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
@@ -57,21 +59,21 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
     _note.lastUpdated = DateTime.now();
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 500), () {
-      OmniNoteService.instance.save(_note);
+      OmniNoteService.instance.saveNote(_note);
     });
   }
 
   void _togglePin() {
     setState(() {
       _note.isPinned = !_note.isPinned;
-      OmniNoteService.instance.save(_note);
+      OmniNoteService.instance.saveNote(_note);
     });
   }
 
   void _toggleArchive() {
     setState(() {
       _note.isArchived = !_note.isArchived;
-      OmniNoteService.instance.save(_note);
+      OmniNoteService.instance.saveNote(_note);
     });
   }
 
@@ -79,8 +81,13 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
     if (newZone == null) return;
     setState(() {
       _note.zone = newZone;
-      OmniNoteService.instance.save(_note);
+      OmniNoteService.instance.saveNote(_note);
     });
+  }
+
+  void _onTagsSubmitted(String v) {
+    _note.tags = v;
+    OmniNoteService.instance.saveNote(_note);
   }
 
   Widget _buildMetadataPane() {
@@ -105,19 +112,16 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
             items: ZoneTheme.values
                 .map((z) => DropdownMenuItem(
                       value: z,
-                      child: Text(describeEnum(z)), // now recognized
+                      child: Text(describeEnum(z)),
                     ))
                 .toList(),
             onChanged: _changeZone,
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: TextEditingController(text: _note.tags),
+            controller: _tagsController,
             decoration: const InputDecoration(labelText: 'Tags (comma)'),
-            onSubmitted: (v) {
-              _note.tags = v;
-              OmniNoteService.instance.save(_note);
-            },
+            onSubmitted: _onTagsSubmitted,
           ),
           const SizedBox(height: 12),
           Text(
@@ -132,12 +136,15 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
           Row(
             children: [
               IconButton(
-                icon: Icon(_note.isPinned ? Icons.push_pin : Icons.push_pin_outlined),
+                icon: Icon(
+                    _note.isPinned ? Icons.push_pin : Icons.push_pin_outlined),
                 tooltip: _note.isPinned ? 'Unpin' : 'Pin',
                 onPressed: _togglePin,
               ),
               IconButton(
-                icon: Icon(_note.isArchived ? Icons.unarchive : Icons.archive_outlined),
+                icon: Icon(_note.isArchived
+                    ? Icons.unarchive
+                    : Icons.archive_outlined),
                 tooltip: _note.isArchived ? 'Unarchive' : 'Archive',
                 onPressed: _toggleArchive,
               ),
@@ -170,7 +177,7 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
   String _generateSummary() {
     final text = _note.content.trim();
     if (text.length < 100) return text;
-    return '${text.substring(0, 100).split(' ').join(' ')}…';
+    return '${text.substring(0, 100)}…';
   }
 
   Widget _buildAIPane() {
@@ -184,7 +191,8 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
           const Text('AI Insights',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          const Text('Auto-Summary:', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Auto-Summary:',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Text(_generateSummary()),
           const SizedBox(height: 16),
@@ -241,6 +249,7 @@ class _MultiPaneEditorPageState extends State<MultiPaneEditorPage> {
 class BulletText extends StatelessWidget {
   final String text;
   const BulletText(this.text, {Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Padding(

@@ -1,7 +1,3 @@
-// File: lib/services/deck_service.dart
-
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
@@ -14,83 +10,65 @@ class DeckService extends ChangeNotifier {
   DeckService._internal();
   static final DeckService instance = DeckService._internal();
 
-  static const String _boxName = 'decks';
+  static const _boxName = 'decks';
   late final Box<Deck> _box;
+  late Deck deck;
 
-  /// Initialize Hive box, seed with each realm’s Master Spirit if empty.
+  /// Call once at startup.
   Future<void> init() async {
     if (!Hive.isAdapterRegistered(DeckAdapter().typeId)) {
       Hive.registerAdapter(DeckAdapter());
     }
+    // Open only the decks box — no reset or cleaning:
     _box = await Hive.openBox<Deck>(_boxName);
 
+    // If first run, create a deck—but skip any box.clear() or migrations:
     if (_box.isEmpty) {
-      // Create a new deck seeded with one Master Spirit per realm
-      final deck = Deck(spiritIds: ZoneTheme.values
-          .map((realm) => SpiritService.instance.getPrimary(realm)!.id)
-          .toList());
-      await _box.add(deck);
+      final d = Deck(id: 'user_deck', title: 'My Deck');
+      await _box.put(d.id, d);
+      deck = d;
+    } else {
+      deck = _box.get('user_deck')!;
     }
+
     notifyListeners();
   }
 
-  Deck get deck => _box.values.first;
+  List<Spirit> get cards => SpiritService.instance.all
+    .where((s) => deck.spiritIds.contains(s.id))
+    .toList();
 
-  /// All spirits in the user’s deck.
-  List<Spirit> get cards => deck.spiritIds
-      .map((id) => SpiritService.instance.all.firstWhere((s) => s.id == id))
+  Future<Spirit?> draw(Spirit s) async {
+    if (!deck.spiritIds.contains(s.id)) {
+      deck.spiritIds.add(s.id);
+      await _box.put(deck.id, deck);
+      notifyListeners();
+      return s;
+    }
+    return null;
+  }
+
+  Future<Spirit?> drawFromRealm(ZoneTheme realm) async {
+    final pool = SpiritService.instance.getByRealm(realm)
+      .where((s) => !deck.spiritIds.contains(s.id))
       .toList();
-
-  /// Add a spirit to the deck (if not already present).
-  Future<void> draw(Spirit spirit) async {
-    if (!deck.spiritIds.contains(spirit.id)) {
-      deck.spiritIds.add(spirit.id);
-      await deck.save();
-      notifyListeners();
-    }
+    if (pool.isEmpty) return null;
+    deck.spiritIds.add(pool.first.id);
+    await _box.put(deck.id, deck);
+    notifyListeners();
+    return pool.first;
   }
 
-  /// Remove a spirit from the deck.
-  Future<void> remove(Spirit spirit) async {
-    if (deck.spiritIds.remove(spirit.id)) {
-      await deck.save();
-      notifyListeners();
-    }
-  }
-
-  /// Clear *all* spirits from the deck, then re–seed Masters.
   Future<void> reset() async {
     deck.spiritIds.clear();
-    // reseed with masters
-    deck.spiritIds.addAll(
-      ZoneTheme.values.map((realm) => SpiritService.instance.getPrimary(realm)!.id),
-    );
-    await deck.save();
+    await _box.put(deck.id, deck);
     notifyListeners();
   }
 
-  /// Draw a random new spirit from the pool of collectable spirits
-  /// that aren’t already in your deck.
-  Future<Spirit?> drawRandomCollectible() async {
-    final allCollectible = SpiritService.instance.all
-        .where((s) => s.isCollectible && !deck.spiritIds.contains(s.id))
-        .toList();
-    if (allCollectible.isEmpty) return null;
-    final rand = Random();
-    final pick = allCollectible[rand.nextInt(allCollectible.length)];
-    await draw(pick);
-    return pick;
-  }
-
-  /// Draw a random spirit from a specific [realm] (NPC or collectible).
-  Future<Spirit?> drawFromRealm(ZoneTheme realm) async {
-    final pool = SpiritService.instance.forRealm(realm)
-        .where((s) => !deck.spiritIds.contains(s.id))
-        .toList();
-    if (pool.isEmpty) return null;
-    final rand = Random();
-    final pick = pool[rand.nextInt(pool.length)];
-    await draw(pick);
-    return pick;
+  Future<void> remove(Spirit s) async {
+    if (deck.spiritIds.remove(s.id)) {
+      await _box.put(deck.id, deck);
+      notifyListeners();
+    }
   }
 }

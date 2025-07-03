@@ -8,7 +8,7 @@ part of 'zone_theme.dart';
 
 class ZoneThemeAdapter extends TypeAdapter<ZoneTheme> {
   @override
-  final int typeId = 10;
+  final int typeId = 19;
 
   @override
   ZoneTheme read(BinaryReader reader) {

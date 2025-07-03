@@ -2,12 +2,12 @@
 
 import 'package:flutter/material.dart';
 
-import '../models/omni_note.dart';
 import '../models/zone_theme.dart';
-import '../models/spirit.dart';
 import '../services/omni_note_service.dart';
 import '../services/spirit_service.dart';
 import '../services/deck_service.dart';
+import '../widgets/help_button.dart';
+import '../widgets/main_menu_drawer.dart';
 import 'multi_pane_editor_page.dart';
 
 class GardenForestPage extends StatefulWidget {
@@ -22,11 +22,21 @@ class _GardenForestPageState extends State<GardenForestPage> {
   final spiritSvc = SpiritService.instance;
   final deckSvc   = DeckService.instance;
 
+  /// Map moods to flower colors
+  static const Map<String, Color> _moodColor = {
+    'Calm': Colors.blue,
+    'Energetic': Colors.red,
+    'Focused': Colors.yellow,
+    'Grounded': Colors.brown,
+    'Curious': Colors.purple,
+    'Fusion Flow': Colors.grey,
+  };
+
   Future<void> _drawRealmSpirit() async {
     final s = await deckSvc.drawFromRealm(ZoneTheme.Earth);
     final msg = s != null
       ? 'Drew ${s.name}!'
-      : 'All Garden spirits already in your deck.';
+      : 'All Forest spirits are already in your deck.';
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       setState(() {});
@@ -35,101 +45,128 @@ class _GardenForestPageState extends State<GardenForestPage> {
 
   @override
   Widget build(BuildContext context) {
-    final master = spiritSvc.getPrimary(ZoneTheme.Earth)!;
-    final reps   = spiritSvc.forRealm(ZoneTheme.Earth).where((s) => !s.isPrimary).toList();
+    // Master guardian spirit for the Forest realm
+    final master = spiritSvc.getPrimaries()
+        .firstWhere((s) => s.realm == ZoneTheme.Earth);
+    // All collectible spirits for this realm
+    final reps = spiritSvc.getCollectibles()
+        .where((s) => s.realm == ZoneTheme.Earth)
+        .toList();
+
+    // All relevant notes
+    final entries = noteSvc.notes
+        .where((n) =>
+            n.zone == ZoneTheme.Earth &&
+            !n.isArchived &&
+            !n.isTrashed)
+        .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Garden • Forest')),
-      body: FutureBuilder<List<OmniNote>>(
-        future: noteSvc.all,
-        builder: (ctx, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final entries = snap.data!
-              .where((n) =>
-                  n.zone == ZoneTheme.Earth &&
-                  !n.isArchived &&
-                  !n.isTrashed)
-              .toList();
-
-          return Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              children: [
-                // Master Spirit
-                Card(
-                  color: Colors.green.shade50,
-                  child: ListTile(
-                    leading: Icon(master.realm.icon, size: 40, color: Colors.green),
-                    title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(master.description),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-                // Representative spirits
-                Wrap(
-                  spacing: 8,
-                  children: reps.map((s) {
-                    final inDeck = deckSvc.deck.spiritIds.contains(s.id);
-                    return ActionChip(
-                      avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
-                      label: Text(s.name),
-                      backgroundColor: inDeck ? Colors.grey.shade300 : Colors.greenAccent,
-                      labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                      onPressed: inDeck ? null : () async {
-                        await deckSvc.draw(s);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Added ${s.name} to deck!')),
-                          );
-                          setState(() {});
-                        }
-                      },
-                    );
-                  }).toList(),
-                ),
-
-                const Divider(height: 32),
-
-                // Grid of entries
-                Expanded(
-                  child: entries.isEmpty
-                      ? const Center(child: Text('No Garden notes yet.'))
-                      : GridView.builder(
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                          ),
-                          itemCount: entries.length,
-                          itemBuilder: (ctx, i) {
-                            final n = entries[i];
-                            return GestureDetector(
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)),
-                              ).then((_) => setState(() {})),
-                              child: Card(
-                                child: Center(
-                                  child: Text(
-                                    n.title.isEmpty ? '(No title)' : n.title,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+      drawer: const MainMenuDrawer(),
+      appBar: AppBar(
+        title: const Text('Garden • Forest'),
+        actions: [
+          HelpButton(
+            helpTitle: 'Forest Garden Help',
+            helpText: '''
+• The master spirit guides this realm.  
+• Collect sprites below to grow your deck.  
+• Your journal entries appear as flowers.  
+• Flower color reflects the note’s mood.''',
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          children: [
+            // Master Spirit
+            Card(
+              color: Colors.green.shade50,
+              child: ListTile(
+                leading: Icon(master.realm.icon, size: 40, color: Colors.green),
+                title: Text(master.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(master.purpose),
+              ),
             ),
-          );
-        },
+
+            const SizedBox(height: 8),
+            // Representative (collectible) spirits
+            Wrap(
+              spacing: 8,
+              children: reps.map((s) {
+                final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+                return ActionChip(
+                  avatar: Icon(s.realm.icon,
+                      size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  label: Text(s.name),
+                  backgroundColor:
+                      inDeck ? Colors.grey.shade300 : Colors.greenAccent,
+                  labelStyle:
+                      TextStyle(color: inDeck ? Colors.black : Colors.white),
+                  onPressed: inDeck
+                      ? null
+                      : () async {
+                          await deckSvc.draw(s);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Added ${s.name} to deck!')),
+                            );
+                            setState(() {});
+                          }
+                        },
+                );
+              }).toList(),
+            ),
+
+            const Divider(height: 32),
+
+            // Grid of journal entries as flowers
+            Expanded(
+              child: entries.isEmpty
+                  ? const Center(child: Text('No Forest notes yet.'))
+                  : GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: entries.length,
+                      itemBuilder: (ctx, i) {
+                        final n = entries[i];
+                        final color = _moodColor[n.mood ?? ''] ?? Colors.green;
+                        return GestureDetector(
+                          onTap: () => Navigator.of(context)
+                              .push(MaterialPageRoute(
+                                  builder: (_) =>
+                                      MultiPaneEditorPage(n)))
+                              .then((_) => setState(() {})),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.local_florist,
+                                  size: 48, color: color),
+                              const SizedBox(height: 4),
+                              Text(
+                                n.title.isEmpty ? '(No title)' : n.title,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.filter_alt),
-        label: const Text('Draw Garden Spirit'),
+        label: const Text('Draw Forest Spirit'),
         onPressed: _drawRealmSpirit,
       ),
     );

@@ -1,10 +1,12 @@
 // File: lib/pages/deck_page.dart
 
 import 'package:flutter/material.dart';
-import '../models/spirit.dart';
+
 import '../models/zone_theme.dart';
 import '../services/deck_service.dart';
 import '../services/spirit_service.dart';
+import '../widgets/main_menu_drawer.dart';
+import '../widgets/help_button.dart';
 
 class DeckPage extends StatefulWidget {
   const DeckPage({Key? key}) : super(key: key);
@@ -14,16 +16,26 @@ class DeckPage extends StatefulWidget {
 }
 
 class _DeckPageState extends State<DeckPage> {
-  late final deckSvc = DeckService.instance;
+  late final deckSvc   = DeckService.instance;
   late final spiritSvc = SpiritService.instance;
 
   @override
   Widget build(BuildContext context) {
     final cards = deckSvc.cards;
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(
         title: const Text('My Spirit Deck'),
         actions: [
+          HelpButton(
+            helpTitle: 'Deck Help',
+            helpText: '''
+• Your deck holds spirits you’ve collected.  
+• Swipe a card to remove it.  
+• “Draw Random” picks any new spirit.  
+• “Draw by Realm” limits to that element.  
+• Refresh resets your deck.''',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Reset Deck',
@@ -31,7 +43,7 @@ class _DeckPageState extends State<DeckPage> {
               await deckSvc.reset();
               setState(() {});
             },
-          )
+          ),
         ],
       ),
       body: cards.isEmpty
@@ -43,8 +55,8 @@ class _DeckPageState extends State<DeckPage> {
                 return Dismissible(
                   key: ValueKey(s.id),
                   background: Container(color: Colors.red),
-                  onDismissed: (_) {
-                    deckSvc.remove(s);
+                  onDismissed: (_) async {
+                    await deckSvc.remove(s);
                     setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Removed ${s.name}')),
@@ -60,42 +72,38 @@ class _DeckPageState extends State<DeckPage> {
                               : Colors.teal,
                     ),
                     title: Text(s.name),
-                    subtitle: Text(s.description),
+                    subtitle: Text(s.purpose),
                     trailing: Text(s.realm.displayName),
                   ),
                 );
               },
             ),
-      floatingActionButton: _buildFABs(),
-    );
-  }
-
-  Widget _buildFABs() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton.extended(
-          heroTag: 'draw_random',
-          icon: const Icon(Icons.shuffle),
-          label: const Text('Draw Random'),
-          onPressed: () async {
-            final s = await deckSvc.drawRandomCollectible();
-            if (s != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Drew ${s.name}!')),
-              );
-              setState(() {});
-            }
-          },
-        ),
-        const SizedBox(height: 8),
-        FloatingActionButton.extended(
-          heroTag: 'draw_by_realm',
-          icon: const Icon(Icons.filter_alt),
-          label: const Text('Draw by Realm'),
-          onPressed: () => _showRealmSelector(),
-        ),
-      ],
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'draw_random',
+            icon: const Icon(Icons.shuffle),
+            label: const Text('Draw Random'),
+            onPressed: () async {
+              final s = await deckSvc.drawRandomCollectible();
+              if (s != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Drew ${s.name}!')),
+                );
+                setState(() {});
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.extended(
+            heroTag: 'draw_by_realm',
+            icon: const Icon(Icons.filter_alt),
+            label: const Text('Draw by Realm'),
+            onPressed: () => _showRealmSelector(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -116,12 +124,12 @@ class _DeckPageState extends State<DeckPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Drew ${s.name}!')),
                   );
-                  setState(() {});
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('No more new spirits in ${realm.displayName}.')),
                   );
                 }
+                setState(() {});
               },
             );
           }).toList(),

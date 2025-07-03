@@ -8,7 +8,7 @@ part of 'tracker_type.dart';
 
 class TrackerTypeAdapter extends TypeAdapter<TrackerType> {
   @override
-  final int typeId = 11;
+  final int typeId = 16;
 
   @override
   TrackerType read(BinaryReader reader) {

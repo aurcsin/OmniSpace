@@ -8,7 +8,7 @@ part of 'series.dart';
 
 class SeriesAdapter extends TypeAdapter<Series> {
   @override
-  final int typeId = 15;
+  final int typeId = 10;
 
   @override
   Series read(BinaryReader reader) {

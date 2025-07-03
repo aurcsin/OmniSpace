@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/tracker.dart';
 import '../models/tracker_type.dart';
 import '../services/tracker_service.dart';
@@ -24,9 +25,7 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
   @override
   void initState() {
     super.initState();
-    // reload in case it changed elsewhere
-    _tracker =
-        TrackerService.instance.byId(widget.tracker.id) ?? widget.tracker;
+    _tracker = TrackerService.instance.getById(widget.tracker.id) ?? widget.tracker;
   }
 
   Future<void> _edit() async {
@@ -43,8 +42,8 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
         title: const Text('Delete Tracker?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(_, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
         ],
       ),
     );
@@ -55,10 +54,9 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
   }
 
   Widget _buildScheduling() {
-    if (_tracker.type == TrackerType.event ||
-        _tracker.type == TrackerType.routine) {
+    if (_tracker.type == TrackerType.event || _tracker.type == TrackerType.routine) {
       final start = _tracker.start;
-      final freq = _tracker.frequency;
+      final freq  = _tracker.frequency;
       return ListTile(
         leading: const Icon(Icons.calendar_today),
         title: Text(start != null
@@ -78,15 +76,15 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
       leading: const Icon(Icons.subdirectory_arrow_right),
       title: const Text('Sub-items'),
       children: _tracker.childIds.map((sid) {
-        final sub = TrackerService.instance.byId(sid);
+        final sub = TrackerService.instance.getById(sid);
         if (sub == null) return const SizedBox.shrink();
         return CheckboxListTile(
           value: sub.isCompleted,
           title: Text(sub.title),
           onChanged: (_) async {
-            sub.toggleComplete();
-            await sub.save();
-            setState(() => _tracker = TrackerService.instance.byId(_tracker.id)!);
+            sub.isCompleted = !sub.isCompleted;
+            await TrackerService.instance.save(sub);
+            setState(() => _tracker = TrackerService.instance.getById(_tracker.id)!);
           },
         );
       }).toList(),
@@ -99,7 +97,7 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
       leading: const Icon(Icons.note),
       title: const Text('Linked Notes'),
       children: _tracker.linkedNoteIds.map((nid) {
-        final note = OmniNoteService.instance.getNoteById(nid);
+        final note = OmniNoteService.instance.getById(nid);
         if (note == null) return const SizedBox.shrink();
         return ListTile(
           title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
@@ -118,14 +116,14 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
       leading: const Icon(Icons.link),
       title: const Text('Connected Trackers'),
       children: _tracker.linkedTrackerIds.map((tid) {
-        final t = TrackerService.instance.byId(tid);
+        final t = TrackerService.instance.getById(tid);
         if (t == null) return const SizedBox.shrink();
         return ListTile(
           title: Text(t.title),
           subtitle: Text(t.type.name.toUpperCase()),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)),
-          ),
+          onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
+            .then((_) => setState(() => _tracker = TrackerService.instance.getById(_tracker.id)!)),
         );
       }).toList(),
     );
@@ -133,12 +131,14 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    final icon = {
+    final iconMap = {
       TrackerType.goal: Icons.flag,
+      TrackerType.task: Icons.check_box,
       TrackerType.event: Icons.event,
       TrackerType.routine: Icons.repeat,
-      TrackerType.series: Icons.collections,
-    }[_tracker.type]!;
+      TrackerType.series: Icons.link,
+    };
+    final icon = iconMap[_tracker.type]!;
 
     return Scaffold(
       drawer: const MainMenuDrawer(),

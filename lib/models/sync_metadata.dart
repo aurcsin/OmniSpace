@@ -5,7 +5,7 @@ import 'package:hive/hive.dart';
 part 'sync_metadata.g.dart';
 
 /// Stores metadata for synchronization (e.g., last sync timestamp).
-@HiveType(typeId: 9)
+@HiveType(typeId: 13)
 class SyncMetadata extends HiveObject {
   @HiveField(0)
   DateTime? lastSyncedAt;

@@ -8,7 +8,7 @@ part of 'omni_note.dart';
 
 class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   @override
-  final int typeId = 0;
+  final int typeId = 7;
 
   @override
   OmniNote read(BinaryReader reader) {
@@ -29,6 +29,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       projectId: fields[9] as String?,
       recommendedTag: fields[10] as String?,
       seriesId: fields[11] as String?,
+      linkedSpiritId: fields[23] as String?,
       attachments: (fields[12] as List?)?.cast<Attachment>(),
       tasks: (fields[13] as List?)?.cast<Task>(),
       goals: (fields[14] as List?)?.cast<Goal>(),
@@ -46,7 +47,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(23)
+      ..writeByte(24)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -92,7 +93,9 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(21)
       ..write(obj.isTrashed)
       ..writeByte(22)
-      ..write(obj.isLocked);
+      ..write(obj.isLocked)
+      ..writeByte(23)
+      ..write(obj.linkedSpiritId);
   }
 
   @override

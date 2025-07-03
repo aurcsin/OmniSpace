@@ -8,7 +8,7 @@ part of 'goal.dart';
 
 class GoalStepAdapter extends TypeAdapter<GoalStep> {
   @override
-  final int typeId = 20;
+  final int typeId = 4;
 
   @override
   GoalStep read(BinaryReader reader) {
