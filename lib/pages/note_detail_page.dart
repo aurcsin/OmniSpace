@@ -1,17 +1,17 @@
-// File: lib/pages/note_detail_page.dart
+// lib/pages/note_detail_page.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/omni_note.dart';
-import '../models/project.dart';
-import '../models/spirit.dart';
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/project_service.dart';
-import '../services/spirit_service.dart';
-import '../widgets/help_button.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/project.dart';
+import 'package:omnispace/models/spirit.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/project_service.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/widgets/help_button.dart';
 
 class NoteDetailPage extends StatefulWidget {
   final OmniNote? omniNote;
@@ -72,12 +72,12 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ..title       = _titleCtl.text.trim()
       ..content     = _contentCtl.text.trim()
       ..lastUpdated = DateTime.now();
-    await _noteSvc.saveNote(_note);
+    await _noteSvc.save(_note);
     Navigator.of(context).pop();
   }
 
   Future<void> _showAssignProjectDialog() async {
-    final proj = await showDialog<Project?>(
+    final Project? picked = await showDialog<Project?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Assign Project'),
@@ -102,10 +102,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
         ),
       ),
     );
+
     Project toAssign;
-    if (proj == null) {
+    if (picked == null) {
       final nameCtl = TextEditingController();
-      final created = await showDialog<bool>(
+      final bool? created = await showDialog<bool>(
         context: context,
         builder: (ctx2) => AlertDialog(
           title: const Text('New Project'),
@@ -119,28 +120,28 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
           ],
         ),
       );
-      if (created == true && nameCtl.text.trim().isNotEmpty) {
-        toAssign = Project(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: nameCtl.text.trim(),
-          noteIds: [],
-        );
-        await _projSvc.save(toAssign);
-      } else {
-        return; // cancelled
+      if (created != true || nameCtl.text.trim().isEmpty) {
+        return;
       }
+      toAssign = Project(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: nameCtl.text.trim(),
+        noteIds: [],
+      );
+      await _projSvc.save(toAssign);
     } else {
-      toAssign = proj;
+      toAssign = picked;
     }
+
     setState(() => _note.projectId = toAssign.id);
-    await _noteSvc.saveNote(_note);
+    await _noteSvc.save(_note);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Assigned to project “${toAssign.title}”')),
     );
   }
 
   Future<void> _pickSpirit() async {
-    final chosen = await showModalBottomSheet<Spirit?>(
+    final Spirit? chosen = await showModalBottomSheet<Spirit?>(
       context: context,
       builder: (_) => SafeArea(
         child: ListView(
@@ -160,17 +161,23 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
         ),
       ),
     );
+
     if (chosen != null) {
       setState(() => _note.linkedSpiritId = chosen.id);
-      await _noteSvc.saveNote(_note);
+      await _noteSvc.save(_note);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final spirit = _note.linkedSpiritId == null
-        ? null
-        : _spiritSvc.getById(_note.linkedSpiritId!);
+    // Safely lookup linked Spirit
+    Spirit? spirit;
+    if (_note.linkedSpiritId != null) {
+      final matches = _spiritSvc.getCollectibles()
+          .where((s) => s.id == _note.linkedSpiritId)
+          .toList();
+      if (matches.isNotEmpty) spirit = matches.first;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -214,11 +221,12 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                 .toList(),
             onChanged: (m) async {
+              if (m == null) return;
               setState(() {
                 _note.mood = m;
                 _note.zone = _moodMap[m]!;
               });
-              await _noteSvc.saveNote(_note);
+              await _noteSvc.save(_note);
             },
           ),
           const SizedBox(height: 16),

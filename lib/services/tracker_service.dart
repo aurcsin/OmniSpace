@@ -1,106 +1,81 @@
-// File: lib/services/tracker_service.dart
+// lib/services/tracker_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
 
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-
-class TrackerService extends ChangeNotifier {
-  TrackerService._internal();
-  static final TrackerService instance = TrackerService._internal();
+class TrackerService {
+  TrackerService._();
+  static final instance = TrackerService._();
 
   static const _boxName = 'trackers';
-  late final Box<Tracker> _box;
-  bool _initialized = false; // ← guard
+  late Box<Tracker> _box;
+  final List<Tracker> _trackers = [];
 
-  /// Call once at startup.
+  /// Call once at app startup.
   Future<void> init() async {
-    if (_initialized) return;           // ← no-op on subsequent calls
-    _initialized = true;
-
-    if (!Hive.isAdapterRegistered(TrackerAdapter().typeId)) {
-      Hive.registerAdapter(TrackerAdapter());
-    }
     _box = await Hive.openBox<Tracker>(_boxName);
-    notifyListeners();
+    _trackers
+      ..clear()
+      ..addAll(_box.values);
   }
 
-  /// Save or update.
-  Future<void> save(Tracker t) async {
-    await _box.put(t.id, t);
-    notifyListeners();
-  }
-
-  /// Alias for `save`.
-  Future<void> create(Tracker t) => save(t);
-
-  /// Permanently delete.
-  Future<void> deleteTracker(String id) async {
-    await _box.delete(id);
-    notifyListeners();
-  }
-
-  /// Soft‐trash.
-  Future<void> trashTracker(String id) async {
-    final t = _box.get(id);
-    if (t != null && !t.isTrashed) {
-      t.isTrashed = true;
-      await t.save();
-      notifyListeners();
-    }
-  }
-
-  /// Restore from trash.
-  Future<void> restoreTracker(String id) async {
-    final t = _box.get(id);
-    if (t != null && t.isTrashed) {
-      t.isTrashed = false;
-      await t.save();
-      notifyListeners();
-    }
-  }
+  /// All trackers in memory.
+  List<Tracker> get all => List.unmodifiable(_trackers);
 
   /// Lookup by ID.
   Tracker? getById(String id) => _box.get(id);
 
-  /// Alias for tests & legacy code.
+  /// Alias for getById, used by tests.
   Tracker? byId(String id) => getById(id);
 
-  /// All trackers (including trashed).
-  List<Tracker> get all => _box.values.toList();
-
-  /// Only non-trashed.
-  List<Tracker> get active =>
-      _box.values.where((t) => !t.isTrashed).toList();
-
-  /// Only trashed.
-  List<Tracker> get trashed =>
-      _box.values.where((t) => t.isTrashed).toList();
-
-  /// Return trackers of a given type.
-  List<Tracker> ofType(TrackerType type) =>
-      _box.values.where((t) => t.type == type).toList();
-
-  /// Return trackers linked to a note.
-  List<Tracker> linkedTo(String ownerId) =>
-      all.where((t) => t.linkedNoteIds.contains(ownerId)).toList();
-
-  /// Link/unlink APIs for OmniTrackerSelector
-  Future<void> linkNote(String trackerId, String noteId) async {
-    final t = _box.get(trackerId);
-    if (t != null && !t.linkedNoteIds.contains(noteId)) {
-      t.linkedNoteIds.add(noteId);
-      await t.save();
-      notifyListeners();
+  /// Save or update a tracker.
+  Future<void> save(Tracker tracker) async {
+    await _box.put(tracker.id, tracker);
+    final idx = _trackers.indexWhere((t) => t.id == tracker.id);
+    if (idx >= 0) {
+      _trackers[idx] = tracker;
+    } else {
+      _trackers.add(tracker);
     }
   }
 
-  Future<void> unlinkNote(String trackerId, String noteId) async {
-    final t = _box.get(trackerId);
-    if (t != null && t.linkedNoteIds.remove(noteId)) {
-      await t.save();
-      notifyListeners();
+  /// Create a new tracker (alias for save).
+  Future<void> create(Tracker tracker) => save(tracker);
+
+  /// Permanently delete trackers by their IDs.
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
     }
+    _trackers.removeWhere((t) => ids.contains(t.id));
+  }
+
+  /// Get trackers of a specific type in their current order.
+  List<Tracker> ofType(TrackerType type) =>
+      _trackers.where((t) => t.type == type).toList();
+
+  /// Reorder a tracker by moving it to a new index within its type-specific list.
+  void reorder(String id, int newIndex) {
+    final list = ofType(_trackers.firstWhere((t) => t.id == id).type);
+    final oldIndex = list.indexWhere((t) => t.id == id);
+    if (oldIndex < 0) return;
+    final tracker = list.removeAt(oldIndex);
+    final insertIndex = newIndex.clamp(0, list.length);
+    list.insert(insertIndex, tracker);
+
+    // Now reflect this order back into the master _trackers list:
+    // Remove all items of this type and re-insert in new order
+    _trackers.removeWhere((t) => t.type == tracker.type);
+    int masterInsert = 0;
+    for (int i = 0; i < _trackers.length; i++) {
+      if (_trackers[i].type.index > tracker.type.index) {
+        masterInsert = i;
+        break;
+      }
+      masterInsert = i + 1;
+    }
+    _trackers.insertAll(masterInsert, list);
+    // Persisting full list ordering is optional
   }
 }

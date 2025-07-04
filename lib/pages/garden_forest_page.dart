@@ -1,14 +1,14 @@
-// File: lib/pages/garden_forest_page.dart
+// lib/pages/garden_forest_page.dart
 
 import 'package:flutter/material.dart';
 
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
-import 'multi_pane_editor_page.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/deck_service.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/pages/multi_pane_editor_page.dart';
 
 class GardenForestPage extends StatefulWidget {
   const GardenForestPage({Key? key}) : super(key: key);
@@ -96,7 +96,8 @@ class _GardenForestPageState extends State<GardenForestPage> {
             Wrap(
               spacing: 8,
               children: reps.map((s) {
-                final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+                // Check membership correctly
+                final inDeck = deckSvc.deck.any((d) => d.id == s.id);
                 return ActionChip(
                   avatar: Icon(s.realm.icon,
                       size: 20, color: inDeck ? Colors.grey : Colors.white),

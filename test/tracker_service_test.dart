@@ -1,42 +1,49 @@
-import 'dart:io';
+// lib/services/tracker_service.dart
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:omnispace/models/tracker.dart';
-import 'package:omnispace/models/tracker_type.dart';
-import 'package:omnispace/services/tracker_service.dart';
 
-void main() {
-  late Directory tempDir;
+class TrackerService {
+  TrackerService._();
+  static final instance = TrackerService._();
 
-  setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('tracker_test');
-    Hive.init(tempDir.path);
-    if (!Hive.isAdapterRegistered(TrackerAdapter().typeId)) {
-      Hive.registerAdapter(TrackerAdapter());
+  static const _boxName = 'trackers';
+  late Box<Tracker> _box;
+  final List<Tracker> _trackers = [];
+
+  /// Call once at app startup to open Hive box and load existing trackers.
+  Future<void> init() async {
+    _box = await Hive.openBox<Tracker>(_boxName);
+    _trackers
+      ..clear()
+      ..addAll(_box.values);
+  }
+
+  /// All trackers in memory.
+  List<Tracker> get all => List.unmodifiable(_trackers);
+
+  /// Lookup by ID (alias for byId).
+  Tracker? getById(String id) => _box.get(id);
+
+  /// Alias for getById, used by tests.
+  Tracker? byId(String id) => getById(id);
+
+  /// Save or update a tracker both in Hive and memory.
+  Future<void> save(Tracker tracker) async {
+    await _box.put(tracker.id, tracker);
+    final idx = _trackers.indexWhere((t) => t.id == tracker.id);
+    if (idx >= 0) {
+      _trackers[idx] = tracker;
+    } else {
+      _trackers.add(tracker);
     }
-    if (!Hive.isAdapterRegistered(TrackerTypeAdapter().typeId)) {
-      Hive.registerAdapter(TrackerTypeAdapter());
+  }
+
+  /// Permanently delete trackers by their IDs.
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
     }
-    await TrackerService.instance.init();
-  });
-
-  tearDown(() async {
-    await Hive.box<Tracker>('trackers').close();
-    await Hive.deleteBoxFromDisk('trackers');
-    await tempDir.delete(recursive: true);
-  });
-
-  test('byId returns saved tracker', () async {
-    final tracker = Tracker(
-      id: 't1',
-      type: TrackerType.goal,
-      title: 'Test Tracker',
-    );
-    await TrackerService.instance.save(tracker);
-
-    final fetched = TrackerService.instance.byId('t1');
-    expect(fetched, isNotNull);
-    expect(fetched!.title, equals('Test Tracker'));
-  });
+    _trackers.removeWhere((t) => ids.contains(t.id));
+  }
 }

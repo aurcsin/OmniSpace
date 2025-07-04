@@ -1,58 +1,45 @@
-// File: lib/services/note_collection_service.dart
+// lib/services/note_collection_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import '../models/note_collection.dart';
+import 'package:omnispace/models/note_collection.dart';
 
-/// Manages persistence of NoteCollection objects in Hive.
-class NoteCollectionService extends ChangeNotifier {
-  NoteCollectionService._internal();
-  static final NoteCollectionService instance =
-      NoteCollectionService._internal();
+class NoteCollectionService {
+  NoteCollectionService._();
+  static final instance = NoteCollectionService._();
 
   static const _boxName = 'note_collections';
   late Box<NoteCollection> _box;
 
-  /// Call once at startup.
+  /// Must be called once at startup (before using `all` or other methods).
   Future<void> init() async {
-    if (!Hive.isAdapterRegistered(NoteCollectionAdapter().typeId)) {
-      Hive.registerAdapter(NoteCollectionAdapter());
-    }
     _box = await Hive.openBox<NoteCollection>(_boxName);
-    notifyListeners();
   }
 
-  /// All collections.
-  List<NoteCollection> get all => _box.values.toList();
-
-  /// Lookup.
-  NoteCollection? getById(String id) => _box.get(id);
+  /// List of collections.
+  List<NoteCollection> get all {
+    if (!_box.isOpen) {
+      throw StateError('NoteCollectionService.init() must be called before reading collections');
+    }
+    return _box.values.toList();
+  }
 
   /// Create a new collection.
   Future<void> create({
     required String id,
     required String name,
-    List<String> noteIds = const [],
+    required List<String> noteIds,
   }) async {
-    final col = NoteCollection(id: id, name: name, noteIds: noteIds);
-    await _box.put(id, col);
-    notifyListeners();
+    final collection = NoteCollection(id: id, name: name, noteIds: noteIds);
+    await _box.put(id, collection);
   }
 
-  /// Permanently delete.
+  /// Save/update an existing collection.
+  Future<void> save(NoteCollection collection) async {
+    await _box.put(collection.id, collection);
+  }
+
+  /// Delete a collection.
   Future<void> delete(String id) async {
     await _box.delete(id);
-    notifyListeners();
-  }
-
-  /// Add notes to an existing collection.
-  Future<void> addNotes(String id, List<String> noteIds) async {
-    final col = _box.get(id);
-    if (col != null) {
-      final updated = {...col.noteIds, ...noteIds}.toList();
-      col.noteIds = updated;
-      await col.save();
-      notifyListeners();
-    }
   }
 }

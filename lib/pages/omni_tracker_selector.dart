@@ -1,4 +1,4 @@
-// File: lib/pages/omni_tracker_page.dart
+// lib/pages/omni_tracker_page.dart
 
 import 'package:flutter/material.dart';
 
@@ -29,16 +29,11 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
 
   IconData _iconFor(TrackerType t) {
     switch (t) {
-      case TrackerType.goal:
-        return Icons.flag;
-      case TrackerType.task:
-        return Icons.check_box;
-      case TrackerType.event:
-        return Icons.event;
-      case TrackerType.routine:
-        return Icons.repeat;
-      case TrackerType.series:
-        return Icons.link;
+      case TrackerType.goal:    return Icons.flag;
+      case TrackerType.task:    return Icons.check_box;
+      case TrackerType.event:   return Icons.event;
+      case TrackerType.routine: return Icons.repeat;
+      case TrackerType.series:  return Icons.link;
     }
   }
 
@@ -69,21 +64,23 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
-          ..._cols.map((col) {
-            return ListTile(
+          for (final col in _cols)
+            ListTile(
               leading: const Icon(Icons.folder),
               title: Text(col.name),
               onTap: () async {
-                col.trackerIds.addAll(_selected);
-                await TrackerCollectionService.instance.save(col);
+                // Use the service to add each selected tracker
+                for (final tid in _selected) {
+                  await TrackerCollectionService.instance
+                      .addToCollection(col.id, tid);
+                }
                 Navigator.pop(context);
                 setState(() {
                   _selectionMode = false;
                   _selected.clear();
                 });
               },
-            );
-          }),
+            ),
           ListTile(
             leading: const Icon(Icons.create_new_folder),
             title: const Text('New Collection'),
@@ -165,7 +162,9 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(_selectionMode ? '${_selected.length} selected' : 'OmniTracker'),
+        title: Text(_selectionMode
+            ? '${_selected.length} selected'
+            : 'OmniTracker'),
         actions: [
           if (!_selectionMode) ...[
             HelpButton(
@@ -212,13 +211,13 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
   Widget _buildGrid() {
     return ListView(
       children: [
-        ..._cols.map((col) {
-          final members = _all.where((t) => col.trackerIds.contains(t.id)).toList();
-          return ExpansionTile(
-            title: Text('${col.name} (${members.length})'),
-            children: members.map(_tileFor).toList(),
-          );
-        }),
+        for (final col in _cols) ...[
+          ExpansionTile(
+            title: Text('${col.name} (${col.trackerIds.length})'),
+            children:
+                _all.where((t) => col.trackerIds.contains(t.id)).map(_tileFor).toList(),
+          ),
+        ],
         const Divider(),
         ExpansionTile(
           title: const Text('Ungrouped Trackers'),
@@ -238,15 +237,13 @@ class _OmniTrackerPageState extends State<OmniTrackerPage> {
             .where((t) => _cols.every((c) => !c.trackerIds.contains(t.id)))
             .map(_tileFor),
         const Divider(),
-        ..._cols.map((col) {
-          return ExpansionTile(
+        for (final col in _cols) ...[
+          ExpansionTile(
             title: Text(col.name),
-            children: _all
-                .where((t) => col.trackerIds.contains(t.id))
-                .map(_tileFor)
-                .toList(),
-          );
-        }),
+            children:
+                _all.where((t) => col.trackerIds.contains(t.id)).map(_tileFor).toList(),
+          ),
+        ],
       ],
     );
   }

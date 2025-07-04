@@ -1,205 +1,81 @@
-// File: lib/pages/trash_page.dart
+// lib/services/tracker_service.dart
 
-import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
 
-import '../models/omni_note.dart';
-import '../models/tracker.dart';
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/tracker_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
-import 'multi_pane_editor_page.dart';
-import 'tracker_view_page.dart';
+class TrackerService {
+  TrackerService._();
+  static final instance = TrackerService._();
 
-class TrashPage extends StatefulWidget {
-  const TrashPage({Key? key}) : super(key: key);
+  static const _boxName = 'trackers';
+  late Box<Tracker> _box;
+  final List<Tracker> _trackers = [];
 
-  @override
-  State<TrashPage> createState() => _TrashPageState();
-}
-
-class _TrashPageState extends State<TrashPage> {
-  late List<OmniNote> _trashedNotes;
-  late List<Tracker> _trashedTrackers;
-
-  final _noteSvc   = OmniNoteService.instance;
-  final _trackSvc  = TrackerService.instance;
-  final _spiritSvc = SpiritService.instance;
-  final _deckSvc   = DeckService.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    _refresh();
+  /// Call once at app startup.
+  Future<void> init() async {
+    _box = await Hive.openBox<Tracker>(_boxName);
+    _trackers
+      ..clear()
+      ..addAll(_box.values);
   }
 
-  void _refresh() {
-    _trashedNotes = _noteSvc.trashedNotes;
-    _trashedTrackers = _trackSvc.all.where((t) => t.isTrashed).toList();
-    setState(() {});
-  }
+  /// All trackers in memory.
+  List<Tracker> get all => List.unmodifiable(_trackers);
 
-  Future<void> _drawVoidSpirit() async {
-    final s = await _deckSvc.drawFromRealm(ZoneTheme.Void);
-    final msg = s != null
-        ? 'Drew ${s.name}!'
-        : 'All Void spirits already in your deck.';
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  /// Lookup by ID.
+  Tracker? getById(String id) => _box.get(id);
+
+  /// Alias for getById, used by tests.
+  Tracker? byId(String id) => getById(id);
+
+  /// Save or update a tracker.
+  Future<void> save(Tracker tracker) async {
+    await _box.put(tracker.id, tracker);
+    final idx = _trackers.indexWhere((t) => t.id == tracker.id);
+    if (idx >= 0) {
+      _trackers[idx] = tracker;
+    } else {
+      _trackers.add(tracker);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Master Void spirit
-    final primaries = _spiritSvc.getPrimaries().where((s) => s.realm == ZoneTheme.Void);
-    final master = primaries.isNotEmpty ? primaries.first : null;
-    // Collectible Void spirits
-    final reps = _spiritSvc.getCollectibles().where((s) => s.realm == ZoneTheme.Void).toList();
+  /// Create a new tracker (alias for save).
+  Future<void> create(Tracker tracker) => save(tracker);
 
-    return Scaffold(
-      drawer: const MainMenuDrawer(),
-      appBar: AppBar(
-        title: const Text('Trash'),
-        actions: [
-          HelpButton(
-            helpTitle: 'Trash Help',
-            helpText: '''
-• Restore or permanently delete notes and trackers.  
-• You can also draw Void spirits here to refill your deck.''',
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(8),
-        children: [
-          if (master != null) ...[
-            // Void realm master spirit
-            Card(
-              color: Colors.grey.shade200,
-              child: ListTile(
-                leading: Icon(master.realm.icon, size: 36, color: Colors.grey),
-                title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(master.purpose),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Representative Void spirits
-            Wrap(
-              spacing: 8,
-              children: reps.map((s) {
-                final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
-                return ActionChip(
-                  avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
-                  label: Text(s.name),
-                  backgroundColor: inDeck ? Colors.grey.shade300 : Colors.black54,
-                  labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                  onPressed: inDeck ? null : () async {
-                    await _deckSvc.draw(s);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added ${s.name} to deck!')),
-                      );
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-            const Divider(height: 32),
-          ],
+  /// Permanently delete trackers by their IDs.
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
+    }
+    _trackers.removeWhere((t) => ids.contains(t.id));
+  }
 
-          // --- Trashed Notes ---
-          if (_trashedNotes.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('Notes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            ..._trashedNotes.map((note) {
-              return ListTile(
-                leading: const Icon(Icons.note, color: Colors.grey),
-                title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.restore),
-                      tooltip: 'Restore Note',
-                      onPressed: () async {
-                        await _noteSvc.restoreNote(note.id);
-                        _refresh();
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_forever),
-                      tooltip: 'Delete Permanently',
-                      onPressed: () async {
-                        await _noteSvc.deleteNote(note.id);
-                        _refresh();
-                      },
-                    ),
-                  ],
-                ),
-                onTap: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => MultiPaneEditorPage(note)))
-                    .then((_) => _refresh()),
-              );
-            }).toList(),
-            const Divider(height: 32),
-          ],
+  /// Get trackers of a specific type in their current order.
+  List<Tracker> ofType(TrackerType type) =>
+      _trackers.where((t) => t.type == type).toList();
 
-          // --- Trashed Trackers ---
-          if (_trashedTrackers.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('Trackers', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
-            ..._trashedTrackers.map((tr) {
-              return ListTile(
-                leading: const Icon(Icons.auto_graph, color: Colors.grey),
-                title: Text(tr.title.isNotEmpty ? tr.title : '(No Title)'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.restore),
-                      tooltip: 'Restore Tracker',
-                      onPressed: () async {
-                        await _trackSvc.restoreTracker(tr.id);
-                        _refresh();
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_forever),
-                      tooltip: 'Delete Permanently',
-                      onPressed: () async {
-                        await _trackSvc.deleteTracker(tr.id);
-                        _refresh();
-                      },
-                    ),
-                  ],
-                ),
-                onTap: () => Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: tr)))
-                    .then((_) => _refresh()),
-              );
-            }).toList(),
-          ],
+  /// Reorder a tracker by moving it to a new index within its type-specific list.
+  void reorder(String id, int newIndex) {
+    final list = ofType(_trackers.firstWhere((t) => t.id == id).type);
+    final oldIndex = list.indexWhere((t) => t.id == id);
+    if (oldIndex < 0) return;
+    final tracker = list.removeAt(oldIndex);
+    final insertIndex = newIndex.clamp(0, list.length);
+    list.insert(insertIndex, tracker);
 
-          if (_trashedNotes.isEmpty && _trashedTrackers.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 32),
-              child: Center(child: Text('Trash is empty.', style: TextStyle(color: Colors.grey))),
-            ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.filter_alt),
-        label: const Text('Draw Void Spirit'),
-        onPressed: _drawVoidSpirit,
-      ),
-    );
+    // Now reflect this order back into the master _trackers list:
+    // Remove all items of this type and re-insert in new order
+    _trackers.removeWhere((t) => t.type == tracker.type);
+    int masterInsert = 0;
+    for (int i = 0; i < _trackers.length; i++) {
+      if (_trackers[i].type.index > tracker.type.index) {
+        masterInsert = i;
+        break;
+      }
+      masterInsert = i + 1;
+    }
+    _trackers.insertAll(masterInsert, list);
+    // Persisting full list ordering is optional
   }
 }

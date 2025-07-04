@@ -1,18 +1,18 @@
-// File: lib/pages/tracker_forge_page.dart
+// lib/pages/tracker_forge_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../models/omni_note.dart';
-import '../models/tracker_collection.dart';
-import '../services/tracker_service.dart';
-import '../services/omni_note_service.dart';
-import '../services/tracker_collection_service.dart';
-import '../utils/id_generator.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/tracker_collection.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/tracker_collection_service.dart';
+import 'package:omnispace/utils/id_generator.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
 
 class TrackerForgePage extends StatefulWidget {
   final Tracker? tracker;
@@ -44,31 +44,36 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
   @override
   void initState() {
     super.initState();
-    // Notes listener
-    OmniNoteService.instance.addListener(_onNotesChanged);
+
+    // Load existing notes and collections
     _allNotes = OmniNoteService.instance.notes;
-    // Collections listener
-    TrackerCollectionService.instance.addListener(_onCollectionsChanged);
     _collections = TrackerCollectionService.instance.all;
 
-    // Initialize fields
+    // Initialize form fields
     _type = widget.tracker?.type ?? widget.type ?? TrackerType.task;
     _titleCtl = TextEditingController(text: widget.tracker?.title ?? '');
     _customRecurrenceCtl =
         TextEditingController(text: widget.tracker?.frequency ?? '');
 
-    // Preselect notes & cluster if editing
+    // If editing an existing tracker, pre-fill selections
     if (widget.tracker != null) {
-      if (widget.tracker!.tags.isNotEmpty) {
-        _selectedNoteIds.addAll(widget.tracker!.tags.split(','));
+      final t = widget.tracker!;
+
+      // Preselect attached notes
+      if (t.tags.isNotEmpty) {
+        _selectedNoteIds.addAll(t.tags.split(','));
       }
+
+      // Preselect collection if the tracker is in one
       for (final c in _collections) {
-        if (c.trackerIds.contains(widget.tracker!.id)) {
+        if (c.trackerIds.contains(t.id)) {
           _selectedCollectionId = c.id;
           break;
         }
       }
-      final freq = widget.tracker!.frequency;
+
+      // Preselect recurrence option
+      final freq = t.frequency;
       if (freq != null && _recurrenceOptions.contains(freq)) {
         _recurrence = freq;
         _customRecurrence = false;
@@ -77,28 +82,26 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
         _customRecurrence = true;
         _customRecurrenceCtl.text = freq;
       }
+
+      // Preselect event time
+      if (t.type == TrackerType.event) {
+        _taskTime = t.start;
+      }
     }
   }
 
   @override
   void dispose() {
-    OmniNoteService.instance.removeListener(_onNotesChanged);
-    TrackerCollectionService.instance.removeListener(_onCollectionsChanged);
     _titleCtl.dispose();
     _customRecurrenceCtl.dispose();
     super.dispose();
   }
 
-  void _onNotesChanged() =>
-      setState(() => _allNotes = OmniNoteService.instance.notes);
-
-  void _onCollectionsChanged() =>
-      setState(() => _collections = TrackerCollectionService.instance.all);
-
   Future<void> _pickTime() async {
     final t = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(_taskTime ?? DateTime.now()),
+      initialTime:
+          TimeOfDay.fromDateTime(_taskTime ?? DateTime.now()),
     );
     if (t != null) {
       setState(() {
@@ -115,35 +118,39 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 
   void _toggleNoteSelection(String id) {
     setState(() {
-      if (!_selectedNoteIds.remove(id)) _selectedNoteIds.add(id);
+      if (!_selectedNoteIds.remove(id)) {
+        _selectedNoteIds.add(id);
+      }
     });
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final t = widget.tracker ??
+    final tracker = widget.tracker ??
         Tracker(id: generateId(), type: _type, title: '');
-    // assign recurrence
+
     final freq = _type == TrackerType.routine
-        ? (_customRecurrence ? _customRecurrenceCtl.text.trim() : _recurrence)
+        ? (_customRecurrence
+            ? _customRecurrenceCtl.text.trim()
+            : _recurrence)
         : null;
 
-    t
+    tracker
       ..title = _titleCtl.text.trim()
       ..type = _type
       ..frequency = freq
       ..start = (_type == TrackerType.event) ? _taskTime : null
       ..tags = _selectedNoteIds.join(',');
 
-    await TrackerService.instance.save(t);
+    await TrackerService.instance.save(tracker);
 
-    if (_selectedCollectionId != null) {
+    if (_selectedCollectionId != null && _selectedCollectionId!.isNotEmpty) {
       await TrackerCollectionService.instance
-          .addToCollection(_selectedCollectionId!, t.id);
+          .addToCollection(_selectedCollectionId!, tracker.id);
     }
 
-    Navigator.of(context).pop(t);
+    Navigator.of(context).pop(tracker);
   }
 
   IconData _iconFor(TrackerType type) {
@@ -163,13 +170,14 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 
   @override
   Widget build(BuildContext context) {
-    final typeName = _type.name[0].toUpperCase() + _type.name.substring(1);
+    final typeName =
+        '${_type.name[0].toUpperCase()}${_type.name.substring(1)}';
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title:
-            Text(widget.tracker == null ? 'New $typeName' : 'Edit $typeName'),
+        title: Text(
+            widget.tracker == null ? 'New $typeName' : 'Edit $typeName'),
         actions: [
           HelpButton(
             helpTitle: 'Tracker Help',
@@ -191,9 +199,9 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
             children: [
+              // Type selector (only on create)
               if (widget.tracker == null) ...[
                 DropdownButtonFormField<TrackerType>(
                   value: _type,
@@ -205,7 +213,8 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                         children: [
                           Icon(_iconFor(tt)),
                           const SizedBox(width: 8),
-                          Text(tt.name[0].toUpperCase() + tt.name.substring(1)),
+                          Text(
+                              '${tt.name[0].toUpperCase()}${tt.name.substring(1)}'),
                         ],
                       ),
                     );
@@ -223,12 +232,13 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                     (v == null || v.isEmpty) ? 'Required' : null,
               ),
 
-              // Recurrence dropdown for routines
+              // Recurrence (routines)
               if (_type == TrackerType.routine) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _recurrence,
-                  decoration: const InputDecoration(labelText: 'Recurrence'),
+                  decoration:
+                      const InputDecoration(labelText: 'Recurrence'),
                   items: _recurrenceOptions
                       .map((opt) => DropdownMenuItem(
                             value: opt,
@@ -238,7 +248,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                   onChanged: (v) {
                     setState(() {
                       _recurrence = v!;
-                      _customRecurrence = v == 'Custom';
+                      _customRecurrence = (v == 'Custom');
                     });
                   },
                 ),
@@ -248,14 +258,13 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                     controller: _customRecurrenceCtl,
                     decoration:
                         const InputDecoration(labelText: 'Custom Rule'),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Required'
-                        : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ],
               ],
 
-              // Time picker for events
+              // Time picker (events)
               if (_type == TrackerType.event) ...[
                 const SizedBox(height: 12),
                 Row(
@@ -266,14 +275,16 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                           : DateFormat.jm().format(_taskTime!)),
                     ),
                     TextButton(
-                        onPressed: _pickTime, child: const Text('Pick Time')),
+                      onPressed: _pickTime,
+                      child: const Text('Pick Time'),
+                    ),
                   ],
                 ),
               ],
 
               const SizedBox(height: 16),
 
-              // Cluster assignment
+              // Collection selector
               DropdownButtonFormField<String>(
                 value: _selectedCollectionId,
                 decoration: const InputDecoration(labelText: 'Cluster'),
@@ -284,7 +295,8 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                         child: Text(c.name),
                       )),
                 ],
-                onChanged: (v) => setState(() => _selectedCollectionId = v),
+                onChanged: (v) =>
+                    setState(() => _selectedCollectionId = v),
               ),
 
               const SizedBox(height: 24),

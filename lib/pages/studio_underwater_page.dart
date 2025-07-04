@@ -1,16 +1,17 @@
-// File: lib/pages/studio_underwater_page.dart
+// lib/pages/studio_underwater_page.dart
 
 import 'package:flutter/material.dart';
 
-import '../models/omni_note.dart';
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
-import 'multi_pane_editor_page.dart';
-import 'collections_page.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/spirit.dart';              // <-- added
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/deck_service.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/pages/multi_pane_editor_page.dart';
+import 'package:omnispace/pages/collections_page.dart';
 
 class StudioUnderwaterPage extends StatefulWidget {
   const StudioUnderwaterPage({Key? key}) : super(key: key);
@@ -36,10 +37,12 @@ class _StudioUnderwaterPageState extends State<StudioUnderwaterPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Master spirit
-    final masters = spiritSvc.getPrimaries().where((s) => s.realm == ZoneTheme.Water);
-    final master = masters.isNotEmpty ? masters.first : null;
-    // Collectibles
+    // Master spirit for Water realm
+    final masters = spiritSvc.getPrimaries()
+        .where((s) => s.realm == ZoneTheme.Water);
+    final Spirit? master = masters.isNotEmpty ? masters.first : null;
+
+    // Collectible spirits for Water realm (excluding primaries)
     final reps = spiritSvc.getCollectibles()
         .where((s) => s.realm == ZoneTheme.Water && !s.isPrimary)
         .toList();
@@ -88,10 +91,13 @@ class _StudioUnderwaterPageState extends State<StudioUnderwaterPage> {
               Wrap(
                 spacing: 8,
                 children: reps.map((s) {
-                  final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+                  final inDeck = deckSvc.deck.any((d) => d.id == s.id);
                   return ActionChip(
-                    avatar: Icon(s.realm.icon,
-                        size: 20, color: inDeck ? Colors.grey : Colors.white),
+                    avatar: Icon(
+                      s.realm.icon,
+                      size: 20,
+                      color: inDeck ? Colors.grey : Colors.white,
+                    ),
                     label: Text(s.name),
                     backgroundColor:
                         inDeck ? Colors.grey.shade300 : Colors.blueAccent,

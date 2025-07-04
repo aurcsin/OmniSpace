@@ -1,15 +1,15 @@
-// File: lib/pages/tracker_view_page.dart
+// lib/pages/tracker_view_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../services/tracker_service.dart';
-import '../services/omni_note_service.dart';
-import '../widgets/main_menu_drawer.dart';
-import 'tracker_forge_page.dart';
-import 'note_view_page.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/pages/tracker_forge_page.dart';
+import 'package:omnispace/pages/note_view_page.dart';
 
 class TrackerViewPage extends StatefulWidget {
   final Tracker tracker;
@@ -32,7 +32,9 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
     final updated = await Navigator.of(context).push<Tracker>(
       MaterialPageRoute(builder: (_) => TrackerForgePage(tracker: _tracker)),
     );
-    if (updated != null) setState(() => _tracker = updated);
+    if (updated != null) {
+      setState(() => _tracker = updated);
+    }
   }
 
   Future<void> _delete() async {
@@ -48,7 +50,7 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
       ),
     );
     if (ok == true) {
-      await TrackerService.instance.deleteTracker(_tracker.id);
+      await TrackerService.instance.deletePermanent([_tracker.id]);
       Navigator.of(context).pop();
     }
   }
@@ -59,9 +61,11 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
       final freq  = _tracker.frequency;
       return ListTile(
         leading: const Icon(Icons.calendar_today),
-        title: Text(start != null
-            ? DateFormat.yMMMd().add_jm().format(start)
-            : 'No start date'),
+        title: Text(
+          start != null
+              ? DateFormat.yMMMd().add_jm().format(start)
+              : 'No start date',
+        ),
         subtitle: (freq?.isNotEmpty ?? false)
             ? Text('Repeats: $freq')
             : const Text('One-off'),
@@ -122,8 +126,8 @@ class _TrackerViewPageState extends State<TrackerViewPage> {
           title: Text(t.title),
           subtitle: Text(t.type.name.toUpperCase()),
           onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
-            .then((_) => setState(() => _tracker = TrackerService.instance.getById(_tracker.id)!)),
+              .push(MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)))
+              .then((_) => setState(() => _tracker = TrackerService.instance.getById(_tracker.id)!)),
         );
       }).toList(),
     );

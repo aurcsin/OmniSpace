@@ -1,59 +1,44 @@
-// File: lib/services/project_service.dart
+// lib/services/project_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/project.dart';
 
-class ProjectService extends ChangeNotifier {
-  ProjectService._internal();
-  static final ProjectService instance = ProjectService._internal();
+class ProjectService {
+  ProjectService._();
+  static final instance = ProjectService._();
 
-  static const String _boxName = 'projects';
-  late final Box<Project> _box;
+  static const _boxName = 'projects';
+  late Box<Project> _box;
+  final List<Project> _projects = [];
 
-  /// Call once at app startup (before using any other methods).
+  /// Call once at app startup to open the Hive box and load all projects.
   Future<void> init() async {
-    if (!Hive.isAdapterRegistered(ProjectAdapter().typeId)) {
-      Hive.registerAdapter(ProjectAdapter());
-    }
     _box = await Hive.openBox<Project>(_boxName);
-    notifyListeners();
+    _projects
+      ..clear()
+      ..addAll(_box.values);
   }
 
-  /// All projects.
-  List<Project> get all => _box.values.toList();
+  /// All projects in memory.
+  List<Project> get all => List.unmodifiable(_projects);
 
-  /// Lookup by ID.
+  /// Lookup a project by ID.
   Project? getById(String id) => _box.get(id);
 
-  /// Create or update a project.
+  /// Save or update a project.
   Future<void> save(Project project) async {
     await _box.put(project.id, project);
-    notifyListeners();
+    final idx = _projects.indexWhere((p) => p.id == project.id);
+    if (idx >= 0) {
+      _projects[idx] = project;
+    } else {
+      _projects.add(project);
+    }
   }
 
-  /// Permanently delete a project.
+  /// Delete a project.
   Future<void> delete(String id) async {
     await _box.delete(id);
-    notifyListeners();
-  }
-
-  /// Batch-add note IDs, avoiding duplicates.
-  Future<void> addNotesToProject(String projectId, List<String> noteIds) async {
-    final project = _box.get(projectId);
-    if (project == null) return;
-    final existing = project.noteIds.toSet()..addAll(noteIds);
-    project.noteIds = existing.toList();
-    await _box.put(projectId, project);
-    notifyListeners();
-  }
-
-  /// Batch-remove note IDs.
-  Future<void> removeNotesFromProject(String projectId, List<String> noteIds) async {
-    final project = _box.get(projectId);
-    if (project == null) return;
-    project.noteIds.removeWhere(noteIds.contains);
-    await _box.put(projectId, project);
-    notifyListeners();
+    _projects.removeWhere((p) => p.id == id);
   }
 }

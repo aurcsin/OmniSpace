@@ -1,34 +1,42 @@
-// File: lib/models/sync_metadata.dart
+// lib/models/sync_metadata.dart
 
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 part 'sync_metadata.g.dart';
 
-/// Stores metadata for synchronization (e.g., last sync timestamp).
-@HiveType(typeId: 13)
+@HiveType(typeId: 1)
 class SyncMetadata extends HiveObject {
   @HiveField(0)
   DateTime? lastSyncedAt;
 
   SyncMetadata({this.lastSyncedAt});
 
-  /// Load existing metadata from Hive or create a new one if none exists.
-  static Future<SyncMetadata> load() async {
-    const boxName = 'sync_metadata';
-    final box = await Hive.openBox<SyncMetadata>(boxName);
-    if (box.isEmpty) {
-      final meta = SyncMetadata();
-      await box.put('metadata', meta);
-      return meta;
-    }
-    return box.get('metadata')!;
+  /// Initialize Hive, register adapter, and open the box.
+  static Future<void> init() async {
+    // Only initialize Hive once in your app (e.g. in main.dart before runApp)
+    await Hive.initFlutter();
+    // Register the generated adapter
+    Hive.registerAdapter(SyncMetadataAdapter());
+    // Open the box where SyncMetadata will be stored
+    await Hive.openBox<SyncMetadata>('sync_metadata');
   }
 
-  /// Persist this metadata instance to Hive.
-  @override
+  /// Load the sole SyncMetadata instance, or return a fresh one.
+  static Future<SyncMetadata> load() async {
+    final box = Hive.box<SyncMetadata>('sync_metadata');
+    if (box.isEmpty) {
+      return SyncMetadata();
+    }
+    return box.getAt(0)!;
+  }
+
+  /// Save (or update) this instance as the sole entry.
   Future<void> save() async {
-    const boxName = 'sync_metadata';
-    final box = await Hive.openBox<SyncMetadata>(boxName);
-    await box.put('metadata', this);
+    final box = Hive.box<SyncMetadata>('sync_metadata');
+    if (box.isEmpty) {
+      await box.add(this);
+    } else {
+      await box.putAt(0, this);
+    }
   }
 }

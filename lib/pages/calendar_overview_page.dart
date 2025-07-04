@@ -1,20 +1,20 @@
-// File: lib/pages/calendar_overview_page.dart
+// lib/pages/calendar_overview_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/omni_note.dart';
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../models/zone_theme.dart';
-import '../models/spirit.dart';
-import '../services/omni_note_service.dart';
-import '../services/tracker_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/main_menu_drawer.dart';
-import '../widgets/help_button.dart';
-import 'note_view_page.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/spirit.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/deck_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/pages/note_view_page.dart';
 
 enum CalView { day, week, month, year }
 
@@ -30,7 +30,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   DateTime _focusDate = DateTime.now();
   ZoneTheme? _realmFilter;
   bool _showEvents = true;
-  bool _loading = true;
+  bool _loading = false;
 
   List<OmniNote> _notes = [];
   List<Tracker> _events = [];
@@ -43,7 +43,7 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
   @override
   void initState() {
     super.initState();
-    _trackSvc.init().then((_) => _refresh());
+    _refresh();
   }
 
   Future<void> _refresh() async {
@@ -54,8 +54,9 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
 
   void _filterData() {
     final allNotes = _noteSvc.notes;
-    final allEvents = _trackSvc.all.where((t) =>
-      t.type == TrackerType.event && t.start != null).toList();
+    final allEvents = _trackSvc.all
+        .where((t) => t.type == TrackerType.event && t.start != null)
+        .toList();
 
     DateTime start, end;
     switch (_view) {
@@ -77,18 +78,22 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
         break;
     }
 
-    _notes = allNotes.where((n) {
-      final inDate = n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
-      final inRealm = _realmFilter == null || n.zone == _realmFilter;
-      return inDate && inRealm;
-    }).toList()
+    _notes = allNotes
+        .where((n) {
+          final inDate = n.createdAt.isAfter(start) && n.createdAt.isBefore(end);
+          final inRealm = _realmFilter == null || n.zone == _realmFilter;
+          return inDate && inRealm;
+        })
+        .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     if (_showEvents && (_realmFilter == null || _realmFilter == ZoneTheme.Fire)) {
-      _events = allEvents.where((e) {
-        final s = e.start!;
-        return s.isAfter(start) && s.isBefore(end);
-      }).toList()
+      _events = allEvents
+          .where((e) {
+            final s = e.start!;
+            return s.isAfter(start) && s.isBefore(end);
+          })
+          .toList()
         ..sort((a, b) => a.start!.compareTo(b.start!));
     } else {
       _events = [];
@@ -176,8 +181,8 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
     if (_realmFilter == null) return;
     final s = await _deckSvc.drawFromRealm(_realmFilter!);
     final msg = s != null
-      ? 'Drew ${s.name}!'
-      : 'All ${_realmFilter!.displayName} spirits already collected.';
+        ? 'Drew ${s.name}!'
+        : 'All ${_realmFilter!.displayName} spirits already collected.';
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
@@ -214,16 +219,19 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Master spirit for the active realm, if any
     Spirit? masterSpirit;
     if (_realmFilter != null) {
-      final primaries = _spiritSvc.getPrimaries()
-          .where((s) => s.realm == _realmFilter).toList();
+      final primaries = _spiritSvc
+          .getPrimaries()
+          .where((s) => s.realm == _realmFilter)
+          .toList();
       if (primaries.isNotEmpty) masterSpirit = primaries.first;
     }
-    // Representative (collectible) spirits for the active realm
     final reps = _realmFilter != null
-        ? _spiritSvc.getCollectibles().where((s) => s.realm == _realmFilter).toList()
+        ? _spiritSvc
+            .getCollectibles()
+            .where((s) => s.realm == _realmFilter)
+            .toList()
         : <Spirit>[];
 
     return Scaffold(
@@ -268,29 +276,44 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: ListTile(
-                leading: Icon(masterSpirit.realm.icon, size: 36, color: Colors.deepPurple),
-                title: Text(masterSpirit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                leading: Icon(
+                  masterSpirit.realm.icon,
+                  size: 36,
+                  color: Colors.deepPurple,
+                ),
+                title: Text(
+                  masterSpirit.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 subtitle: Text(masterSpirit.purpose),
               ),
             ),
             Wrap(
               spacing: 8,
               children: reps.map((s) {
-                final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
+                final inDeck = _deckSvc.deck.any((d) => d.id == s.id);
                 return ChoiceChip(
-                  avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  avatar: Icon(
+                    s.realm.icon,
+                    size: 20,
+                    color: inDeck ? Colors.grey : Colors.white,
+                  ),
                   label: Text(s.name),
                   selected: false,
-                  onSelected: inDeck ? null : (_) async {
-                    await _deckSvc.draw(s);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added ${s.name} to deck!')),
-                      );
-                    }
-                  },
-                  backgroundColor: inDeck ? Colors.grey.shade300 : Colors.deepPurple,
-                  labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
+                  onSelected: inDeck
+                      ? null
+                      : (_) async {
+                          await _deckSvc.draw(s);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Added ${s.name} to deck!')),
+                            );
+                          }
+                        },
+                  backgroundColor:
+                      inDeck ? Colors.grey.shade300 : Colors.deepPurple,
+                  labelStyle:
+                      TextStyle(color: inDeck ? Colors.black : Colors.white),
                 );
               }).toList(),
             ),
@@ -316,8 +339,10 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(icon: const Icon(Icons.chevron_left), onPressed: _prev),
-              Text(_formatFocusLabel(), style: Theme.of(context).textTheme.titleMedium),
-              IconButton(icon: const Icon(Icons.chevron_right), onPressed: _next),
+              Text(_formatFocusLabel(),
+                  style: Theme.of(context).textTheme.titleMedium),
+              IconButton(
+                  icon: const Icon(Icons.chevron_right), onPressed: _next),
             ],
           ),
           const Divider(),
@@ -337,17 +362,27 @@ class _CalendarOverviewPageState extends State<CalendarOverviewPage> {
                     : ListView(
                         children: [
                           ..._notes.map((note) => ListTile(
-                                title: Text(note.title.isNotEmpty ? note.title : '(No Title)'),
-                                subtitle: Text(DateFormat.jm().format(note.createdAt)),
+                                title: Text(
+                                    note.title.isNotEmpty
+                                        ? note.title
+                                        : '(No Title)'),
+                                subtitle: Text(
+                                    DateFormat.jm().format(note.createdAt)),
                                 onTap: () => Navigator.of(context)
-                                    .push(MaterialPageRoute(builder: (_) => NoteViewPage(note: note)))
+                                    .push(MaterialPageRoute(
+                                        builder: (_) =>
+                                            NoteViewPage(note: note)))
                                     .then((_) => _refresh()),
                               )),
                           if (_showEvents)
                             ..._events.map((e) => ListTile(
                                   leading: const Icon(Icons.event),
-                                  title: Text(e.title.isNotEmpty ? e.title : '(Event)'),
-                                  subtitle: Text(DateFormat.yMMMd().add_jm().format(e.start!)),
+                                  title: Text(e.title.isNotEmpty
+                                      ? e.title
+                                      : '(Event)'),
+                                  subtitle: Text(DateFormat.yMMMd()
+                                      .add_jm()
+                                      .format(e.start!)),
                                 )),
                         ],
                       ),

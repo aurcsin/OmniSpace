@@ -1,74 +1,93 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
+import 'package:omnispace/models/deck.dart';
+import 'package:omnispace/models/spirit.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/services/spirit_service.dart';
 
-import '../models/deck.dart';
-import '../models/spirit.dart';
-import '../models/zone_theme.dart';
-import 'spirit_service.dart';
+class DeckService {
+  DeckService._();
+  static final instance = DeckService._();
 
-class DeckService extends ChangeNotifier {
-  DeckService._internal();
-  static final DeckService instance = DeckService._internal();
+  static const _boxName = 'deck';
+  static const _stateKey = 'current';
 
-  static const _boxName = 'decks';
-  late final Box<Deck> _box;
-  late Deck deck;
+  late Box<Deck> _box;
+  final List<Spirit> _deck = [];
 
-  /// Call once at startup.
+  /// Must be called once at app startup.
   Future<void> init() async {
-    if (!Hive.isAdapterRegistered(DeckAdapter().typeId)) {
-      Hive.registerAdapter(DeckAdapter());
-    }
-    // Open only the decks box — no reset or cleaning:
     _box = await Hive.openBox<Deck>(_boxName);
-
-    // If first run, create a deck—but skip any box.clear() or migrations:
-    if (_box.isEmpty) {
-      final d = Deck(id: 'user_deck', title: 'My Deck');
-      await _box.put(d.id, d);
-      deck = d;
-    } else {
-      deck = _box.get('user_deck')!;
+    final state = _box.get(_stateKey);
+    if (state != null) {
+      _deck
+        ..clear()
+        ..addAll(
+          state.spiritIds
+            .map((id) => SpiritService.instance.getById(id))
+            .whereType<Spirit>(),
+        );
     }
-
-    notifyListeners();
   }
 
-  List<Spirit> get cards => SpiritService.instance.all
-    .where((s) => deck.spiritIds.contains(s.id))
-    .toList();
+  /// The current deck of spirits. Throws if init() wasn’t called.
+  List<Spirit> get deck {
+    if (!_box.isOpen) {
+      throw StateError('DeckService.init() must be called before reading deck');
+    }
+    return List.unmodifiable(_deck);
+  }
+
+  /// Alias for UI code that expects `cards`.
+  List<Spirit> get cards => deck;
 
   Future<Spirit?> draw(Spirit s) async {
-    if (!deck.spiritIds.contains(s.id)) {
-      deck.spiritIds.add(s.id);
-      await _box.put(deck.id, deck);
-      notifyListeners();
-      return s;
-    }
-    return null;
+    if (_deck.any((e) => e.id == s.id)) return null;
+    _deck.add(s);
+    await _saveState();
+    return s;
   }
 
   Future<Spirit?> drawFromRealm(ZoneTheme realm) async {
-    final pool = SpiritService.instance.getByRealm(realm)
-      .where((s) => !deck.spiritIds.contains(s.id))
-      .toList();
-    if (pool.isEmpty) return null;
-    deck.spiritIds.add(pool.first.id);
-    await _box.put(deck.id, deck);
-    notifyListeners();
-    return pool.first;
+    final available = SpiritService.instance
+        .getByRealm(realm)
+        .where((s) => s.isCollectible && !_deck.any((d) => d.id == s.id))
+        .toList();
+    if (available.isEmpty) return null;
+    available.shuffle();
+    final pick = available.first;
+    _deck.add(pick);
+    await _saveState();
+    return pick;
   }
 
-  Future<void> reset() async {
-    deck.spiritIds.clear();
-    await _box.put(deck.id, deck);
-    notifyListeners();
+  Future<Spirit?> drawRandomCollectible() async {
+    final all = SpiritService.instance.getCollectibles();
+    final available = all.where((s) => !_deck.any((d) => d.id == s.id)).toList();
+    if (available.isEmpty) return null;
+    available.shuffle();
+    final pick = available.first;
+    _deck.add(pick);
+    await _saveState();
+    return pick;
   }
 
   Future<void> remove(Spirit s) async {
-    if (deck.spiritIds.remove(s.id)) {
-      await _box.put(deck.id, deck);
-      notifyListeners();
-    }
+    _deck.removeWhere((d) => d.id == s.id);
+    await _saveState();
+  }
+
+  Future<void> reset() async {
+    _deck.clear();
+    await _saveState();
+  }
+
+  Future<void> _saveState() async {
+    final ids = _deck.map((s) => s.id).toList();
+    final newState = Deck(
+      id: _stateKey,
+      title: 'My Deck',
+      spiritIds: ids,
+    );
+    await _box.put(_stateKey, newState);
   }
 }

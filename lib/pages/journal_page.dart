@@ -1,17 +1,16 @@
-// File: lib/pages/journal_page.dart
+// lib/pages/journal_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import '../models/omni_note.dart';
-import '../models/project.dart';
-import '../models/note_collection.dart';
-import '../services/omni_note_service.dart';
-import '../services/project_service.dart';
-import '../services/note_collection_service.dart';
-import '../widgets/main_menu_drawer.dart';
-import '../widgets/help_button.dart';
-import 'note_detail_page.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/project.dart';
+import 'package:omnispace/models/note_collection.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/project_service.dart';
+import 'package:omnispace/services/note_collection_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/pages/note_detail_page.dart';
 
 enum DateRangeFilter { all, day, week, month, year }
 
@@ -28,9 +27,9 @@ class _JournalPageState extends State<JournalPage> {
   String _searchQuery = '';
   DateRangeFilter _dateFilter = DateRangeFilter.all;
 
-  final _noteSvc       = OmniNoteService.instance;
-  final _projSvc       = ProjectService.instance;
-  final _collSvc       = NoteCollectionService.instance;
+  final _noteSvc = OmniNoteService.instance;
+  final _projSvc = ProjectService.instance;
+  final _collSvc = NoteCollectionService.instance;
 
   List<NoteCollection> _collections = [];
   String? _activeCollectionId;
@@ -93,7 +92,8 @@ class _JournalPageState extends State<JournalPage> {
     }).toList();
 
     if (_activeCollectionId != null) {
-      final col = _collections.firstWhere((c) => c.id == _activeCollectionId);
+      final col =
+          _collections.firstWhere((c) => c.id == _activeCollectionId);
       return base.where((n) => col.noteIds.contains(n.id)).toList();
     }
     return base;
@@ -150,7 +150,6 @@ class _JournalPageState extends State<JournalPage> {
       ),
     );
 
-    Project toAssign;
     if (picked == null) {
       final nameCtl = TextEditingController();
       final ok = await showDialog<bool>(
@@ -162,29 +161,40 @@ class _JournalPageState extends State<JournalPage> {
             decoration: const InputDecoration(labelText: 'Name'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.pop(ctx2, true), child: const Text('Create')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx2, false),
+                child: const Text('Cancel')),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx2, true),
+                child: const Text('Create')),
           ],
         ),
       );
       if (ok != true || nameCtl.text.trim().isEmpty) return;
-      toAssign = Project(
+
+      final toAssign = Project(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: nameCtl.text.trim(),
         noteIds: [],
       );
       await _projSvc.save(toAssign);
+      for (final id in _selectedIds) {
+        final note = _noteSvc.getById(id);
+        if (note != null) {
+          note.projectId = toAssign.id;
+          await _noteSvc.saveNote(note);
+        }
+      }
     } else {
-      toAssign = picked;
-    }
-
-    for (final id in _selectedIds) {
-      final note = _noteSvc.getById(id);
-      if (note != null) {
-        note.projectId = toAssign.id;
-        await _noteSvc.saveNote(note);
+      for (final id in _selectedIds) {
+        final note = _noteSvc.getById(id);
+        if (note != null) {
+          note.projectId = picked.id;
+          await _noteSvc.saveNote(note);
+        }
       }
     }
+
     _exitSelection();
   }
 
@@ -196,18 +206,27 @@ class _JournalPageState extends State<JournalPage> {
         title: const Text('New Note Collection'),
         content: TextField(
           controller: nameCtl,
-          decoration: const InputDecoration(labelText: 'Collection Name'),
+          decoration:
+              const InputDecoration(labelText: 'Collection Name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, nameCtl.text.trim()), child: const Text('Create')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          ElevatedButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, nameCtl.text.trim()),
+              child: const Text('Create')),
         ],
       ),
     );
     if (colName == null || colName.isEmpty) return;
+
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    await _collSvc.create(id: id, name: colName, noteIds: _selectedIds.toList());
+    await _collSvc.create(
+        id: id, name: colName, noteIds: _selectedIds.toList());
     setState(() => _collections = _collSvc.all);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Created collection "$colName"')),
     );
@@ -226,15 +245,29 @@ class _JournalPageState extends State<JournalPage> {
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
         leading: _selectionMode
-            ? IconButton(icon: const Icon(Icons.close), onPressed: _exitSelection)
-            : IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(context).openDrawer()),
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelection,
+              )
+            : IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
         title: _selectionMode
             ? Text('${_selectedIds.length} selected')
             : const Text('Journal'),
         actions: [
           if (_selectionMode) ...[
-            IconButton(icon: const Icon(Icons.folder_special), tooltip: 'Add to Project', onPressed: _batchAssignProject),
-            IconButton(icon: const Icon(Icons.collections_bookmark), tooltip: 'New Collection', onPressed: _batchCreateCollection),
+            IconButton(
+              icon: const Icon(Icons.folder_special),
+              tooltip: 'Add to Project',
+              onPressed: _batchAssignProject,
+            ),
+            IconButton(
+              icon: const Icon(Icons.collections_bookmark),
+              tooltip: 'New Collection',
+              onPressed: _batchCreateCollection,
+            ),
           ] else ...[
             HelpButton(
               helpTitle: 'Journal Help',
@@ -250,9 +283,9 @@ class _JournalPageState extends State<JournalPage> {
       ),
       body: Column(
         children: [
-          // Search
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
@@ -261,27 +294,34 @@ class _JournalPageState extends State<JournalPage> {
               onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
-          // Date filter
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: ToggleButtons(
-              isSelected: DateRangeFilter.values.map((f) => f == _dateFilter).toList(),
-              onPressed: (i) => setState(() => _dateFilter = DateRangeFilter.values[i]),
+              isSelected: DateRangeFilter.values
+                  .map((f) => f == _dateFilter)
+                  .toList(),
+              onPressed: (i) => setState(
+                  () => _dateFilter = DateRangeFilter.values[i]),
               children: const [
-                Padding(padding: EdgeInsets.all(8), child: Text('All')),
-                Padding(padding: EdgeInsets.all(8), child: Text('Day')),
-                Padding(padding: EdgeInsets.all(8), child: Text('Week')),
-                Padding(padding: EdgeInsets.all(8), child: Text('Month')),
-                Padding(padding: EdgeInsets.all(8), child: Text('Year')),
+                Padding(
+                    padding: EdgeInsets.all(8), child: Text('All')),
+                Padding(
+                    padding: EdgeInsets.all(8), child: Text('Day')),
+                Padding(
+                    padding: EdgeInsets.all(8), child: Text('Week')),
+                Padding(
+                    padding: EdgeInsets.all(8), child: Text('Month')),
+                Padding(
+                    padding: EdgeInsets.all(8), child: Text('Year')),
               ],
             ),
           ),
-          // Collection chips
           if (_collections.isNotEmpty) ...[
             const Divider(height: 1),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              padding: const EdgeInsets.symmetric(
+                  vertical: 8, horizontal: 12),
               child: Row(
                 children: _collections.map((col) {
                   final active = col.id == _activeCollectionId;
@@ -290,7 +330,9 @@ class _JournalPageState extends State<JournalPage> {
                     child: ChoiceChip(
                       label: Text(col.name),
                       selected: active,
-                      onSelected: (_) => setState(() => _activeCollectionId = active ? null : col.id),
+                      onSelected: (_) => setState(() =>
+                          _activeCollectionId =
+                              active ? null : col.id),
                     ),
                   );
                 }).toList(),
@@ -298,38 +340,70 @@ class _JournalPageState extends State<JournalPage> {
             ),
           ],
           const Divider(),
-          // Notes list
           Expanded(
             child: _filteredNotes.isEmpty
-                ? const Center(child: Text('No matching notes.'))
+                ? const Center(
+                    child: Text('No matching notes.'),
+                  )
                 : ListView.builder(
                     itemCount: _filteredNotes.length,
                     itemBuilder: (_, i) {
                       final n = _filteredNotes[i];
-                      final selected = _selectedIds.contains(n.id);
-                      final proj = n.projectId == null ? null : _projSvc.getById(n.projectId!);
+                      final selected =
+                          _selectedIds.contains(n.id);
+                      final proj = n.projectId == null
+                          ? null
+                          : _projSvc.getById(n.projectId!);
                       return ListTile(
                         leading: _selectionMode
-                            ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(n.id))
+                            ? Checkbox(
+                                value: selected,
+                                onChanged: (_) =>
+                                    _toggleSelection(n.id),
+                              )
                             : IconButton(
-                                icon: Icon(n.isStarred ? Icons.star : Icons.star_border,
-                                    color: n.isStarred ? Colors.amber : null),
-                                onPressed: () => _toggleStar(n),
+                                icon: Icon(
+                                  n.isStarred
+                                      ? Icons.star
+                                      : Icons.star_border,
+                                  color: n.isStarred
+                                      ? Colors.amber
+                                      : null,
+                                ),
+                                onPressed: () =>
+                                    _toggleStar(n),
                               ),
                         tileColor: n.isStarred
-                            ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                            ? Theme.of(context)
+                                .colorScheme
+                                .secondary
+                                .withOpacity(0.1)
                             : null,
-                        title: Text(n.title.isEmpty ? '(No Title)' : n.title),
+                        title: Text(
+                            n.title.isEmpty ? '(No Title)' : n.title),
                         subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
-                            Text(n.content, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            if (proj != null)
-                              Text('Project: ${proj.title}',
-                                  style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
                             Text(
-                              DateFormat.yMMMd().add_jm().format(n.lastUpdated),
-                              style: const TextStyle(fontSize: 10),
+                              n.content,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (proj != null)
+                              Text(
+                                'Project: ${proj.title}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            Text(
+                              DateFormat.yMMMd()
+                                  .add_jm()
+                                  .format(n.lastUpdated),
+                              style: const TextStyle(
+                                  fontSize: 10),
                             ),
                           ],
                         ),
@@ -337,7 +411,14 @@ class _JournalPageState extends State<JournalPage> {
                         onTap: _selectionMode
                             ? () => _toggleSelection(n.id)
                             : () => Navigator.of(context)
-                                .push(MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: n)))
+                                .push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        NoteDetailPage(
+                                      omniNote: n,
+                                    ),
+                                  ),
+                                )
                                 .then((_) => setState(() {})),
                       );
                     },
@@ -349,7 +430,12 @@ class _JournalPageState extends State<JournalPage> {
           ? null
           : FloatingActionButton(
               onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const NoteDetailPage()))
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const NoteDetailPage(),
+                    ),
+                  )
                   .then((_) => setState(() {})),
               child: const Icon(Icons.add),
             ),

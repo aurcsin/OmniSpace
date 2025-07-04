@@ -1,67 +1,65 @@
-import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
+// lib/services/omni_note_service.dart
 
+import 'package:hive/hive.dart';
 import '../models/omni_note.dart';
 
-/// A ChangeNotifier-backed Hive service for managing OmniNote objects.
-class OmniNoteService extends ChangeNotifier {
-  OmniNoteService._internal();
-  static final OmniNoteService instance = OmniNoteService._internal();
+class OmniNoteService {
+  OmniNoteService._();
+  static final instance = OmniNoteService._();
 
-  /// Unique Hive box name for notes.
-  static const String _boxName = 'omni_notes';
-  late final Box<OmniNote> _box;
+  static const _boxName = 'omni_notes';
+  late Box<OmniNote> _box;
+  final List<OmniNote> _notes = [];
 
-  /// Initialize the service. Must be called once at app startup,
-  /// after all Hive adapters have been registered.
+  /// Call once at app startup to open the Hive box and load all notes.
   Future<void> init() async {
     _box = await Hive.openBox<OmniNote>(_boxName);
-    notifyListeners();
+    _notes
+      ..clear()
+      ..addAll(_box.values);
   }
 
-  /// Retrieve all notes, including trashed.
-  List<OmniNote> get all => _box.values.toList();
+  /// All notes in memory.
+  List<OmniNote> get notes => List.unmodifiable(_notes);
 
-  /// Only non-trashed.
-  List<OmniNote> get notes =>
-    _box.values.where((n) => !n.isTrashed).toList();
-
-  /// Only trashed.
-  List<OmniNote> get trashedNotes =>
-    _box.values.where((n) => n.isTrashed).toList();
-
-  /// Lookup by ID.
+  /// Lookup a note by its ID.
   OmniNote? getById(String id) => _box.get(id);
 
-  /// Save or update.
-  Future<void> saveNote(OmniNote note) async {
+  /// Save or update a note in Hive and in-memory.
+  Future<void> save(OmniNote note) async {
     await _box.put(note.id, note);
-    notifyListeners();
-  }
-
-  /// Soft-trash.
-  Future<void> trashNote(String id) async {
-    final note = _box.get(id);
-    if (note != null && !note.isTrashed) {
-      note.isTrashed = true;
-      await _box.put(id, note);
-      notifyListeners();
+    final idx = _notes.indexWhere((n) => n.id == note.id);
+    if (idx >= 0) {
+      _notes[idx] = note;
+    } else {
+      _notes.add(note);
     }
   }
 
-  /// Restore.
-  Future<void> restoreNote(String id) async {
-    final note = _box.get(id);
-    if (note != null && note.isTrashed) {
-      note.isTrashed = false;
-      await _box.put(id, note);
-      notifyListeners();
+  /// Alias for UI code expecting saveNote().
+  Future<void> saveNote(OmniNote note) => save(note);
+
+  /// Permanently delete one or more notes.
+  Future<void> deletePermanent(List<String> ids) async {
+    for (final id in ids) {
+      await _box.delete(id);
+    }
+    _notes.removeWhere((n) => ids.contains(n.id));
+  }
+
+  /// Delete a single note.
+  Future<void> deleteNote(String id) => deletePermanent([id]);
+
+  /// Mark a note as trashed or restored.
+  Future<void> setTrashed(String id, bool isTrashed) async {
+    final note = getById(id);
+    if (note != null) {
+      note.isTrashed = isTrashed;
+      await save(note);
     }
   }
 
-  /// Permanently delete.
-  Future<void> deleteNote(String id) async {
-    await _box.delete(id);
-    notifyListeners();
-  }
+  /// Convenience: only trashed notes.
+  List<OmniNote> get trashedNotes =>
+      _notes.where((n) => n.isTrashed).toList();
 }

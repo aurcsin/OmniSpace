@@ -1,118 +1,78 @@
-// File: lib/pages/tracker_page.dart
+// lib/pages/tracker_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/tracker.dart';
-import '../models/tracker_type.dart';
-import '../services/tracker_service.dart';
-import 'tracker_forge_page.dart';
-import 'tracker_view_page.dart';
+
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/tracker_type.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/pages/tracker_forge_page.dart';
+import 'package:omnispace/pages/tracker_view_page.dart';
 
 class TrackerPage extends StatefulWidget {
   const TrackerPage({Key? key}) : super(key: key);
+
   @override
   State<TrackerPage> createState() => _TrackerPageState();
 }
 
-class _TrackerPageState extends State<TrackerPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController =
-        TabController(length: TrackerType.values.length, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  List<Tracker> _trackersOfType(TrackerType type) =>
-      TrackerService.instance.all.where((t) => t.type == type).toList();
+class _TrackerPageState extends State<TrackerPage> {
+  final _service = TrackerService.instance;
 
   @override
   Widget build(BuildContext context) {
+    final items = _service.ofType(TrackerType.goal);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trackers'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: TrackerType.values.map((t) {
-            final label = t.name[0].toUpperCase() + t.name.substring(1);
-            return Tab(text: label);
-          }).toList(),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children:
-            TrackerType.values.map((type) => _buildTrackerList(type)).toList(),
+      drawer: const MainMenuDrawer(),
+      appBar: AppBar(title: const Text('Trackers')),
+      body: ReorderableListView(
+        onReorder: (oldIndex, newIndex) {
+          if (newIndex > oldIndex) newIndex--;
+          final id = items[oldIndex].id;
+          _service.reorder(id, newIndex);
+          setState(() {});
+        },
+        children: [
+          for (final t in items)
+            ListTile(
+              key: ValueKey(t.id),
+              leading: Icon(_iconFor(t.type)),
+              title: Text(t.title),
+              subtitle: Text(t.type.name.toUpperCase()),
+              onTap: () async {
+                final updated = await Navigator.of(context).push<Tracker>(
+                  MaterialPageRoute(builder: (_) => TrackerViewPage(tracker: t)),
+                );
+                if (updated != null) setState(() {});
+              },
+            ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _createNewTracker,
+        onPressed: () async {
+          final newTracker = await Navigator.of(context).push<Tracker>(
+            MaterialPageRoute(builder: (_) => const TrackerForgePage(type: TrackerType.goal)),
+          );
+          if (newTracker != null) setState(() {});
+        },
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildTrackerList(TrackerType type) {
-    final trackers = _trackersOfType(type);
-    if (trackers.isEmpty) {
-      return const Center(child: Text('No items yet.'));
-    }
-    return ReorderableListView.builder(
-      itemCount: trackers.length,
-      onReorder: (oldIndex, newIndex) {
-        // TODO: reorder persistence
-      },
-      itemBuilder: (context, index) {
-        final tracker = trackers[index];
-        return ListTile(
-          key: ValueKey(tracker.id),
-          title: Text(tracker.title),
-          subtitle: Text(_subtitleFor(tracker, type)),
-          onTap: () => Navigator.of(context)
-              .push(MaterialPageRoute(
-                  builder: (_) => TrackerViewPage(tracker: tracker)))
-              .then((_) => setState(() {})),
-          trailing: IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) =>
-                      TrackerForgePage(tracker: tracker, type: type)),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  String _subtitleFor(Tracker tracker, TrackerType type) {
+  IconData _iconFor(TrackerType type) {
     switch (type) {
       case TrackerType.goal:
-        final pct = ((tracker.progress ?? 0) * 100).round();
-        return 'Progress: $pct%';
+        return Icons.flag;
+      case TrackerType.task:
+        return Icons.check_box;
       case TrackerType.event:
-        return tracker.start != null
-            ? 'At ${DateFormat.yMMMd().add_jm().format(tracker.start!)}'
-            : 'No date';
+        return Icons.event;
       case TrackerType.routine:
-        return 'Routine: ${tracker.frequency ?? 'daily'}';
+        return Icons.repeat;
       case TrackerType.series:
-        return '${tracker.childIds.length} items';
+        return Icons.link;
     }
-    // Fallback so the method always returns a non-null String:
-    return '';
-  }
-
-  void _createNewTracker() {
-    final type = TrackerType.values[_tabController.index];
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => TrackerForgePage(type: type)));
   }
 }

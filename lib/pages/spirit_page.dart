@@ -1,14 +1,14 @@
-// File: lib/pages/spirit_page.dart
+// lib/pages/spirit_page.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../models/zone_theme.dart';
-import '../models/spirit.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/spirit.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/deck_service.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
 
 class SpiritPage extends StatelessWidget {
   const SpiritPage({Key? key}) : super(key: key);
@@ -36,7 +36,8 @@ class SpiritPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final svc = SpiritService.instance;
+    final spiritSvc = SpiritService.instance;
+    final deckSvc = DeckService.instance;
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
@@ -51,21 +52,87 @@ class SpiritPage extends StatelessWidget {
 • Tap “Collect” to add to your deck.  
 • View your collection on the Deck page.''',
           ),
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Help',
+            onPressed: () => _showHelp(context),
+          ),
         ],
       ),
       body: ListView(
         children: ZoneTheme.values.map((realm) {
-          // find all spirits in this realm
-          final spirits = svc.getByRealm(realm);
-          // find the master spirit(s) in this realm
-          final masters = svc.getPrimaries().where((s) => s.realm == realm);
+          // All collectible spirits in this realm
+          final spirits = spiritSvc
+              .getCollectibles()
+              .where((s) => s.realm == realm)
+              .toList();
+          // Master spirit for this realm
+          final masters = spiritSvc
+              .getPrimaries()
+              .where((s) => s.realm == realm);
           final primary = masters.isNotEmpty ? masters.first : null;
 
           return ExpansionTile(
             leading: _iconFor(realm),
             title: Text(describeEnum(realm)),
             subtitle: Text('Master: ${primary?.name ?? '—'}'),
-            children: spirits.map((s) => _SpiritTile(spirit: s)).toList(),
+            children: spirits.map((s) {
+              // Check deck membership correctly
+              final inDeck = deckSvc.deck.any((d) => d.id == s.id);
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  leading: Icon(
+                    s.isPrimary ? Icons.star
+                      : s.isNPC ? Icons.emoji_objects
+                      : Icons.local_florist,
+                    color: Colors.deepPurple,
+                  ),
+                  title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(s.mythos),
+                  isThreeLine: true,
+                  trailing: s.isCollectible && !s.isPrimary && !s.isNPC
+                      ? ElevatedButton(
+                          onPressed: inDeck
+                              ? null
+                              : () async {
+                                  final collected = await deckSvc.draw(s);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(
+                                      collected != null
+                                        ? 'Collected ${s.name}!'
+                                        : '${s.name} was already in your deck.',
+                                    )),
+                                  );
+                                },
+                          child: Text(inDeck ? 'Collected' : 'Collect'),
+                        )
+                      : null,
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text(s.name),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Archetype: ${s.archetype}'),
+                          const SizedBox(height: 8),
+                          Text('Purpose: ${s.purpose}'),
+                          const SizedBox(height: 4),
+                          Text('Use in App: ${s.useInApp}'),
+                          const SizedBox(height: 4),
+                          Text('XP Value: ${s.xpValue}'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           );
         }).toList(),
       ),
@@ -87,66 +154,5 @@ class SpiritPage extends StatelessWidget {
       case ZoneTheme.Fusion:
         return const Icon(Icons.bubble_chart, color: Colors.purpleAccent);
     }
-  }
-}
-
-class _SpiritTile extends StatelessWidget {
-  final Spirit spirit;
-  const _SpiritTile({required this.spirit, Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = spirit.isPrimary
-        ? Icons.star
-        : spirit.isNPC
-            ? Icons.emoji_objects
-            : Icons.local_florist;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.deepPurple),
-        title: Text(spirit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(spirit.mythos),
-        isThreeLine: true,
-        trailing: spirit.isCollectible && !spirit.isPrimary && !spirit.isNPC
-            ? ElevatedButton(
-                child: const Text('Collect'),
-                onPressed: () async {
-                  final drawn = await DeckService.instance.draw(spirit);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(
-                      drawn != null
-                        ? 'Collected ${spirit.name}!'
-                        : '${spirit.name} is already in your deck.',
-                    )),
-                  );
-                },
-              )
-            : null,
-        onTap: () => showDialog<void>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(spirit.name),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Archetype: ${spirit.archetype}'),
-                const SizedBox(height: 8),
-                Text('Purpose: ${spirit.purpose}'),
-                const SizedBox(height: 4),
-                Text('Use in App: ${spirit.useInApp}'),
-                const SizedBox(height: 4),
-                Text('XP Value: ${spirit.xpValue}'),
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

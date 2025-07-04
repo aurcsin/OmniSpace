@@ -1,9 +1,10 @@
-// File: lib/pages/sky_space_page.dart
+// lib/pages/sky_space_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/zone_theme.dart';
+import '../models/spirit.dart';
 import '../services/omni_note_service.dart';
 import '../services/spirit_service.dart';
 import '../services/deck_service.dart';
@@ -36,14 +37,20 @@ class _SkySpacePageState extends State<SkySpacePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Master (primary) Air spirit
-    final master = spiritSvc.getPrimaries()
-        .firstWhere((s) => s.realm == ZoneTheme.Air);
-    final reps = spiritSvc.getCollectibles()
+    // Master (primary) Air spirit, if any
+    final primaries = spiritSvc
+        .getPrimaries()
+        .where((s) => s.realm == ZoneTheme.Air)
+        .toList();
+    final Spirit? master = primaries.isNotEmpty ? primaries.first : null;
+
+    // Other Air spirits
+    final reps = spiritSvc
+        .getCollectibles()
         .where((s) => s.realm == ZoneTheme.Air)
         .toList();
 
-    // Synchronous list of live Air notes
+    // Live Air notes
     final notes = noteSvc.notes
         .where((n) => n.zone == ZoneTheme.Air && !n.isArchived && !n.isTrashed)
         .toList()
@@ -73,14 +80,16 @@ class _SkySpacePageState extends State<SkySpacePage> {
         padding: const EdgeInsets.all(8),
         children: [
           // Master Spirit
-          Card(
-            color: Colors.lightBlue.shade50,
-            child: ListTile(
-              leading: Icon(master.realm.icon, size: 40, color: Colors.blue),
-              title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(master.purpose),
+          if (master != null)
+            Card(
+              color: Colors.lightBlue.shade50,
+              child: ListTile(
+                leading: Icon(master.realm.icon, size: 40, color: Colors.blue),
+                title: Text(master.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(master.purpose),
+              ),
             ),
-          ),
 
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
@@ -89,15 +98,23 @@ class _SkySpacePageState extends State<SkySpacePage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
+          // Collectible spirits
           Wrap(
             spacing: 8,
             children: reps.map((s) {
-              final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+              // deckSvc.deck is List<Spirit>, so check membership by ID
+              final inDeck = deckSvc.deck.any((d) => d.id == s.id);
               return ActionChip(
-                avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                avatar: Icon(
+                  s.realm.icon,
+                  size: 20,
+                  color: inDeck ? Colors.grey : Colors.white,
+                ),
                 label: Text(s.name),
-                backgroundColor: inDeck ? Colors.grey.shade300 : Colors.deepPurple,
-                labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
+                backgroundColor:
+                    inDeck ? Colors.grey.shade300 : Colors.deepPurple,
+                labelStyle:
+                    TextStyle(color: inDeck ? Colors.black : Colors.white),
                 onPressed: inDeck
                     ? null
                     : () async {
@@ -121,7 +138,8 @@ class _SkySpacePageState extends State<SkySpacePage> {
           else
             ...notes.map((n) => ListTile(
                   title: Text(n.title.isEmpty ? '(No title)' : n.title),
-                  subtitle: Text(DateFormat.yMMMd().add_jm().format(n.lastUpdated)),
+                  subtitle:
+                      Text(DateFormat.yMMMd().add_jm().format(n.lastUpdated)),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)),

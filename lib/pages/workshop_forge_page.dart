@@ -1,9 +1,10 @@
-// File: lib/pages/workshop_forge_page.dart
+// lib/pages/workshop_forge_page.dart
 
 import 'package:flutter/material.dart';
 
 import '../models/tracker_type.dart';
 import '../models/zone_theme.dart';
+import '../models/spirit.dart';
 import '../services/tracker_service.dart';
 import '../services/spirit_service.dart';
 import '../services/deck_service.dart';
@@ -37,12 +38,17 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
   @override
   Widget build(BuildContext context) {
     // Master Fire spirit
-    final primaries = _spiritSvc.getPrimaries().where((s) => s.realm == ZoneTheme.Fire);
-    final master = primaries.isNotEmpty ? primaries.first : null;
+    final primaries = _spiritSvc
+        .getPrimaries()
+        .where((s) => s.realm == ZoneTheme.Fire)
+        .toList();
+    final Spirit? master = primaries.isNotEmpty ? primaries.first : null;
+
     // Collectible Fire spirits
     final reps = _spiritSvc.getCollectibles()
         .where((s) => s.realm == ZoneTheme.Fire && !s.isPrimary)
         .toList();
+
     // All trackers
     final all = _trackSvc.all;
     // Group trackers by type
@@ -75,7 +81,8 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
               color: Colors.red.shade50,
               child: ListTile(
                 leading: Icon(master.realm.icon, size: 40, color: Colors.red),
-                title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(master.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(master.purpose),
               ),
             ),
@@ -84,21 +91,30 @@ class _WorkshopForgePageState extends State<WorkshopForgePage> {
             Wrap(
               spacing: 8,
               children: reps.map((s) {
-                final inDeck = _deckSvc.deck.spiritIds.contains(s.id);
+                // Check deck membership by spirit ID
+                final inDeck = _deckSvc.deck.any((d) => d.id == s.id);
                 return ActionChip(
-                  avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  avatar: Icon(
+                    s.realm.icon,
+                    size: 20,
+                    color: inDeck ? Colors.grey : Colors.white,
+                  ),
                   label: Text(s.name),
-                  backgroundColor: inDeck ? Colors.grey.shade300 : Colors.redAccent,
-                  labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                  onPressed: inDeck ? null : () async {
-                    await _deckSvc.draw(s);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Added ${s.name} to deck!')),
-                      );
-                      setState(() {});
-                    }
-                  },
+                  backgroundColor:
+                      inDeck ? Colors.grey.shade300 : Colors.redAccent,
+                  labelStyle:
+                      TextStyle(color: inDeck ? Colors.black : Colors.white),
+                  onPressed: inDeck
+                      ? null
+                      : () async {
+                          await _deckSvc.draw(s);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Added ${s.name} to deck!')),
+                            );
+                            setState(() {});
+                          }
+                        },
                 );
               }).toList(),
             ),

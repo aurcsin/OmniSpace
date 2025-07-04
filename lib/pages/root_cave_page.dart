@@ -1,29 +1,29 @@
-// File: lib/pages/root_cave_page.dart
+// lib/pages/root_cave_page.dart
 
 import 'package:flutter/material.dart';
-
-import '../models/omni_note.dart';
-import '../models/zone_theme.dart';
-import '../services/omni_note_service.dart';
-import '../services/spirit_service.dart';
-import '../services/deck_service.dart';
-import '../widgets/help_button.dart';
-import '../widgets/main_menu_drawer.dart';
-import 'multi_pane_editor_page.dart';
+import 'package:omnispace/models/omni_note.dart';
+import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/services/omni_note_service.dart';
+import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/deck_service.dart';
+import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
+import 'package:omnispace/pages/multi_pane_editor_page.dart';
 
 class RootCavePage extends StatefulWidget {
   const RootCavePage({Key? key}) : super(key: key);
+
   @override
   State<RootCavePage> createState() => _RootCavePageState();
 }
 
 class _RootCavePageState extends State<RootCavePage> {
-  final noteSvc   = OmniNoteService.instance;
-  final spiritSvc = SpiritService.instance;
-  final deckSvc   = DeckService.instance;
+  final _noteSvc   = OmniNoteService.instance;
+  final _spiritSvc = SpiritService.instance;
+  final _deckSvc   = DeckService.instance;
 
   Future<void> _drawRealmSpirit() async {
-    final s = await deckSvc.drawFromRealm(ZoneTheme.Void);
+    final s = await _deckSvc.drawFromRealm(ZoneTheme.Void);
     final msg = s != null
       ? 'Drew ${s.name}!'
       : 'All Root Cave spirits already in your deck.';
@@ -36,11 +36,11 @@ class _RootCavePageState extends State<RootCavePage> {
   @override
   Widget build(BuildContext context) {
     // Master spirit for Void realm
-    final master = spiritSvc
+    final master = _spiritSvc
         .getPrimaries()
         .firstWhere((s) => s.realm == ZoneTheme.Void);
     // Collectible spirits for Void realm
-    final reps = spiritSvc
+    final reps = _spiritSvc
         .getCollectibles()
         .where((s) => s.realm == ZoneTheme.Void)
         .toList();
@@ -55,19 +55,21 @@ class _RootCavePageState extends State<RootCavePage> {
             helpText: '''
 • The Root Cave is the Void realm.  
 • Master spirit guides you here.  
-• Collect sprites to grow your deck.  
+• Collect spirits to grow your deck.  
 • Archived notes live below; restore from Trash.''',
           ),
         ],
       ),
       body: FutureBuilder<List<OmniNote>>(
-        future: Future.value(noteSvc.notes),
+        future: Future.value(_noteSvc.notes),
         builder: (ctx, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
           final all = snap.data!;
-          final archived = all.where((n) => n.isArchived && !n.isTrashed).toList();
+          final archived = all
+              .where((n) => n.isArchived && !n.isTrashed)
+              .toList();
           final trashed  = all.where((n) => n.isTrashed).toList();
 
           return ListView(
@@ -87,7 +89,7 @@ class _RootCavePageState extends State<RootCavePage> {
               Wrap(
                 spacing: 8,
                 children: reps.map((s) {
-                  final inDeck = deckSvc.deck.spiritIds.contains(s.id);
+                  final inDeck = _deckSvc.deck.any((d) => d.id == s.id);
                   return ActionChip(
                     avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
                     label: Text(s.name),
@@ -96,7 +98,7 @@ class _RootCavePageState extends State<RootCavePage> {
                     onPressed: inDeck
                         ? null
                         : () async {
-                            await deckSvc.draw(s);
+                            await _deckSvc.draw(s);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Added ${s.name} to deck!')),
@@ -118,7 +120,7 @@ class _RootCavePageState extends State<RootCavePage> {
                 const Center(child: Text('No archived notes.'))
               else
                 ...archived.map((n) => ListTile(
-                      title: Text(n.title.isEmpty ? '(No title)' : n.title),
+                      title: Text(n.title.isEmpty ? '(No Title)' : n.title),
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)))
                           .then((_) => setState(() {})),
@@ -134,12 +136,13 @@ class _RootCavePageState extends State<RootCavePage> {
                 const Center(child: Text('Trash is empty.'))
               else
                 ...trashed.map((n) => ListTile(
-                      title: Text(n.title.isEmpty ? '(No title)' : n.title),
+                      title: Text(n.title.isEmpty ? '(No Title)' : n.title),
                       subtitle: const Text('Trashed'),
                       trailing: IconButton(
                         icon: const Icon(Icons.restore),
+                        tooltip: 'Restore Note',
                         onPressed: () async {
-                          await noteSvc.restoreNote(n.id);
+                          await _noteSvc.setTrashed(n.id, false);
                           setState(() {});
                         },
                       ),
