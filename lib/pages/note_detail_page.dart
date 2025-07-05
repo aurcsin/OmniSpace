@@ -1,17 +1,23 @@
 // lib/pages/note_detail_page.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:omnispace/models/omni_note.dart';
 import 'package:omnispace/models/project.dart';
 import 'package:omnispace/models/spirit.dart';
+import 'package:omnispace/models/tracker.dart';
+import 'package:omnispace/models/note_collection.dart';
 import 'package:omnispace/models/zone_theme.dart';
+
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/project_service.dart';
 import 'package:omnispace/services/spirit_service.dart';
+import 'package:omnispace/services/tracker_service.dart';
+import 'package:omnispace/services/note_collection_service.dart';
+
 import 'package:omnispace/widgets/help_button.dart';
+import 'package:omnispace/widgets/main_menu_drawer.dart';
 
 class NoteDetailPage extends StatefulWidget {
   final OmniNote? omniNote;
@@ -25,37 +31,35 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
   final _noteSvc   = OmniNoteService.instance;
   final _projSvc   = ProjectService.instance;
   final _spiritSvc = SpiritService.instance;
+  final _trackSvc  = TrackerService.instance;
+  final _collSvc   = NoteCollectionService.instance;
 
   late OmniNote _note;
   late TextEditingController _titleCtl;
   late TextEditingController _contentCtl;
 
-  /// Map moods to elemental realms.
   static const Map<String, ZoneTheme> _moodMap = {
-    'Calm': ZoneTheme.Water,
-    'Energetic': ZoneTheme.Fire,
-    'Focused': ZoneTheme.Air,
-    'Grounded': ZoneTheme.Earth,
-    'Curious': ZoneTheme.Void,
+    'Calm':        ZoneTheme.Water,
+    'Energetic':   ZoneTheme.Fire,
+    'Focused':     ZoneTheme.Air,
+    'Grounded':    ZoneTheme.Earth,
+    'Curious':     ZoneTheme.Void,
     'Fusion Flow': ZoneTheme.Fusion,
   };
 
   @override
   void initState() {
     super.initState();
-    if (widget.omniNote != null) {
-      _note = widget.omniNote!;
-    } else {
-      _note = OmniNote(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: '',
-        subtitle: '',
-        content: '',
-        zone: ZoneTheme.Fusion,
-        tags: '',
-        colorValue: 0xFFFFFFFF,
-      );
-    }
+    _note = widget.omniNote ??
+        OmniNote(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: '',
+          subtitle: '',
+          content: '',
+          zone: ZoneTheme.Fusion,
+          tags: '',
+          colorValue: 0xFFFFFFFF,
+        );
     _titleCtl   = TextEditingController(text: _note.title);
     _contentCtl = TextEditingController(text: _note.content);
   }
@@ -73,200 +77,229 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ..content     = _contentCtl.text.trim()
       ..lastUpdated = DateTime.now();
     await _noteSvc.save(_note);
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(true);
   }
 
-  Future<void> _showAssignProjectDialog() async {
-    final Project? picked = await showDialog<Project?>(
+  void _cancel() => Navigator.of(context).pop(false);
+
+  Future<void> _toggleStar() async {
+    _note.isStarred = !_note.isStarred;
+    await _noteSvc.save(_note);
+    setState(() {});
+  }
+
+  Future<void> _toggleLock() async {
+    if (_note.isLocked) {
+      final pw = await _prompt('Unlock Note', 'Password');
+      if (pw == _note.lockPassword) {
+        _note.isLocked = false;
+        await _noteSvc.save(_note);
+        setState(() {});
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Wrong password')));
+      }
+    } else {
+      final pw = await _prompt('Lock Note', 'Set password');
+      if (pw != null && pw.isNotEmpty) {
+        _note
+          ..isLocked = true
+          ..lockPassword = pw;
+        await _noteSvc.save(_note);
+        setState(() {});
+      }
+    }
+  }
+
+  Future<String?> _prompt(String title, String label) {
+    final ctl = TextEditingController();
+    return showDialog<String?>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Assign Project'),
-        content: SizedBox(
-          width: 300,
-          height: 400,
-          child: ListView(
-            children: [
-              ..._projSvc.all.map((p) => ListTile(
-                    title: Text(p.title),
-                    selected: p.id == _note.projectId,
-                    onTap: () => Navigator.pop(ctx, p),
-                  )),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.add),
-                title: const Text('New Project'),
-                onTap: () => Navigator.pop(ctx, null),
-              ),
-            ],
-          ),
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctl,
+          obscureText: true,
+          decoration: InputDecoration(labelText: label),
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, ctl.text), child: const Text('OK')),
+        ],
       ),
     );
-
-    Project toAssign;
-    if (picked == null) {
-      final nameCtl = TextEditingController();
-      final bool? created = await showDialog<bool>(
-        context: context,
-        builder: (ctx2) => AlertDialog(
-          title: const Text('New Project'),
-          content: TextField(
-            controller: nameCtl,
-            decoration: const InputDecoration(labelText: 'Project Name'),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => Navigator.pop(ctx2, true), child: const Text('Create')),
-          ],
-        ),
-      );
-      if (created != true || nameCtl.text.trim().isEmpty) {
-        return;
-      }
-      toAssign = Project(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: nameCtl.text.trim(),
-        noteIds: [],
-      );
-      await _projSvc.save(toAssign);
-    } else {
-      toAssign = picked;
-    }
-
-    setState(() => _note.projectId = toAssign.id);
-    await _noteSvc.save(_note);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Assigned to project “${toAssign.title}”')),
-    );
   }
 
-  Future<void> _pickSpirit() async {
-    final Spirit? chosen = await showModalBottomSheet<Spirit?>(
+  Future<void> _assign<T>({
+    required String title,
+    required List<T> items,
+    required String? selectedId,
+    required String? Function(T) idOf,
+    required String Function(T) display,
+    required void Function(String?) onSave,
+  }) async {
+    final id = await showModalBottomSheet<String?>(
       context: context,
       builder: (_) => SafeArea(
-        child: ListView(
-          children: ZoneTheme.values.map((realm) {
-            final spirits = _spiritSvc.getCollectibles().where((s) => s.realm == realm);
-            return ExpansionTile(
-              title: Text(describeEnum(realm)),
-              children: spirits.map((s) {
-                return ListTile(
-                  title: Text(s.name),
-                  subtitle: Text(s.archetype),
-                  onTap: () => Navigator.pop(context, s),
-                );
-              }).toList(),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(title: Text('Assign $title')),
+          ...items.map((i) {
+            final iid = idOf(i);
+            return RadioListTile<String?>(
+              value: iid,
+              groupValue: selectedId,
+              title: Text(display(i)),
+              onChanged: (v) => Navigator.pop(context, v),
             );
           }).toList(),
-        ),
+          RadioListTile<String?>(
+            value: null,
+            groupValue: selectedId,
+            title: const Text('None'),
+            onChanged: (v) => Navigator.pop(context, v),
+          ),
+        ]),
       ),
     );
-
-    if (chosen != null) {
-      setState(() => _note.linkedSpiritId = chosen.id);
+    if (id != null || selectedId != null) {
+      onSave(id);
       await _noteSvc.save(_note);
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Safely lookup linked Spirit
-    Spirit? spirit;
-    if (_note.linkedSpiritId != null) {
-      final matches = _spiritSvc.getCollectibles()
-          .where((s) => s.id == _note.linkedSpiritId)
-          .toList();
-      if (matches.isNotEmpty) spirit = matches.first;
-    }
+    final locked = _note.isLocked;
 
     return Scaffold(
+      drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(_note.title.isEmpty ? 'New Note' : 'Edit Note'),
+        leading: IconButton(icon: const Icon(Icons.close), onPressed: _cancel),
+        title: Text(locked
+            ? 'Locked'
+            : (_note.title.isEmpty ? 'New Note' : 'Edit Note')),
         actions: [
-          HelpButton(
-            helpTitle: 'Note Help',
-            helpText: '''
-• Title your note, then reflect on your thoughts.  
-• Select a Mood to tie into an element.  
-• Pick a Spirit to guide you in this realm.  
-• Assign to a Project if needed.  
-• Tap Save when you’re done.''',
-          ),
-          IconButton(icon: const Icon(Icons.save), tooltip: 'Save', onPressed: _saveNote),
+          HelpButton(helpTitle: 'Note Help', helpText: 'Star, lock, assign & save/cancel.'),
+          IconButton(
+              icon: Icon(_note.isStarred ? Icons.star : Icons.star_border),
+              onPressed: locked ? null : _toggleStar),
+          IconButton(
+              icon: Icon(_note.isLocked ? Icons.lock : Icons.lock_open),
+              onPressed: _toggleLock),
+          if (!locked)
+            IconButton(icon: const Icon(Icons.save), onPressed: _saveNote),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Title
-          TextField(
-            controller: _titleCtl,
-            decoration: const InputDecoration(
-              hintText: 'Title',
-              border: UnderlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Timestamp
-          Text(
-            DateFormat.yMMMd().add_jm().format(_note.lastUpdated),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          // Mood selector
-          DropdownButtonFormField<String>(
-            value: _note.mood,
-            decoration: const InputDecoration(labelText: 'Mood'),
-            items: _moodMap.keys
-                .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                .toList(),
-            onChanged: (m) async {
-              if (m == null) return;
-              setState(() {
-                _note.mood = m;
-                _note.zone = _moodMap[m]!;
-              });
-              await _noteSvc.save(_note);
-            },
-          ),
-          const SizedBox(height: 16),
-          // Spirit picker
-          Row(children: [
-            const Text('Spirit:', style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _pickSpirit,
-                child: Text(spirit?.name ?? 'Select Spirit'),
+      body: locked
+          ? Center(
+              child: TextButton.icon(
+                icon: const Icon(Icons.lock_open),
+                label: const Text('Unlock'),
+                onPressed: _toggleLock,
               ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _titleCtl,
+                      decoration: const InputDecoration(hintText: 'Title…'),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      DateFormat.yMMMd().add_jm().format(_note.lastUpdated),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Mood → Zone
+                    DropdownButtonFormField<String?>(
+                      value: _note.mood,
+                      decoration: const InputDecoration(labelText: 'Mood'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('None')),
+                        ..._moodMap.keys
+                            .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                            .toList(),
+                      ],
+                      onChanged: (m) {
+                        _note.mood = m;
+                        _note.zone = m == null ? ZoneTheme.Fusion : _moodMap[m]!;
+                        _noteSvc.save(_note);
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Assign buttons
+                    Wrap(spacing: 8, children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.folder_open),
+                        label: const Text('Project'),
+                        onPressed: () => _assign<Project>(
+                          title: 'Project',
+                          items: _projSvc.all,
+                          selectedId: _note.projectId,
+                          idOf: (p) => (p as Project).id,
+                          display: (p) => (p as Project).title,
+                          onSave: (v) => _note.projectId = v,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.nature),
+                        label: const Text('Spirit'),
+                        onPressed: () => _assign<Spirit>(
+                          title: 'Spirit',
+                          items: _spiritSvc.getCollectibles(),
+                          selectedId: _note.linkedSpiritId,
+                          idOf: (s) => (s as Spirit).id,
+                          display: (s) => (s as Spirit).name,
+                          onSave: (v) => _note.linkedSpiritId = v,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.track_changes),
+                        label: const Text('Tracker'),
+                        onPressed: () => _assign<Tracker>(
+                          title: 'Tracker',
+                          items: _trackSvc.all,
+                          selectedId: _note.linkedTrackerId,
+                          idOf: (t) => (t as Tracker).id,
+                          display: (t) => (t as Tracker).title,
+                          onSave: (v) => _note.linkedTrackerId = v,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.collections_bookmark),
+                        label: const Text('Collection'),
+                        onPressed: () => _assign<NoteCollection>(
+                          title: 'Collection',
+                          items: _collSvc.all,
+                          selectedId: _note.linkedCollectionId,
+                          idOf: (c) => (c as NoteCollection).id,
+                          display: (c) => (c as NoteCollection).name,
+                          onSave: (v) => _note.linkedCollectionId = v,
+                        ),
+                      ),
+                    ]),
+
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: _contentCtl,
+                        decoration: const InputDecoration(
+                          hintText: 'Content…',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: null,
+                        expands: true,
+                      ),
+                    ),
+                  ]),
             ),
-          ]),
-          const SizedBox(height: 16),
-          // Assign Project
-          ElevatedButton.icon(
-            icon: const Icon(Icons.folder_open),
-            label: Text(
-              _note.projectId == null
-                  ? 'Assign Project'
-                  : 'Project: ${_projSvc.getById(_note.projectId!)?.title ?? ''}',
-            ),
-            onPressed: _showAssignProjectDialog,
-          ),
-          const SizedBox(height: 16),
-          // Content
-          Expanded(
-            child: TextField(
-              controller: _contentCtl,
-              decoration: const InputDecoration(
-                hintText: 'Write your thoughts…',
-                border: InputBorder.none,
-              ),
-              maxLines: null,
-              expands: true,
-            ),
-          ),
-        ]),
-      ),
     );
   }
 }

@@ -58,11 +58,9 @@ class _SkySpacePageState extends State<SkySpacePage> {
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
+
+      // Flutter will automatically show the hamburger when `drawer:` is present
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
         title: const Text('Sky • Space'),
         centerTitle: true,
         actions: [
@@ -76,6 +74,7 @@ class _SkySpacePageState extends State<SkySpacePage> {
           ),
         ],
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(8),
         children: [
@@ -98,11 +97,11 @@ class _SkySpacePageState extends State<SkySpacePage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
+
           // Collectible spirits
           Wrap(
             spacing: 8,
             children: reps.map((s) {
-              // deckSvc.deck is List<Spirit>, so check membership by ID
               final inDeck = deckSvc.deck.any((d) => d.id == s.id);
               return ActionChip(
                 avatar: Icon(
@@ -147,6 +146,7 @@ class _SkySpacePageState extends State<SkySpacePage> {
                 )),
         ],
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.filter_alt),
         label: const Text('Draw Sky Spirit'),

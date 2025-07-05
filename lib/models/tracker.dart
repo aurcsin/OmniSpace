@@ -1,5 +1,3 @@
-// File: lib/models/tracker.dart
-
 import 'package:hive/hive.dart';
 import 'tracker_type.dart';
 
@@ -7,18 +5,41 @@ part 'tracker.g.dart';
 
 @HiveType(typeId: 17)
 class Tracker extends HiveObject {
-  @HiveField(0) String id;
-  @HiveField(1) TrackerType type;
-  @HiveField(2) String title;
-  @HiveField(3) double? progress;       // for goals
-  @HiveField(4) String? frequency;      // for routines
-  @HiveField(5) DateTime? start;        // for events
-  @HiveField(6) String tags;            // comma-sep linked note IDs
-  @HiveField(7) bool isCompleted;
-  @HiveField(8) bool isTrashed;
-  @HiveField(9) List<String> childIds;           // sub-trackers
-  @HiveField(10) List<String> linkedTrackerIds;  // cross-links
-  @HiveField(11) List<String> linkedNoteIds;
+  @HiveField(0)
+  String id;
+
+  @HiveField(1)
+  TrackerType type;
+
+  @HiveField(2)
+  String title;
+
+  @HiveField(3)
+  double? progress;       // for goals
+
+  @HiveField(4)
+  String? frequency;      // for routines
+
+  @HiveField(5)
+  DateTime? start;        // for events
+
+  @HiveField(6)
+  String tags;            // comma-separated linked note IDs
+
+  @HiveField(7)
+  bool isCompleted;
+
+  @HiveField(8)
+  bool isTrashed;
+
+  @HiveField(9)
+  List<String> childIds;           // sub-trackers
+
+  @HiveField(10)
+  List<String> linkedTrackerIds;   // cross-links
+
+  @HiveField(11)
+  List<String> linkedNoteIds;
 
   Tracker({
     required this.id,
@@ -37,7 +58,7 @@ class Tracker extends HiveObject {
         linkedTrackerIds = linkedTrackerIds ?? [],
         linkedNoteIds = linkedNoteIds ?? [];
 
-  /// Toggle completion state and persist.
+  /// Toggle completion and save immediately.
   void toggleComplete() {
     isCompleted = !isCompleted;
     save();

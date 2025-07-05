@@ -1,4 +1,4 @@
-// File: lib/models/omni_note.dart
+// lib/models/omni_note.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
@@ -11,7 +11,7 @@ import 'zone_theme.dart';
 
 part 'omni_note.g.dart';
 
-/// Your core note model.
+/// Your core note model with extended link and lock fields.
 @HiveType(typeId: 7)
 class OmniNote extends HiveObject {
   @HiveField(0)
@@ -27,7 +27,7 @@ class OmniNote extends HiveObject {
   String content;
 
   @HiveField(4)
-  ZoneTheme zone;
+  ZoneTheme? zone;
 
   @HiveField(5)
   String tags;
@@ -84,14 +84,23 @@ class OmniNote extends HiveObject {
   bool isLocked;
 
   @HiveField(23)
+  String? lockPassword;
+
+  @HiveField(24)
   String? linkedSpiritId;
+
+  @HiveField(25)
+  String? linkedTrackerId;
+
+  @HiveField(26)
+  String? linkedCollectionId;
 
   OmniNote({
     required this.id,
     this.title = '',
     this.subtitle = '',
     this.content = '',
-    this.zone = ZoneTheme.Fusion,
+    this.zone,
     this.tags = '',
     this.colorValue = 0xFFFFFFFF,
     this.mood,
@@ -100,6 +109,8 @@ class OmniNote extends HiveObject {
     this.recommendedTag,
     this.seriesId,
     this.linkedSpiritId,
+    this.linkedTrackerId,
+    this.linkedCollectionId,
     List<Attachment>? attachments,
     this.tasks,
     this.goals,
@@ -111,71 +122,86 @@ class OmniNote extends HiveObject {
     this.isArchived = false,
     this.isTrashed = false,
     this.isLocked = false,
-  })  : attachments = attachments ?? [],
-        createdAt = createdAt ?? DateTime.now(),
-        lastUpdated = lastUpdated ?? createdAt ?? DateTime.now();
+    this.lockPassword,
+  })  : attachments   = attachments ?? [],
+        createdAt     = createdAt ?? DateTime.now(),
+        lastUpdated   = lastUpdated ?? DateTime.now();
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'subtitle': subtitle,
-        'content': content,
-        'zone': describeEnum(zone),
-        'tags': tags,
-        'colorValue': colorValue,
-        'mood': mood,
-        'direction': direction,
-        'projectId': projectId,
-        'recommendedTag': recommendedTag,
-        'seriesId': seriesId,
-        'linkedSpiritId': linkedSpiritId,
-        'attachments': attachments.map((a) => a.toJson()).toList(),
-        'tasks': tasks?.map((t) => t.toJson()).toList(),
-        'goals': goals?.map((g) => g.toJson()).toList(),
-        'events': events?.map((e) => e.toJson()).toList(),
-        'createdAt': createdAt.toIso8601String(),
-        'lastUpdated': lastUpdated.toIso8601String(),
-        'isPinned': isPinned,
-        'isStarred': isStarred,
-        'isArchived': isArchived,
-        'isTrashed': isTrashed,
-        'isLocked': isLocked,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'content': content,
+      'zone': zone != null ? describeEnum(zone!) : null,
+      'tags': tags,
+      'colorValue': colorValue,
+      'mood': mood,
+      'direction': direction,
+      'projectId': projectId,
+      'recommendedTag': recommendedTag,
+      'seriesId': seriesId,
+      'linkedSpiritId': linkedSpiritId,
+      'linkedTrackerId': linkedTrackerId,
+      'linkedCollectionId': linkedCollectionId,
+      'attachments': attachments.map((a) => a.toJson()).toList(),
+      'tasks': tasks?.map((t) => t.toJson()).toList(),
+      'goals': goals?.map((g) => g.toJson()).toList(),
+      'events': events?.map((e) => e.toJson()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+      'lastUpdated': lastUpdated.toIso8601String(),
+      'isPinned': isPinned,
+      'isStarred': isStarred,
+      'isArchived': isArchived,
+      'isTrashed': isTrashed,
+      'isLocked': isLocked,
+      'lockPassword': lockPassword,
+    };
+  }
 
-  factory OmniNote.fromJson(Map<String, dynamic> json) => OmniNote(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        subtitle: json['subtitle'] as String,
-        content: json['content'] as String,
-        zone: ZoneTheme.values.firstWhere(
-            (z) => describeEnum(z) == json['zone'] as String),
-        tags: json['tags'] as String,
-        colorValue: json['colorValue'] as int,
-        mood: json['mood'] as String?,
-        direction: json['direction'] as String?,
-        projectId: json['projectId'] as String?,
-        recommendedTag: json['recommendedTag'] as String?,
-        seriesId: json['seriesId'] as String?,
-        linkedSpiritId: json['linkedSpiritId'] as String?,
-        attachments: (json['attachments'] as List<dynamic>?)
-                ?.map((a) => Attachment.fromJson(a as Map<String, dynamic>))
-                .toList() ??
-            [],
-        tasks: (json['tasks'] as List<dynamic>?)
-            ?.map((t) => Task.fromJson(t as Map<String, dynamic>))
-            .toList(),
-        goals: (json['goals'] as List<dynamic>?)
-            ?.map((g) => Goal.fromJson(g as Map<String, dynamic>))
-            .toList(),
-        events: (json['events'] as List<dynamic>?)
-            ?.map((e) => Event.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        lastUpdated: DateTime.parse(json['lastUpdated'] as String),
-        isPinned: json['isPinned'] as bool? ?? false,
-        isStarred: json['isStarred'] as bool? ?? false,
-        isArchived: json['isArchived'] as bool? ?? false,
-        isTrashed: json['isTrashed'] as bool? ?? false,
-        isLocked: json['isLocked'] as bool? ?? false,
-      );
+  factory OmniNote.fromJson(Map<String, dynamic> json) {
+    return OmniNote(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? '',
+      subtitle: json['subtitle'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      zone: json['zone'] != null
+          ? ZoneTheme.values.firstWhere((z) => describeEnum(z) == json['zone'])
+          : null,
+      tags: json['tags'] as String? ?? '',
+      colorValue: json['colorValue'] as int? ?? 0xFFFFFFFF,
+      mood: json['mood'] as String?,
+      direction: json['direction'] as String?,
+      projectId: json['projectId'] as String?,
+      recommendedTag: json['recommendedTag'] as String?,
+      seriesId: json['seriesId'] as String?,
+      linkedSpiritId: json['linkedSpiritId'] as String?,
+      linkedTrackerId: json['linkedTrackerId'] as String?,
+      linkedCollectionId: json['linkedCollectionId'] as String?,
+      attachments: (json['attachments'] as List<dynamic>?)
+          ?.map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+          .toList() ?? [],
+      tasks: (json['tasks'] as List<dynamic>?)
+          ?.map((t) => Task.fromJson(t as Map<String, dynamic>))
+          .toList(),
+      goals: (json['goals'] as List<dynamic>?)
+          ?.map((g) => Goal.fromJson(g as Map<String, dynamic>))
+          .toList(),
+      events: (json['events'] as List<dynamic>?)
+          ?.map((e) => Event.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      lastUpdated: json['lastUpdated'] != null
+          ? DateTime.parse(json['lastUpdated'] as String)
+          : DateTime.now(),
+      isPinned: json['isPinned'] as bool? ?? false,
+      isStarred: json['isStarred'] as bool? ?? false,
+      isArchived: json['isArchived'] as bool? ?? false,
+      isTrashed: json['isTrashed'] as bool? ?? false,
+      isLocked: json['isLocked'] as bool? ?? false,
+      lockPassword: json['lockPassword'] as String?,
+    );
+  }
 }

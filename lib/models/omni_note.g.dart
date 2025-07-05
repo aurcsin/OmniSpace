@@ -21,7 +21,7 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       title: fields[1] as String,
       subtitle: fields[2] as String,
       content: fields[3] as String,
-      zone: fields[4] as ZoneTheme,
+      zone: fields[4] as ZoneTheme?,
       tags: fields[5] as String,
       colorValue: fields[6] as int,
       mood: fields[7] as String?,
@@ -29,7 +29,9 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       projectId: fields[9] as String?,
       recommendedTag: fields[10] as String?,
       seriesId: fields[11] as String?,
-      linkedSpiritId: fields[23] as String?,
+      linkedSpiritId: fields[24] as String?,
+      linkedTrackerId: fields[25] as String?,
+      linkedCollectionId: fields[26] as String?,
       attachments: (fields[12] as List?)?.cast<Attachment>(),
       tasks: (fields[13] as List?)?.cast<Task>(),
       goals: (fields[14] as List?)?.cast<Goal>(),
@@ -41,13 +43,14 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       isArchived: fields[20] as bool,
       isTrashed: fields[21] as bool,
       isLocked: fields[22] as bool,
+      lockPassword: fields[23] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, OmniNote obj) {
     writer
-      ..writeByte(24)
+      ..writeByte(27)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -95,7 +98,13 @@ class OmniNoteAdapter extends TypeAdapter<OmniNote> {
       ..writeByte(22)
       ..write(obj.isLocked)
       ..writeByte(23)
-      ..write(obj.linkedSpiritId);
+      ..write(obj.lockPassword)
+      ..writeByte(24)
+      ..write(obj.linkedSpiritId)
+      ..writeByte(25)
+      ..write(obj.linkedTrackerId)
+      ..writeByte(26)
+      ..write(obj.linkedCollectionId);
   }
 
   @override

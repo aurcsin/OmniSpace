@@ -1,14 +1,12 @@
 // lib/pages/root_cave_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
 import 'package:omnispace/models/omni_note.dart';
-import 'package:omnispace/models/zone_theme.dart';
 import 'package:omnispace/services/omni_note_service.dart';
-import 'package:omnispace/services/spirit_service.dart';
-import 'package:omnispace/services/deck_service.dart';
-import 'package:omnispace/widgets/help_button.dart';
 import 'package:omnispace/widgets/main_menu_drawer.dart';
-import 'package:omnispace/pages/multi_pane_editor_page.dart';
+import 'package:omnispace/pages/note_detail_page.dart';
 
 class RootCavePage extends StatefulWidget {
   const RootCavePage({Key? key}) : super(key: key);
@@ -17,147 +15,136 @@ class RootCavePage extends StatefulWidget {
   State<RootCavePage> createState() => _RootCavePageState();
 }
 
-class _RootCavePageState extends State<RootCavePage> {
-  final _noteSvc   = OmniNoteService.instance;
-  final _spiritSvc = SpiritService.instance;
-  final _deckSvc   = DeckService.instance;
+class _RootCavePageState extends State<RootCavePage> with SingleTickerProviderStateMixin {
+  final _noteSvc = OmniNoteService.instance;
+  late TabController _tabController;
 
-  Future<void> _drawRealmSpirit() async {
-    final s = await _deckSvc.drawFromRealm(ZoneTheme.Void);
-    final msg = s != null
-      ? 'Drew ${s.name}!'
-      : 'All Root Cave spirits already in your deck.';
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      setState(() {});
+  List<OmniNote> get _archived =>
+      _noteSvc.notes.where((n) => n.isArchived && !n.isTrashed).toList()
+        ..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
+  List<OmniNote> get _trashed =>
+      _noteSvc.notes.where((n) => n.isTrashed).toList()
+        ..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  Future<void> _restore(OmniNote note) async {
+    if (_tabController.index == 0) {
+      note.isArchived = false;
+    } else {
+      note.isTrashed = false;
     }
+    await _noteSvc.save(note);
+    setState(() {});
+  }
+
+  Future<void> _openNote(OmniNote note) async {
+    if (note.isLocked) {
+      final pw = await showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Unlock Note'),
+          content: TextField(
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Password'),
+            onSubmitted: (v) => Navigator.of(context).pop(v),
+          ),
+        ),
+      );
+      if (pw != note.lockPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wrong password')));
+        return;
+      }
+    }
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => NoteDetailPage(omniNote: note)),
+    );
+    if (saved == true) setState(() {});
+  }
+
+  Widget _buildList(List<OmniNote> notes) {
+    if (notes.isEmpty) {
+      return const Center(child: Text('Nothing here.'));
+    }
+    return ListView.builder(
+      itemCount: notes.length,
+      itemBuilder: (_, i) {
+        final n = notes[i];
+        return Dismissible(
+          key: ValueKey(n.id),
+          background: Container(
+            color: Colors.green,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 16),
+            child: const Icon(Icons.undo, color: Colors.white),
+          ),
+          secondaryBackground: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16),
+            child: const Icon(Icons.delete_forever, color: Colors.white),
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              await _restore(n);
+              return false;
+            } else {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Delete Permanently?'),
+                  content: const Text('This cannot be undone.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                await n.delete();
+                return true;
+              }
+              return false;
+            }
+          },
+          onDismissed: (_) => setState(() {}),
+          child: ListTile(
+            leading: Icon(n.isLocked ? Icons.lock : Icons.note,
+                color: n.isLocked ? Colors.grey : null),
+            title: Text(n.title.isEmpty ? '(No Title)' : n.title),
+            subtitle: Text(DateFormat.yMMMd().add_jm().format(n.lastUpdated)),
+            onTap: () => _openNote(n),
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Master spirit for Void realm
-    final master = _spiritSvc
-        .getPrimaries()
-        .firstWhere((s) => s.realm == ZoneTheme.Void);
-    // Collectible spirits for Void realm
-    final reps = _spiritSvc
-        .getCollectibles()
-        .where((s) => s.realm == ZoneTheme.Void)
-        .toList();
-
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: const Text('Root Cave • Underground'),
-        actions: [
-          HelpButton(
-            helpTitle: 'Cave Help',
-            helpText: '''
-• The Root Cave is the Void realm.  
-• Master spirit guides you here.  
-• Collect spirits to grow your deck.  
-• Archived notes live below; restore from Trash.''',
-          ),
+        title: const Text('Root Cave'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Archived'),
+            Tab(text: 'Trash'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildList(_archived),
+          _buildList(_trashed),
         ],
-      ),
-      body: FutureBuilder<List<OmniNote>>(
-        future: Future.value(_noteSvc.notes),
-        builder: (ctx, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snap.data!;
-          final archived = all
-              .where((n) => n.isArchived && !n.isTrashed)
-              .toList();
-          final trashed  = all.where((n) => n.isTrashed).toList();
-
-          return ListView(
-            padding: const EdgeInsets.all(8),
-            children: [
-              // Master Spirit
-              Card(
-                color: Colors.grey.shade200,
-                child: ListTile(
-                  leading: Icon(master.realm.icon, size: 40, color: Colors.grey),
-                  title: Text(master.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(master.purpose),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Collectible spirits
-              Wrap(
-                spacing: 8,
-                children: reps.map((s) {
-                  final inDeck = _deckSvc.deck.any((d) => d.id == s.id);
-                  return ActionChip(
-                    avatar: Icon(s.realm.icon, size: 20, color: inDeck ? Colors.grey : Colors.white),
-                    label: Text(s.name),
-                    backgroundColor: inDeck ? Colors.grey.shade300 : Colors.black54,
-                    labelStyle: TextStyle(color: inDeck ? Colors.black : Colors.white),
-                    onPressed: inDeck
-                        ? null
-                        : () async {
-                            await _deckSvc.draw(s);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Added ${s.name} to deck!')),
-                              );
-                              setState(() {});
-                            }
-                          },
-                  );
-                }).toList(),
-              ),
-
-              const Divider(height: 32),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Archived Entries',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              if (archived.isEmpty)
-                const Center(child: Text('No archived notes.'))
-              else
-                ...archived.map((n) => ListTile(
-                      title: Text(n.title.isEmpty ? '(No Title)' : n.title),
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)))
-                          .then((_) => setState(() {})),
-                    )),
-
-              const Divider(height: 32),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Trash',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              if (trashed.isEmpty)
-                const Center(child: Text('Trash is empty.'))
-              else
-                ...trashed.map((n) => ListTile(
-                      title: Text(n.title.isEmpty ? '(No Title)' : n.title),
-                      subtitle: const Text('Trashed'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.restore),
-                        tooltip: 'Restore Note',
-                        onPressed: () async {
-                          await _noteSvc.setTrashed(n.id, false);
-                          setState(() {});
-                        },
-                      ),
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => MultiPaneEditorPage(n)))
-                          .then((_) => setState(() {})),
-                    )),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.filter_alt),
-        label: const Text('Draw Cave Spirit'),
-        onPressed: _drawRealmSpirit,
       ),
     );
   }

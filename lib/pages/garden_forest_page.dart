@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:omnispace/models/zone_theme.dart';
+import 'package:omnispace/models/spirit.dart';
 import 'package:omnispace/services/omni_note_service.dart';
 import 'package:omnispace/services/spirit_service.dart';
 import 'package:omnispace/services/deck_service.dart';
@@ -24,11 +25,11 @@ class _GardenForestPageState extends State<GardenForestPage> {
 
   /// Map moods to flower colors
   static const Map<String, Color> _moodColor = {
-    'Calm': Colors.blue,
-    'Energetic': Colors.red,
-    'Focused': Colors.yellow,
-    'Grounded': Colors.brown,
-    'Curious': Colors.purple,
+    'Calm':        Colors.blue,
+    'Energetic':   Colors.red,
+    'Focused':     Colors.yellow,
+    'Grounded':    Colors.brown,
+    'Curious':     Colors.purple,
     'Fusion Flow': Colors.grey,
   };
 
@@ -45,20 +46,22 @@ class _GardenForestPageState extends State<GardenForestPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Master guardian spirit for the Forest realm
-    final master = spiritSvc.getPrimaries()
-        .firstWhere((s) => s.realm == ZoneTheme.Earth);
+    // Safe master lookup without firstWhere(null)
+    final List<Spirit> primaries = spiritSvc
+        .getPrimaries()
+        .where((s) => s.realm == ZoneTheme.Earth)
+        .toList();
+    final Spirit? master = primaries.isNotEmpty ? primaries.first : null;
+
     // All collectible spirits for this realm
-    final reps = spiritSvc.getCollectibles()
+    final List<Spirit> reps = spiritSvc
+        .getCollectibles()
         .where((s) => s.realm == ZoneTheme.Earth)
         .toList();
 
     // All relevant notes
     final entries = noteSvc.notes
-        .where((n) =>
-            n.zone == ZoneTheme.Earth &&
-            !n.isArchived &&
-            !n.isTrashed)
+        .where((n) => n.zone == ZoneTheme.Earth && !n.isArchived && !n.isTrashed)
         .toList();
 
     return Scaffold(
@@ -70,7 +73,7 @@ class _GardenForestPageState extends State<GardenForestPage> {
             helpTitle: 'Forest Garden Help',
             helpText: '''
 • The master spirit guides this realm.  
-• Collect sprites below to grow your deck.  
+• Collect spirits below to grow your deck.  
 • Your journal entries appear as flowers.  
 • Flower color reflects the note’s mood.''',
           ),
@@ -80,27 +83,31 @@ class _GardenForestPageState extends State<GardenForestPage> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
-            // Master Spirit
-            Card(
-              color: Colors.green.shade50,
-              child: ListTile(
-                leading: Icon(master.realm.icon, size: 40, color: Colors.green),
-                title: Text(master.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(master.purpose),
+            // Master Spirit (if any)
+            if (master != null)
+              Card(
+                color: Colors.green.shade50,
+                child: ListTile(
+                  leading: Icon(master.realm.icon, size: 40, color: Colors.green),
+                  title: Text(master.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(master.purpose),
+                ),
               ),
-            ),
 
             const SizedBox(height: 8),
+
             // Representative (collectible) spirits
             Wrap(
               spacing: 8,
               children: reps.map((s) {
-                // Check membership correctly
-                final inDeck = deckSvc.deck.any((d) => d.id == s.id);
+                final bool inDeck = deckSvc.deck.any((d) => d.id == s.id);
                 return ActionChip(
-                  avatar: Icon(s.realm.icon,
-                      size: 20, color: inDeck ? Colors.grey : Colors.white),
+                  avatar: Icon(
+                    s.realm.icon,
+                    size: 20,
+                    color: inDeck ? Colors.grey : Colors.white,
+                  ),
                   label: Text(s.name),
                   backgroundColor:
                       inDeck ? Colors.grey.shade300 : Colors.greenAccent,
@@ -137,12 +144,11 @@ class _GardenForestPageState extends State<GardenForestPage> {
                       itemCount: entries.length,
                       itemBuilder: (ctx, i) {
                         final n = entries[i];
-                        final color = _moodColor[n.mood ?? ''] ?? Colors.green;
+                        final Color color = _moodColor[n.mood ?? ''] ?? Colors.green;
                         return GestureDetector(
                           onTap: () => Navigator.of(context)
                               .push(MaterialPageRoute(
-                                  builder: (_) =>
-                                      MultiPaneEditorPage(n)))
+                                  builder: (_) => MultiPaneEditorPage(n)))
                               .then((_) => setState(() {})),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,

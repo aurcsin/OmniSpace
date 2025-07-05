@@ -79,7 +79,7 @@ class _TimeGroupJournalPageState extends State<TimeGroupJournalPage> {
                                   : '(No Title)',
                             ),
                             subtitle: Text(note.subtitle),
-                            trailing: Text(note.zone.name),
+                            trailing: Text(note.zone?.name ?? ''),
                             onTap: () => Navigator.of(context)
                                 .push(
                                   MaterialPageRoute(

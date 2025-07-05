@@ -26,6 +26,7 @@ class TrackerForgePage extends StatefulWidget {
 
 class _TrackerForgePageState extends State<TrackerForgePage> {
   final _formKey = GlobalKey<FormState>();
+
   late TrackerType _type;
   late TextEditingController _titleCtl;
   String _recurrence = 'Daily';
@@ -52,8 +53,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
     // Initialize form fields
     _type = widget.tracker?.type ?? widget.type ?? TrackerType.task;
     _titleCtl = TextEditingController(text: widget.tracker?.title ?? '');
-    _customRecurrenceCtl =
-        TextEditingController(text: widget.tracker?.frequency ?? '');
+    _customRecurrenceCtl = TextEditingController(text: widget.tracker?.frequency ?? '');
 
     // If editing an existing tracker, pre-fill selections
     if (widget.tracker != null) {
@@ -65,11 +65,14 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
       }
 
       // Preselect collection if the tracker is in one
-      for (final c in _collections) {
-        if (c.trackerIds.contains(t.id)) {
-          _selectedCollectionId = c.id;
-          break;
-        }
+      if (_collections.isNotEmpty) {
+        final match = _collections.firstWhere(
+          (c) => c.trackerIds.contains(t.id),
+          orElse: () => _collections.first,
+        );
+        _selectedCollectionId = match.id;
+      } else {
+        _selectedCollectionId = null;
       }
 
       // Preselect recurrence option
@@ -100,8 +103,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
   Future<void> _pickTime() async {
     final t = await showTimePicker(
       context: context,
-      initialTime:
-          TimeOfDay.fromDateTime(_taskTime ?? DateTime.now()),
+      initialTime: TimeOfDay.fromDateTime(_taskTime ?? DateTime.now()),
     );
     if (t != null) {
       setState(() {
@@ -116,24 +118,17 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
     }
   }
 
-  void _toggleNoteSelection(String id) {
-    setState(() {
-      if (!_selectedNoteIds.remove(id)) {
-        _selectedNoteIds.add(id);
-      }
-    });
-  }
+  void _toggleNoteSelection(String id) => setState(() {
+        if (!_selectedNoteIds.remove(id)) _selectedNoteIds.add(id);
+      });
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final tracker = widget.tracker ??
-        Tracker(id: generateId(), type: _type, title: '');
+    final tracker = widget.tracker ?? Tracker(id: generateId(), type: _type, title: '');
 
     final freq = _type == TrackerType.routine
-        ? (_customRecurrence
-            ? _customRecurrenceCtl.text.trim()
-            : _recurrence)
+        ? (_customRecurrence ? _customRecurrenceCtl.text.trim() : _recurrence)
         : null;
 
     tracker
@@ -145,12 +140,16 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 
     await TrackerService.instance.save(tracker);
 
-    if (_selectedCollectionId != null && _selectedCollectionId!.isNotEmpty) {
+    if (_selectedCollectionId != null) {
       await TrackerCollectionService.instance
           .addToCollection(_selectedCollectionId!, tracker.id);
     }
 
-    Navigator.of(context).pop(tracker);
+    Navigator.of(context).pop(true);
+  }
+
+  Future<void> _cancel() async {
+    Navigator.of(context).pop(false);
   }
 
   IconData _iconFor(TrackerType type) {
@@ -170,14 +169,13 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 
   @override
   Widget build(BuildContext context) {
-    final typeName =
-        '${_type.name[0].toUpperCase()}${_type.name.substring(1)}';
+    final typeName = '${_type.name[0].toUpperCase()}${_type.name.substring(1)}';
 
     return Scaffold(
       drawer: const MainMenuDrawer(),
       appBar: AppBar(
-        title: Text(
-            widget.tracker == null ? 'New $typeName' : 'Edit $typeName'),
+        leading: IconButton(icon: const Icon(Icons.close), onPressed: _cancel),
+        title: Text(widget.tracker == null ? 'New $typeName' : 'Edit $typeName'),
         actions: [
           HelpButton(
             helpTitle: 'Tracker Help',
@@ -188,11 +186,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
 • Events: select a time.  
 • Attach notes if needed, assign to a cluster, then save.''',
           ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: 'Save',
-            onPressed: _save,
-          ),
+          IconButton(icon: const Icon(Icons.check), tooltip: 'Save', onPressed: _save),
         ],
       ),
       body: Padding(
@@ -201,7 +195,6 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Type selector (only on create)
               if (widget.tracker == null) ...[
                 DropdownButtonFormField<TrackerType>(
                   value: _type,
@@ -213,8 +206,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                         children: [
                           Icon(_iconFor(tt)),
                           const SizedBox(width: 8),
-                          Text(
-                              '${tt.name[0].toUpperCase()}${tt.name.substring(1)}'),
+                          Text('${tt.name[0].toUpperCase()}${tt.name.substring(1)}'),
                         ],
                       ),
                     );
@@ -228,56 +220,46 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
               TextFormField(
                 controller: _titleCtl,
                 decoration: const InputDecoration(labelText: 'Title'),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
 
-              // Recurrence (routines)
+              // Routines: recurrence
               if (_type == TrackerType.routine) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _recurrence,
-                  decoration:
-                      const InputDecoration(labelText: 'Recurrence'),
+                  decoration: const InputDecoration(labelText: 'Recurrence'),
                   items: _recurrenceOptions
-                      .map((opt) => DropdownMenuItem(
-                            value: opt,
-                            child: Text(opt),
-                          ))
+                      .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
                       .toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _recurrence = v!;
-                      _customRecurrence = (v == 'Custom');
-                    });
-                  },
+                  onChanged: (v) => setState(() {
+                    _recurrence = v!;
+                    _customRecurrence = (v == 'Custom');
+                  }),
                 ),
                 if (_customRecurrence) ...[
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _customRecurrenceCtl,
-                    decoration:
-                        const InputDecoration(labelText: 'Custom Rule'),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    decoration: const InputDecoration(labelText: 'Custom Rule'),
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ],
               ],
 
-              // Time picker (events)
+              // Events: time picker
               if (_type == TrackerType.event) ...[
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: Text(_taskTime == null
-                          ? 'No time chosen'
-                          : DateFormat.jm().format(_taskTime!)),
+                      child: Text(
+                        _taskTime == null
+                            ? 'No time chosen'
+                            : DateFormat.jm().format(_taskTime!),
+                      ),
                     ),
-                    TextButton(
-                      onPressed: _pickTime,
-                      child: const Text('Pick Time'),
-                    ),
+                    TextButton(onPressed: _pickTime, child: const Text('Pick Time')),
                   ],
                 ),
               ],
@@ -290,20 +272,15 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                 decoration: const InputDecoration(labelText: 'Cluster'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('None')),
-                  ..._collections.map((c) => DropdownMenuItem(
-                        value: c.id,
-                        child: Text(c.name),
-                      )),
+                  ..._collections.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
                 ],
-                onChanged: (v) =>
-                    setState(() => _selectedCollectionId = v),
+                onChanged: (v) => setState(() => _selectedCollectionId = v),
               ),
 
               const SizedBox(height: 24),
 
               // Attach notes
-              Text('Attach Notes',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Attach Notes', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               SizedBox(
                 height: 150,
@@ -313,8 +290,7 @@ class _TrackerForgePageState extends State<TrackerForgePage> {
                       return CheckboxListTile(
                         value: _selectedNoteIds.contains(n.id),
                         onChanged: (_) => _toggleNoteSelection(n.id),
-                        title: Text(
-                            n.title.isEmpty ? '(no title)' : n.title),
+                        title: Text(n.title.isEmpty ? '(no title)' : n.title),
                         secondary: const Icon(Icons.note),
                       );
                     }).toList(),
